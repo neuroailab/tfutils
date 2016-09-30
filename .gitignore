@@ -5,5 +5,3 @@
 *.egg-info
 *.DS_Store
 .*swp
-papers/latent_variable_analysis/output
-papers/latent_variable_analysis/tmp
