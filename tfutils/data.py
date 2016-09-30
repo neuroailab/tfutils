@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
+import numpy as np
 
-import hdf5provider
+from . import hdf5provider
 
 
 class ImageNet(hdf5provider.HDF5DataProvider):
@@ -29,7 +30,8 @@ class ImageNet(hdf5provider.HDF5DataProvider):
             postprocess={'data': self.postproc},
             pad=True,
             *args, **kwargs)
-        self.data_dict = {'data': tf.placeholder(tf.float32,
+        self.crop_size = crop_size
+        self.data_node = {'data': tf.placeholder(tf.float32,
                                             shape=(crop_size, crop_size, 3),
                                             name='data'),
                           'labels': tf.placeholder(tf.int64,
@@ -39,13 +41,14 @@ class ImageNet(hdf5provider.HDF5DataProvider):
     def postproc(self, ims, f):
         norm = ims / 255. - .5
         resh = norm.reshape((3, 256, 256))
-        sw = resh.swapaxes(1, 2).swapaxes(2, 3)
-        cropped_shape = [self.crop_size, self.crop_size, 3]
-        images_batch = tf.random_crop(sw, size=cropped_shape, name='random_crop')
-        return images_batch
+        sw = resh.swapaxes(0, 1).swapaxes(1, 2)
+        off = np.random.randint(0, 256 - self.crop_size, size=2)
+        images_batch = sw[off[0]: off[0] + self.crop_size,
+                          off[1]: off[1] + self.crop_size]
+        return images_batch.astype(np.float32)
 
     def next(self):
         batch = super(ImageNet, self).next()
-        feed_dict = {self.data_batch['data']: batch['data'].astype(tf.float32),
-                     self.data_batch['labels']: batch['labels'].astype(tf.int64)}
+        feed_dict = {self.data_node['data']: batch['data'],
+                     self.data_node['labels']: batch['labels'][0]}
         return feed_dict

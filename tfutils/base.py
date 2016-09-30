@@ -15,15 +15,15 @@ class CustomQueue(object):
         self.data = data
         self.batch_size = batch_size
 
-        dtypes = [d.dtype for d in data.data_dict.values()]
-        shapes = [d.get_shape() for d in data.data_dict.values()]
+        dtypes = [d.dtype for d in data.data_node.values()]
+        shapes = [d.get_shape() for d in data.data_node.values()]
         self.queue = tf.RandomShuffleQueue(capacity=1024 * 16 + 4 * batch_size,
                                            min_after_dequeue=1024 * 16,
                                            dtypes=dtypes,
                                            shapes=shapes)
-        self.enqueue_op = self.queue.enqueue(data.data_dict.values())
+        self.enqueue_op = self.queue.enqueue(data.data_node.values())
         data_batch = self.queue.dequeue_many(batch_size)
-        self.data_batch = {k:v for k,v in zip(data.data_dict.keys(), data_batch)}
+        self.data_batch = {k:v for k,v in zip(data.data_node.keys(), data_batch)}
 
     def thread_main(self, sess):
         """
@@ -78,7 +78,7 @@ class Saver(tf.train.Saver):
         elapsed_time_step = time.time() - start_time_step
         start_time_step = time.time()
 
-        if math.isnan(results['tot_loss']):
+        if math.isnan(results['loss']):
             raise Exception('Model diverged with loss = NaN')
 
         if self.save_vars and step % self.save_vars_freq == 0 and step > 0:
@@ -113,7 +113,7 @@ class Saver(tf.train.Saver):
         sys.stdout.flush()  # flush the stdout buffer
 
 
-def run(params, queue, logits, targets):
+def run(params, queue, logits, targets, start_step, end_step):
     """
     Args:
         - params: dictionary of params
@@ -124,9 +124,9 @@ def run(params, queue, logits, targets):
     # Create a variable to count the number of train() calls.
     # This equals the number of batches processed.
     # TODO: do we actually need it?
-    global_step = tf.get_variable('global_step', [],
-                                  initializer=tf.constant_initializer(0),
-                                  trainable=False)
+    # global_step = tf.get_variable('global_step', [],
+    #                               initializer=tf.constant_initializer(0),
+    #                               trainable=False)
 
     # create session
     sess = tf.Session(config=tf.ConfigProto(
@@ -145,17 +145,19 @@ def run(params, queue, logits, targets):
     # start our custom queue runner's threads
     queue.start_threads(sess, n_threads=params['num_preprocess_threads'])
 
-    # to keep consistent count (of epochs passed, etc.)
-    start_step = params['start_step'] if params['restore_vars'] else 0
-    end_step = params['num_epochs'] * num_batches_per_epoch
     saver = Saver(sess,
-                  restore=params['restore_vars'],
+                  restore_vars=params['restore_vars'],
+                  restore_var_file=params['restore_var_file'],
+                  save_vars=params['save_vars'],
+                  save_vars_freq=params['save_vars_freq'],
                   save_path=params['save_path'],
+                  save_loss=params['save_loss'],
+                  save_loss_freq=params['save_loss_freq'],
                   max_to_keep=params['max_to_keep'])
     # start_time_step = time.time()  # start timer
     for step in xrange(start_step, end_step):
         # get run output as dictionary {'2': loss2, 'lr': lr, etc..}
         results = sess.run(targets)
         # print output, save variables to checkpoint and save loss etc
-        saver.save(step, results)
+        # saver.save(step, results)
     sess.close()

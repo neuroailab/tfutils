@@ -46,7 +46,7 @@ class HDF5DataProvider(object):
                     else:
                         self.subsliceinds = np.zeros(self.data[source].shape[0]).astype(np.bool)
                         self.subsliceinds[self.subslice] = True
-                    self.subsliceinds = self.subsliceinds.nonzero()[0]
+                    self.subsliceinds = self.subsliceinds.nonzero()[0].astype(int)
                 sz = self.data[source].shape
                 self.sizes[source] = (self.subsliceinds.shape[0],) + sz[1:]
             if not hasattr(self, 'data_length'):
@@ -79,7 +79,7 @@ class HDF5DataProvider(object):
 
     def increment_batch_num(self):
         m = self.total_batches
-        if (self.curr_batch_num >= m-1):
+        if (self.curr_batch_num >= m - 1):
             self.curr_epoch += 1
         self.curr_batch_num = (self.curr_batch_num + 1) % m
 
@@ -93,7 +93,7 @@ class HDF5DataProvider(object):
         sourcelist = self.sourcelist
         for source in sourcelist:
             data[source] = self.get_data(self.data[source], slice(startv, endv))
-            if self.postprocess.has_key(source):
+            if source in self.postprocess:
                 data[source] = self.postprocess[source](data[source], self.file)
         return data
 
@@ -103,8 +103,8 @@ class HDF5DataProvider(object):
         else:
             subslice_inds = self.subsliceinds[sliceval]
             mbs = self.mini_batch_size
-            bn0 = subslice_inds.min() / mbs
-            bn1 = subslice_inds.max() / mbs
+            bn0 = subslice_inds.min() // mbs
+            bn1 = subslice_inds.max() // mbs
             stims = []
             for _bn in range(bn0, bn1 + 1):
                 _s = np.asarray(dsource[_bn * mbs: (_bn + 1) * mbs])

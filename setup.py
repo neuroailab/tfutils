@@ -36,7 +36,6 @@ setup(
 
     # Author details
     author='Neuroscience and Artificial Intelligence Lab',
-    author_email='pypa-dev@googlegroups.com',
 
     # Choose your license
     license='MIT',
