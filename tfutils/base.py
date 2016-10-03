@@ -127,14 +127,14 @@ class Saver(tf.train.Saver):
             #    'saved_filters': saved_filters,
                 'kind': 'train',
                 'step': step,
-                'loss': results['loss'],
-                'learning_rate': results['lr'],
-                'duration': 1000 * elapsed_time_step}
+                'loss': float(results['loss']),
+                'learning_rate': float(results['lr']),
+                'duration': int(1000 * elapsed_time_step)}
 
         if step > 0:
             # write loss to db
             if self.save_loss and step % self.save_loss_freq == 0:
-                self.coll.insert(rec)
+                self.coll.insert_one(rec)
 
 
         if self.save_vars and step % self.save_vars_freq == 0 and step > 0:
