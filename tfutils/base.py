@@ -15,7 +15,7 @@ class Saver(tf.train.Saver):
                  host='localhost',
                  port=31001,
                  dbname=None,
-                 collname='sim',
+                 collname='test',
                  exp_id=None,
                  restore_vars=False,
                  restore_var_file='',
@@ -37,8 +37,10 @@ class Saver(tf.train.Saver):
         super(Saver, self).__init__(*args, **kwargs)
         if dbname is not None:
             self.conn = pymongo.MongoClient(host=host, port=port)
-            self.coll = gridfs.GridFS(self.conn[dbname][collname + '.files'])
-            self.coll_recent = gridfs.GridFS(self.conn[dbname + '__RECENT'][collname + '.files'])
+            self.coll = self.conn[dbname][collname + '.files']
+            self.collfs = gridfs.GridFS(self.conn[dbname], collname)
+            self.collfs_recent = gridfs.GridFS(self.conn[dbname + '__RECENT'],collname)
+            self.save_filters_to_db = save_filters_to_db
         else:
             # TODO: save locally
             raise ValueError('Please specify database name for storing data')
@@ -92,18 +94,18 @@ class Saver(tf.train.Saver):
         Args:
             query: dict of Mongo queries
         """
-        count = self.coll.find(query).count()
+        count = self.collfs.find(query).count()
         if count > 0:  # get latest that matches query
-            ckpt_record = self.coll._GridFS__files.find(query,
-                            sort=[('timestamp', -1)])[0]
+            ckpt_record = self.collfs._GridFS__files.find(query,
+                            sort=[('uploadDate', -1)])[0]
             loading_from = 'long-term storage'
 
-        count_recent = self.coll_recent_fs.find(query).count()
+        count_recent = self.collfs_recents.find(query).count()
         if count_recent > 0:  # get latest that matches query
-            ckpt_record_rec = self.coll_recent_fs._GridFS__files.find(query,
-                                sort=[('timestamp', -1)])[0]
+            ckpt_record_rec = self.collfs_recent._GridFS__files.find(query,
+                                sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
-            if ckpt_record is None or ckpt_record_rec['timestamp'] > ckpt_record['timestamp']:
+            if ckpt_record is None or ckpt_record_rec['uploadDate'] > ckpt_record['uploadDate']:
                 loading_from = 'recent storage'
                 ckpt_record = ckpt_record_rec
 
@@ -120,20 +122,6 @@ class Saver(tf.train.Saver):
         if math.isnan(results['loss']):
             raise NanLossDuringTrainingError
 
-        if self.save_vars and step % self.save_vars_freq == 0 and step > 0:
-            saved_path = super(Saver, self).save(self.sess,
-                                    save_path=self.save_path,
-                                    global_step=step,
-                                    write_meta_graph=False)
-            # save the saved file to 'recent' checkpoint fs
-            if self.save_filters_to_db:
-                self.coll_recent_fs.put(open(saved_path, 'rb'),
-                                   filename=saved_path,
-                                   exp_id=self.exp_id,
-                                   saved_filters=True)
-                # TODO: when do we move from recent to non recent...
-                print('Saved variable checkpoint to recent fs.')
-
         rec = {'exp_id': self.exp_id,
             #    'cfg': preprocess_config(cfg),
             #    'saved_filters': saved_filters,
@@ -146,8 +134,25 @@ class Saver(tf.train.Saver):
         if step > 0:
             # write loss to db
             if self.save_loss and step % self.save_loss_freq == 0:
-                pass
-                # self.coll.insert(rec)
+                self.coll.insert(rec)
+
+
+        if self.save_vars and step % self.save_vars_freq == 0 and step > 0:
+            saved_path = super(Saver, self).save(self.sess,
+                                    save_path=self.save_path,
+                                    global_step=step,
+                                    write_meta_graph=False)
+            # save the saved file to 'recent' checkpoint fs
+            if self.save_filters_to_db:
+                self.collfs_recent.put(open(saved_path, 'rb'),
+                                       filename=saved_path,
+                                       saved_filters=True,
+                                       **rec)
+                # TODO: when do we move from recent to non recent...
+                print('Saved variable checkpoint to recent fs.')
+
+
+
 
         print('Step {} -- loss: {:.6f}, lr: {:.6f}, time: {:.0f}'
               'ms'.format(rec['step'], rec['loss'], rec['learning_rate'], rec['duration']))
