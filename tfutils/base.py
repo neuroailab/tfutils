@@ -1,23 +1,25 @@
 from __future__ import absolute_import, division, print_function
 
-import sys, time
+import os, sys, time, math
 
-import numpy as np
 import pymongo
 import tensorflow as tf
 from tensorflow.contrib.learn import NanLossDuringTrainingError
+import gridfs
 
 
 class Saver(tf.train.Saver):
 
     def __init__(self,
                  sess,
+                 host='localhost',
+                 port=31001,
                  dbname=None,
                  collname='sim',
                  exp_id=None,
-                 port=31001,
                  restore_vars=False,
                  restore_var_file='',
+                 save_filters_to_db=False,
                  start_step=None,
                  save_vars=True,
                  save_vars_freq=3000,
@@ -34,8 +36,9 @@ class Saver(tf.train.Saver):
         """
         super(Saver, self).__init__(*args, **kwargs)
         if dbname is not None:
-            self.conn = pymongo.MongoClient(port=port)
-            self.coll = self.conn[dbname][collname]
+            self.conn = pymongo.MongoClient(host=host, port=port)
+            self.coll = gridfs.GridFS(self.conn[dbname][collname + '.files'])
+            self.coll_recent = gridfs.GridFS(self.conn[dbname + '__RECENT'][collname + '.files'])
         else:
             # TODO: save locally
             raise ValueError('Please specify database name for storing data')
@@ -47,7 +50,7 @@ class Saver(tf.train.Saver):
         self.save_loss = save_loss
         self.save_loss_freq = save_loss_freq
         if restore_vars:
-            self.restore(self.sess, restore_var_file)
+            self.restore_model(restore_var_file)
             print('Variables restored')
 
         if tensorboard:  # save graph to tensorboard
@@ -55,19 +58,81 @@ class Saver(tf.train.Saver):
 
         self.start_time_step = time.time()  # start timer
 
+    def restore_model(self):
+        """
+        Fetches record, saves locally, then uses tf's saver.restore
+        """
+        # fetch record from database and get the filename info from record
+        rec = self.load_from_db(self.exp_id)
+        # should be of form *-1000 (step)
+        filename_suffix = rec.filename.split('/')[-1]
+        loaded_filename = os.path.join(self.save_path, 'retrieved_' + filename_suffix)
+
+        # create new file to write from gridfs
+        load_dest = open(loaded_filename, "w+")
+        load_dest.close()
+        load_dest = open(loaded_filename, 'rwb+')
+        fsbucket = gridfs.GridFSBucket(rec._GridOut__files.database,
+                            bucket_name=rec._GridOut__files.name.split('.')[0])
+        # save to local disk
+        fsbucket.download_to_stream(rec._id, load_dest)
+
+        # tf restore
+        self.restore(self.sess, loaded_filename)
+        print('Model variables restored.')
+
+    def load_from_db(self, query):
+        """
+        Loads checkpoint from the database
+
+        Checks the recent and regular checkpoint fs to find the latest one
+        matching the query. Returns the GridOut obj corresponding to the
+        record.
+
+        Args:
+            query: dict of Mongo queries
+        """
+        count = self.coll.find(query).count()
+        if count > 0:  # get latest that matches query
+            ckpt_record = self.coll._GridFS__files.find(query,
+                            sort=[('timestamp', -1)])[0]
+            loading_from = 'long-term storage'
+
+        count_recent = self.coll_recent_fs.find(query).count()
+        if count_recent > 0:  # get latest that matches query
+            ckpt_record_rec = self.coll_recent_fs._GridFS__files.find(query,
+                                sort=[('timestamp', -1)])[0]
+            # use the record with latest timestamp
+            if ckpt_record is None or ckpt_record_rec['timestamp'] > ckpt_record['timestamp']:
+                loading_from = 'recent storage'
+                ckpt_record = ckpt_record_rec
+
+        if count + count_recent == 0:  # no matches for query
+            raise Exception('No matching checkpoint for query "{}"'.format(repr(query)))
+
+        print('Loading checkpoint from ', loading_from)
+        return ckpt_record
+
     def save(self, step, results):
         elapsed_time_step = time.time() - self.start_time_step
         self.start_time_step = time.time()
 
-        if np.isnan(results['loss']):
+        if math.isnan(results['loss']):
             raise NanLossDuringTrainingError
 
         if self.save_vars and step % self.save_vars_freq == 0 and step > 0:
-            super(Saver, self).save(self.sess,
+            saved_path = super(Saver, self).save(self.sess,
                                     save_path=self.save_path,
                                     global_step=step,
                                     write_meta_graph=False)
-            print('saved variable checkpoint')
+            # save the saved file to 'recent' checkpoint fs
+            if self.save_filters_to_db:
+                self.coll_recent_fs.put(open(saved_path, 'rb'),
+                                   filename=saved_path,
+                                   exp_id=self.exp_id,
+                                   saved_filters=True)
+                # TODO: when do we move from recent to non recent...
+                print('Saved variable checkpoint to recent fs.')
 
         rec = {'exp_id': self.exp_id,
             #    'cfg': preprocess_config(cfg),
@@ -79,7 +144,7 @@ class Saver(tf.train.Saver):
                 'duration': 1000 * elapsed_time_step}
 
         if step > 0:
-            # write loss to file
+            # write loss to db
             if self.save_loss and step % self.save_loss_freq == 0:
                 pass
                 # self.coll.insert(rec)
@@ -125,6 +190,7 @@ class Saver(tf.train.Saver):
 
     def test(self, step, results):
         raise NotImplementedError
+
 
 
 def run(sess, queues, saver, train_targets, valid_targets=None,
