@@ -151,9 +151,6 @@ class Saver(tf.train.Saver):
                 # TODO: when do we move from recent to non recent...
                 print('Saved variable checkpoint to recent fs.')
 
-
-
-
         print('Step {} -- loss: {:.6f}, lr: {:.6f}, time: {:.0f}'
               'ms'.format(rec['step'], rec['loss'], rec['learning_rate'], rec['duration']))
         sys.stdout.flush()  # flush the stdout buffer
@@ -198,7 +195,7 @@ class Saver(tf.train.Saver):
 
 
 
-def run(sess, queues, saver, train_targets, valid_targets=None,
+def run_loop(sess, queues, saver, train_targets, valid_targets=None,
         start_step=0, end_step=None):
     """
     Args:
@@ -226,3 +223,63 @@ def run(sess, queues, saver, train_targets, valid_targets=None,
         # print output, save variables to checkpoint and save loss etc
         saver.save(step, results)
     sess.close()
+
+
+def run(model_func,
+        model_func_kwargs,
+        data_func,
+        data_func_kwargs,
+        loss_func,
+        loss_func_kwargs,
+        lr_func,
+        lr_func_kwargs,
+        opt_func,
+        opt_func_kwargs,
+        saver_kwargs,
+        train_targets=None,
+        valid_targets=None,
+        seed=None,
+        start_step=,
+        end_step=math.inf,
+        log_device_placement=True
+        ):
+    with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
+        rng = np.random.RandomState(seed=seed)
+        tf.set_random_seed(seed)
+
+        tf.get_variable('global_step', [],
+                        initializer=tf.constant_initializer(0),
+                        trainable=False)
+
+        train_data_node, train_data_provider = data_func(train=True,
+                                                     **data_func_kwargs)
+        valid_data_node, valid_data_provider = data_func(train=False,
+                                                     **data_func_kwargs)
+
+        outputs = model_func(train_data_node['data'], **model_func_kwargs)
+        loss = loss_func(outputs, train_data_node['labels'],
+                         **loss_func_kwargs)
+        lr = lr_func(**lr_func_kwargs)
+        optimizer = opt_func(loss, lr, **opt_func_kwargs)
+
+        if train_targets is None:
+            pass
+        elif isinstance(train_targets, dict):
+            train_targets.update({'loss': loss, 'lr': lr, 'opt': optimizer})
+        else:
+            raise ValueError('Train targets must be None or dict, got {}'.format(type(train_targets)))
+
+        # create session
+        sess = tf.Session(config=tf.ConfigProto(
+                                allow_soft_placement=True,
+                                log_device_placement=log_device_placement))
+
+        saver = base.Saver(sess, **saver_kwargs)
+        run_loop(sess,
+            [train_data_provider, valid_data_provider],
+            saver,
+            train_targets=train_targets,
+            valid_targets=valid_targets,
+            start_step=start_step,
+            end_step=end_step)
+
