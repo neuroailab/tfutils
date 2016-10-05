@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os, sys, time, math
 
+import numpy as np
 import pymongo
 import tensorflow as tf
 from tensorflow.contrib.learn import NanLossDuringTrainingError
@@ -239,8 +240,8 @@ def run(model_func,
         train_targets=None,
         valid_targets=None,
         seed=None,
-        start_step=,
-        end_step=math.inf,
+        start_step=0,
+        end_step=float('inf'),
         log_device_placement=True
         ):
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
@@ -251,30 +252,41 @@ def run(model_func,
                         initializer=tf.constant_initializer(0),
                         trainable=False)
 
-        train_data_node, train_data_provider = data_func(train=True,
-                                                     **data_func_kwargs)
-        valid_data_node, valid_data_provider = data_func(train=False,
-                                                     **data_func_kwargs)
+        train_data_node, train_labels_node, train_data_provider = data_func(train=True, **data_func_kwargs)
+        valid_data_node, valid_labels_node, valid_data_provider = data_func(train=False, **data_func_kwargs)
 
-        outputs = model_func(train_data_node['data'], **model_func_kwargs)
-        loss = loss_func(outputs, train_data_node['labels'],
-                         **loss_func_kwargs)
+        train_outputs = model_func(train_data_node, train=True, **model_func_kwargs)
+        loss = loss_func(train_outputs, train_labels_node, **loss_func_kwargs)
         lr = lr_func(**lr_func_kwargs)
         optimizer = opt_func(loss, lr, **opt_func_kwargs)
 
+        ttarg = {'loss': loss, 'lr': lr, 'opt': optimizer}
         if train_targets is None:
-            pass
+            train_targets = ttarg
         elif isinstance(train_targets, dict):
-            train_targets.update({'loss': loss, 'lr': lr, 'opt': optimizer})
+            train_targets.update(ttarg)
         else:
             raise ValueError('Train targets must be None or dict, got {}'.format(type(train_targets)))
+
+        valid_outputs = model_func(valid_data_node, train=False, **model_func_kwargs)
+        top_1_ops = [tf.nn.in_top_k(output, labels, 1)
+                    for output, labels in zip(valid_outputs, valid_labels_node)]
+        top_5_ops = [tf.nn.in_top_k(output, labels, 5)
+                    for output, labels in zip(valid_outputs, valid_labels_node)]
+        vtarg = {'top1': top_1_ops, 'top5': top_5_ops}
+        if valid_targets is None:
+            valid_targets = vtarg
+        elif isinstance(valid_targets, dict):
+            valid_targets.update(vtarg)
+        else:
+            raise ValueError('Validation targets must be None or dict, got {}'.format(type(valid_targets)))
 
         # create session
         sess = tf.Session(config=tf.ConfigProto(
                                 allow_soft_placement=True,
                                 log_device_placement=log_device_placement))
 
-        saver = base.Saver(sess, **saver_kwargs)
+        saver = Saver(sess, **saver_kwargs)
         run_loop(sess,
             [train_data_provider, valid_data_provider],
             saver,
