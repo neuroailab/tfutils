@@ -1,86 +1,105 @@
 from __future__ import absolute_import, division, print_function
 
-import os, sys, time, math
+import os, sys, time, math, importlib, argparse, json
 
 import numpy as np
 import pymongo
 import tensorflow as tf
-from tensorflow.contrib.learn import NanLossDuringTrainingError
 import gridfs
+
+from . import error
 
 
 class Saver(tf.train.Saver):
 
     def __init__(self,
                  sess,
+                 params,
                  host='localhost',
                  port=31001,
-                 dbname=None,
-                 collname='test',
-                 exp_id=None,
-                 restore_vars=False,
-                 restore_var_file='',
-                 save_filters_to_db=False,
-                 start_step=None,
-                 save_vars=True,
-                 save_vars_freq=3000,
-                 save_path='',
-                 save_loss=True,
-                 save_loss_freq=5,
-                 tensorboard=False,
-                 tensorboard_dir='',
+                 dbname='testdb',
+                 collname='testcoll',
+                 exp_id='test',
+                 save=True,
+                 restore=True,
+                 save_metrics_freq=5,
+                 save_valid_freq=3000,
+                 cache_filters_freq=3000,
+                 cache_path=None,
+                 save_filters_freq=30000,
+                 tensorboard_dir=None,
+                 start_step=0,
+                 end_step=None,
+                 force_fetch=False,
                  *args, **kwargs):
         """
         Output printer, logger and saver to a database
 
+        Kwargs:
+        - save_vars_freq
+            0 or None not to save. Otherwise the number of steps.
+        - restore_vars_file
+            If None, don't save
+
         NOTE: Not working yet
         """
         super(Saver, self).__init__(*args, **kwargs)
-        if dbname is not None:
+        self.sess = sess
+        self.params = params
+        self.exp_id = exp_id
+        self.dosave = save
+        self.save_metrics_freq = save_metrics_freq
+        self.save_valid_freq = save_valid_freq
+        self.cache_filters_freq = cache_filters_freq
+        self.save_filters_freq = save_filters_freq
+
+        if self.dosave:
             self.conn = pymongo.MongoClient(host=host, port=port)
             self.coll = self.conn[dbname][collname + '.files']
             self.collfs = gridfs.GridFS(self.conn[dbname], collname)
-            self.collfs_recent = gridfs.GridFS(self.conn[dbname + '__RECENT'],collname)
-            self.save_filters_to_db = save_filters_to_db
-        else:
-            # TODO: save locally
-            raise ValueError('Please specify database name for storing data')
-        self.sess = sess
-        self.exp_id = exp_id
-        self.save_vars = save_vars
-        self.save_vars_freq = save_vars_freq
-        self.save_path = save_path
-        self.save_loss = save_loss
-        self.save_loss_freq = save_loss_freq
-        if restore_vars:
-            self.restore_model(restore_var_file)
+            recent_name = '_'.join([dbname, collname, exp_id, '__RECENT'])
+            self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
+
+        if restore:
+            self.restore_model(force_fetch=force_fetch)
             print('Variables restored')
 
-        if tensorboard:  # save graph to tensorboard
+        if tensorboard_dir is not None:  # save graph to tensorboard
             tf.train.SummaryWriter(tensorboard_dir, tf.get_default_graph())
+
+        if cache_path is None:
+            self.cache_path = os.path.join(os.environ['HOME'], '.tfutils')
+        else:
+            self.cache_path = cache_path
+        # import pdb; pdb.set_trace()
+        if not os.path.isdir(self.cache_path):
+            os.makedirs(self.cache_path)
 
         self.start_time_step = time.time()  # start timer
 
-    def restore_model(self):
+    def restore_model(self, force_fetch=False):
         """
         Fetches record, saves locally, then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
-        rec = self.load_from_db(self.exp_id)
+        rec = self.load_from_db({'exp_id': self.exp_id, 'saved_filters': True})
         # should be of form *-1000 (step)
-        filename_suffix = rec.filename.split('/')[-1]
-        loaded_filename = os.path.join(self.save_path, 'retrieved_' + filename_suffix)
+        filename = os.path.basename(rec.filename.split)
+        loaded_filename = os.path.join(self.cache_path, filename)
+        # TODO: check that these filenames are unique
 
-        # create new file to write from gridfs
-        load_dest = open(loaded_filename, "w+")
-        load_dest.close()
-        load_dest = open(loaded_filename, 'rwb+')
-        fsbucket = gridfs.GridFSBucket(rec._GridOut__files.database,
-                            bucket_name=rec._GridOut__files.name.split('.')[0])
-        # save to local disk
-        fsbucket.download_to_stream(rec._id, load_dest)
+        # check if there is no local copy
+        if not os.path.isfile(loaded_filename) and not force_fetch:
+            # create new file to write from gridfs
+            load_dest = open(loaded_filename, "w+")
+            load_dest.close()
+            load_dest = open(loaded_filename, 'rwb+')
+            fsbucket = gridfs.GridFSBucket(rec._GridOut__files.database,
+                                bucket_name=rec._GridOut__files.name.split('.')[0])
+            # save to local disk
+            fsbucket.download_to_stream(rec._id, load_dest)
 
-        # tf restore
+        # tensorflow restore
         self.restore(self.sess, loaded_filename)
         print('Model variables restored.')
 
@@ -116,88 +135,95 @@ class Saver(tf.train.Saver):
         print('Loading checkpoint from ', loading_from)
         return ckpt_record
 
-    def save(self, step, results):
+    def save(self, step, train_res, valid_res=None):
         elapsed_time_step = time.time() - self.start_time_step
-        self.start_time_step = time.time()
-
-        if math.isnan(results['loss']):
-            raise NanLossDuringTrainingError
+        just_saved = False  # for saving filters
 
         rec = {'exp_id': self.exp_id,
-            #    'cfg': preprocess_config(cfg),
-            #    'saved_filters': saved_filters,
-                'kind': 'train',
-                'step': step,
-                'loss': float(results['loss']),
-                'learning_rate': float(results['lr']),
-                'duration': int(1000 * elapsed_time_step)}
+               'cfg': self.params,
+               'saved_filters': False,
+               'step': step,
+               'duration': int(1000 * elapsed_time_step)}
 
-        if step > 0:
-            # write loss to db
-            if self.save_loss and step % self.save_loss_freq == 0:
-                self.coll.insert_one(rec)
+        # print loss, learning rate etc
+        if self.save_metrics_freq not in (None, False, 0):
+            if step % self.save_metrics_freq == 0:
+                for k, v in train_res.items():
+                    if isinstance(v, np.float):
+                        train_res[k] = float(v)
+                rec.update(train_res)
+                del rec['opt']
+                # TODO: also include error rate of the train set to monitor overfitting
 
+                message = 'Step {} ({:.0f} ms) -- '.format(rec['step'], rec['duration'])
+                message += ', '.join(['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'opt'])
+                print(message)
 
-        if self.save_vars and step % self.save_vars_freq == 0 and step > 0:
-            saved_path = super(Saver, self).save(self.sess,
-                                    save_path=self.save_path,
-                                    global_step=step,
-                                    write_meta_graph=False)
-            # save the saved file to 'recent' checkpoint fs
-            if self.save_filters_to_db:
+        # print validation set performance etc
+        if self.save_valid_freq not in (None, False, 0) and valid_res is not None:
+            if step % self.save_valid_freq == 0:
+                for k, v in valid_res.items():
+                    if isinstance(v, np.float):
+                        valid_res[k] = float(v)
+                rec.update(valid_res)
+
+                message = 'Step {} ({:.0f} ms) validation -- '.format(rec['step'], rec['duration'])
+                message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items())
+                print(message)
+
+        # save to db
+        if self.dosave:
+            self.coll.insert_one(rec)
+
+        # save filters to cache and recent db
+        if self.cache_filters_freq not in (None, False, 0) and self.dosave:
+            if step % self.cache_filters_freq == 0 and step > 0:
+                saved_path = super(Saver, self).save(self.sess,
+                                                     save_path=self.cache_path,
+                                                     global_step=step,
+                                                     write_meta_graph=False)
+                rec['saved_filters'] = True
                 self.collfs_recent.put(open(saved_path, 'rb'),
                                        filename=saved_path,
-                                       saved_filters=True,
                                        **rec)
-                # TODO: when do we move from recent to non recent...
-                print('Saved variable checkpoint to recent fs.')
+                just_saved = True
+                print('Saved filters to the recent database.')
 
-        print('Step {} -- loss: {:.6f}, lr: {:.6f}, time: {:.0f}'
-              'ms'.format(rec['step'], rec['loss'], rec['learning_rate'], rec['duration']))
+        # save filters to db
+        if self.save_filters_freq not in (None, False, 0):
+            if step % self.save_filters_freq == 0 and step > 0:
+                if not just_saved:  # avoid resaving if already done above
+                    saved_path = super(Saver, self).save(self.sess,
+                                                      save_path=self.cache_path,
+                                                      global_step=step,
+                                                      write_meta_graph=False)
+                rec['saved_filters'] = True
+                self.collfs_recent.put(open(saved_path, 'rb'),
+                                       filename=saved_path,
+                                       **rec)
+                print('Saved filters to the long-term database.')
+
         sys.stdout.flush()  # flush the stdout buffer
-
-    def valid(self, step, results):
-        elapsed_time_step = time.time() - self.start_time_step
         self.start_time_step = time.time()
-        rec = {'exp_id': self.exp_id,
-            #    'cfg': preprocess_config(cfg),
-            #    'saved_filters': saved_filters,
-               'kind': 'validation',
-               'step': step,
-               'duration': 1000 * elapsed_time_step}
-        rec.update(results)
-        if step > 0:
-            # write loss to file
-            if self.save_valid and step % self.save_valid_freq == 0:
-                pass
-                # self.coll.insert(rec)
-
-        message = ('Step {} validation -- ' +
-                   '{}: {:.3f}, ' * len(results) +
-                   '{:.0f} ms')
-        args = []
-        for k, v in results.items():
-            args.extend([k,v])
-        args = [rec['step']] + args + [rec['duration']]
-        print(message.format(*args))
-
-    def predict(self, step, results):
-        if not hasattr(results['output'], '__iter__'):
-            outputs = [results['outputs']]
-        else:
-            outputs = results['outputs']
-
-        preds = [tf.argmax(output, 1) for output in outputs]
-
-        return preds
-
-    def test(self, step, results):
-        raise NotImplementedError
 
 
+def predict(step, results):
+    if not hasattr(results['output'], '__iter__'):
+        outputs = [results['outputs']]
+    else:
+        outputs = results['outputs']
 
-def run_loop(sess, queues, saver, train_targets, valid_targets=None,
-        start_step=0, end_step=None):
+    preds = [tf.argmax(output, 1) for output in outputs]
+
+    return preds
+
+
+def test(step, results):
+    raise NotImplementedError
+
+
+def run(sess, queues, saver, train_targets, valid_targets=None,
+        start_step=0, end_step=None, thres_loss=100):
     """
     Args:
         - queues (~ data)
@@ -220,30 +246,44 @@ def run_loop(sess, queues, saver, train_targets, valid_targets=None,
     print('start training')
     for step in xrange(start_step, end_step):
         # get run output as dictionary {'2': loss2, 'lr': lr, etc..}
-        results = sess.run(train_targets)
+        train_results = sess.run(train_targets)
+        if train_results['loss'] > thres_loss:
+            raise error.HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
+
+        if valid_targets is not None:
+            valid_results = sess.run(valid_targets)
+        else:
+            valid_results = None
         # print output, save variables to checkpoint and save loss etc
-        saver.save(step, results)
+        saver.save(step, train_results, valid_results)
     sess.close()
 
 
-def run(model_func,
-        model_func_kwargs,
-        data_func,
-        data_func_kwargs,
-        loss_func,
-        loss_func_kwargs,
-        lr_func,
-        lr_func_kwargs,
-        opt_func,
-        opt_func_kwargs,
-        saver_kwargs,
-        train_targets=None,
-        valid_targets=None,
-        seed=None,
-        start_step=0,
-        end_step=float('inf'),
-        log_device_placement=True
-        ):
+def run_base(params,
+             model_func,
+             model_kwargs,
+             train_data_func,
+             train_data_kwargs,
+             loss_func,
+             loss_kwargs,
+             lr_func,
+             lr_kwargs,
+             opt_func,
+             opt_kwargs,
+             saver_kwargs,
+             train_targets_func=None,
+             train_targets_kwargs={},
+             valid_data_func=None,
+             valid_data_kwargs={},
+             valid_targets_func=None,
+             valid_targets_kwargs=None,
+             thres_loss=100,
+             seed=None,
+             start_step=0,
+             end_step=float('inf'),
+             log_device_placement=True
+             ):
+
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
         rng = np.random.RandomState(seed=seed)
         tf.set_random_seed(seed)
@@ -252,46 +292,54 @@ def run(model_func,
                         initializer=tf.constant_initializer(0),
                         trainable=False)
 
-        train_data_node, train_labels_node, train_data_provider = data_func(train=True, **data_func_kwargs)
-        valid_data_node, valid_labels_node, valid_data_provider = data_func(train=False, **data_func_kwargs)
+        train_inputs, train_provider = train_data_func(**train_data_kwargs)
+        queues = [train_provider]
+        train_outputs = model_func(train_inputs, train=True, **model_kwargs)
 
-        train_outputs = model_func(train_data_node, train=True, **model_func_kwargs)
-        loss = loss_func(train_outputs, train_labels_node, **loss_func_kwargs)
-        lr = lr_func(**lr_func_kwargs)
-        optimizer = opt_func(loss, lr, **opt_func_kwargs)
+        loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
+        lr = lr_func(**lr_kwargs)
+        optimizer = opt_func(loss, lr, **opt_kwargs)
 
-        ttarg = {'loss': loss, 'lr': lr, 'opt': optimizer}
-        if train_targets is None:
-            train_targets = ttarg
-        elif isinstance(train_targets, dict):
+        train_targets = {'loss': loss, 'lr': lr, 'opt': optimizer}
+
+        if train_data_func is None:
+            ttarg = train_data_func(train_inputs, train_outputs, **train_targets_kwargs)
             train_targets.update(ttarg)
-        else:
-            raise ValueError('Train targets must be None or dict, got {}'.format(type(train_targets)))
 
-        valid_outputs = model_func(valid_data_node, train=False, **model_func_kwargs)
-        top_1_ops = [tf.nn.in_top_k(output, labels, 1)
-                    for output, labels in zip(valid_outputs, valid_labels_node)]
-        top_5_ops = [tf.nn.in_top_k(output, labels, 5)
-                    for output, labels in zip(valid_outputs, valid_labels_node)]
-        vtarg = {'top1': top_1_ops, 'top5': top_5_ops}
-        if valid_targets is None:
-            valid_targets = vtarg
-        elif isinstance(valid_targets, dict):
-            valid_targets.update(vtarg)
+        if valid_data_func is None:
+            valid_inputs, valid_provider = valid_data_func(**valid_data_kwargs)
+            queues += [valid_provider]
+            valid_outputs = model_func(valid_inputs, train=False, **model_kwargs)
+            valid_targets = valid_targets_func(valid_inputs, valid_outputs, **valid_targets_kwargs)
         else:
-            raise ValueError('Validation targets must be None or dict, got {}'.format(type(valid_targets)))
+            valid_targets = None
 
         # create session
         sess = tf.Session(config=tf.ConfigProto(
                                 allow_soft_placement=True,
                                 log_device_placement=log_device_placement))
 
-        saver = Saver(sess, **saver_kwargs)
-        run_loop(sess,
-            [train_data_provider, valid_data_provider],
+        saver = Saver(sess, params, **saver_kwargs)
+        run(sess,
+            queues,
             saver,
             train_targets=train_targets,
             valid_targets=valid_targets,
             start_step=start_step,
-            end_step=end_step)
+            end_step=end_step,
+            thres_loss=thres_loss)
 
+
+def get_params():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--params', default=None)
+    parser.add_argument('-g', '--gpu', default='0', type=str)
+    args = parser.parse_args()
+
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
+    if args.params is not None:
+        params = json.load(open(args.params))
+        return params
+    else:
+        return None
