@@ -7,7 +7,7 @@ import pymongo
 import tensorflow as tf
 import gridfs
 
-from . import error
+import tfutils.error as error
 
 
 class Saver(tf.train.Saver):

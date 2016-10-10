@@ -186,13 +186,14 @@ class CustomQueue(object):
         self.data_iter = data_iter
         self.queue_batch_size = queue_batch_size
         self.n_threads = n_threads
+        self._continue = True
 
         dtypes = [d.dtype for d in node.values()]
         shapes = [d.get_shape() for d in node.values()]
-        self.queue = tf.RandomShuffleQueue(capacity=1024 * 16 + 4 * queue_batch_size,
-                                           min_after_dequeue=1024 * 16,
-                                           dtypes=dtypes,
-                                           shapes=shapes)
+        self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
+                                        min_after_dequeue=n_threads * queue_batch_size,
+                                        dtypes=dtypes,
+                                        shapes=shapes)
         self.enqueue_op = self.queue.enqueue(node.values())
         data_batch = self.queue.dequeue_many(queue_batch_size)
         self.batch = {k:v for k,v in zip(node.keys(), data_batch)}
@@ -202,7 +203,8 @@ class CustomQueue(object):
         Function run on alternate thread. Basically, keep adding data to the queue.
         """
         for batch in self.data_iter:
-            sess.run(self.enqueue_op, feed_dict=batch)
+            if self._continue:
+                sess.run(self.enqueue_op, feed_dict=batch)
 
     def start_threads(self, sess):
         """ Start background threads to feed queue """
@@ -239,9 +241,12 @@ class ImageNet(HDF5DataProvider, CustomQueue):
             postprocess={'data': self.postproc},
             pad=True,
             *args, **kwargs)
-        self.crop_size = crop_size
+        if crop_size is None:
+            self.crop_size = 256
+        else:
+            self.crop_size = crop_size
         node = {'data': tf.placeholder(tf.float32,
-                                            shape=(crop_size, crop_size, 3),
+                                            shape=(self.crop_size, self.crop_size, 3),
                                             name='data'),
                      'labels': tf.placeholder(tf.int64,
                                               shape=[],
