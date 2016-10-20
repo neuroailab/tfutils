@@ -34,13 +34,11 @@ class Saver(tf.train.Saver):
                  *args, **kwargs):
         """
         Output printer, logger and saver to a database
-
         Kwargs:
         - save_vars_freq
             0 or None not to save. Otherwise the number of steps.
         - restore_vars_file
             If None, don't save
-
         NOTE: Not working yet
         """
         super(Saver, self).__init__(*args, **kwargs)
@@ -106,11 +104,9 @@ class Saver(tf.train.Saver):
     def load_from_db(self, query):
         """
         Loads checkpoint from the database
-
         Checks the recent and regular checkpoint fs to find the latest one
         matching the query. Returns the GridOut obj corresponding to the
         record.
-
         Args:
             query: dict of Mongo queries
         """
@@ -302,11 +298,11 @@ def run_base(params,
 
         train_targets = {'loss': loss, 'lr': lr, 'opt': optimizer}
 
-        if train_data_func is None:
-            ttarg = train_data_func(train_inputs, train_outputs, **train_targets_kwargs)
+        if train_targets_func is not None:
+            ttarg = train_targets_func(train_inputs, train_outputs, **train_targets_kwargs)
             train_targets.update(ttarg)
 
-        if valid_data_func is None:
+        if valid_data_func is not None:
             valid_inputs, valid_provider = valid_data_func(**valid_data_kwargs)
             queues += [valid_provider]
             valid_outputs = model_func(valid_inputs, train=False, **model_kwargs)
