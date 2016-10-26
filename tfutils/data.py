@@ -217,10 +217,15 @@ class CustomQueue(object):
         return threads
 
 
-class ImageNet(HDF5DataProvider, CustomQueue):
+class ImageNet(HDF5DataProvider):
 
-    def __init__(self, data_path, subslice, crop_size=None,
-                 batch_size=256, n_threads=4, *args, **kwargs):
+    def __init__(self, 
+    		     data_path, 
+    		     subslice, 
+    		     crop_size=None,
+                 batch_size=256, 
+                 *args, 
+                 **kwargs):
         """
         A specific reader for IamgeNet stored as a HDF5 file
 
@@ -245,15 +250,13 @@ class ImageNet(HDF5DataProvider, CustomQueue):
             self.crop_size = 256
         else:
             self.crop_size = crop_size
-        node = {'data': tf.placeholder(tf.float32,
+        self.node = {'data': tf.placeholder(tf.float32,
                                             shape=(self.crop_size, self.crop_size, 3),
                                             name='data'),
                      'labels': tf.placeholder(tf.int64,
                                               shape=[],
                                               name='labels')}
-        CustomQueue.__init__(self, node, self, queue_batch_size=batch_size,
-                             n_threads=n_threads)
-
+ 
     def postproc(self, ims, f):
         norm = ims / 255. - .5
         resh = norm.reshape((3, 256, 256))

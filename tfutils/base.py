@@ -8,6 +8,7 @@ import tensorflow as tf
 import gridfs
 
 import tfutils.error as error
+import tfutils.data as data
 
 
 class Saver(tf.train.Saver):
@@ -80,28 +81,14 @@ class Saver(tf.train.Saver):
         Fetches record, saves locally, then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
-        rec = self.load_from_db({'exp_id': self.exp_id, 'saved_filters': True})
-        # should be of form *-1000 (step)
-        filename = os.path.basename(rec.filename.split)
-        loaded_filename = os.path.join(self.cache_path, filename)
-        # TODO: check that these filenames are unique
-
-        # check if there is no local copy
-        if not os.path.isfile(loaded_filename) and not force_fetch:
-            # create new file to write from gridfs
-            load_dest = open(loaded_filename, "w+")
-            load_dest.close()
-            load_dest = open(loaded_filename, 'rwb+')
-            fsbucket = gridfs.GridFSBucket(rec._GridOut__files.database,
-                                bucket_name=rec._GridOut__files.name.split('.')[0])
-            # save to local disk
-            fsbucket.download_to_stream(rec._id, load_dest)
-
+        rec, cache_filename = self.load_from_db({'exp_id': self.exp_id, 
+        									     'saved_filters': True},
+        									     cache_model=True)
         # tensorflow restore
-        self.restore(self.sess, loaded_filename)
+        self.restore(self.sess, cache_filename)
         print('Model variables restored.')
 
-    def load_from_db(self, query):
+    def load_from_db(self, query, cache_model=False):
         """
         Loads checkpoint from the database
         Checks the recent and regular checkpoint fs to find the latest one
@@ -129,14 +116,34 @@ class Saver(tf.train.Saver):
             raise Exception('No matching checkpoint for query "{}"'.format(repr(query)))
 
         print('Loading checkpoint from ', loading_from)
-        return ckpt_record
+        
+        if cache_model:
+			# should be of form *-1000 (step)
+			filename = os.path.basename(ckpt_record.filename.split)
+			cache_filename = os.path.join(self.cache_path, filename)
+			# TODO: check that these filenames are unique
+
+			# check if there is no local copy
+			if not os.path.isfile(cache_filename) and not force_fetch:
+				# create new file to write from gridfs
+				load_dest = open(cache_filename, "w+")
+				load_dest.close()
+				load_dest = open(cache_filename, 'rwb+')
+				fsbucket = gridfs.GridFSBucket(ckpt_record._GridOut__files.database,
+								bucket_name=ckpt_record._GridOut__files.name.split('.')[0])
+				# save to local disk
+				fsbucket.download_to_stream(ckpt_record._id, load_dest)        
+		else:
+			cache_filename = None
+        
+        return ckpt_record, cache_filename
 
     def save(self, step, train_res, valid_res=None):
         elapsed_time_step = time.time() - self.start_time_step
         just_saved = False  # for saving filters
 
         rec = {'exp_id': self.exp_id,
-               'cfg': self.params,
+               'params': self.params,
                'saved_filters': False,
                'step': step,
                'duration': int(1000 * elapsed_time_step)}
@@ -167,7 +174,7 @@ class Saver(tf.train.Saver):
                 message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items())
                 print(message)
 
-        # save to db
+        # save to db -- ERROR HERE? REMOVE THIS?
         if self.dosave:
             self.coll.insert_one(rec)
 
@@ -255,8 +262,7 @@ def run(sess, queues, saver, train_targets, valid_targets=None,
     sess.close()
 
 
-def run_base(params,
-             model_func,
+def run_base(model_func,
              model_kwargs,
              train_data_func,
              train_data_kwargs,
@@ -281,16 +287,23 @@ def run_base(params,
              ):
 
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
-        rng = np.random.RandomState(seed=seed)
-        tf.set_random_seed(seed)
-
         tf.get_variable('global_step', [],
                         initializer=tf.constant_initializer(0),
                         trainable=False)
 
-        train_inputs, train_provider = train_data_func(**train_data_kwargs)
-        queues = [train_provider]
-        train_outputs = model_func(train_inputs, train=True, **model_kwargs)
+		#train_data_func returns dictionary of iterators, with one key per input to model
+		n_threads = train_data_kwargs.pop('n_threads')
+        train_inputs = train_data_func(**train_data_kwargs)
+        queues = [CustomQueue(train_inputs.node, 
+        					  train_inputs, 
+        					  queue_batch_size=train_provider.batch_size, 
+        					  n_threads=n_threads)]
+        
+		assert 'cfg0' in model_kwargs
+		assert 'seed' in model_kwargs
+        train_outputs, cfg1 = model_func(inputs=train_inputs, 
+              			                train=True, 
+        			                    **model_kwargs)
 
         loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
         lr = lr_func(**lr_kwargs)
@@ -303,10 +316,23 @@ def run_base(params,
             train_targets.update(ttarg)
 
         if valid_data_func is not None:
-            valid_inputs, valid_provider = valid_data_func(**valid_data_kwargs)
-            queues += [valid_provider]
-            valid_outputs = model_func(valid_inputs, train=False, **model_kwargs)
-            valid_targets = valid_targets_func(valid_inputs, valid_outputs, **valid_targets_kwargs)
+            valid_inputs = valid_data_func(**valid_data_kwargs)
+            new_queue = CustomQueue(valid_inputs.node, 
+        					 	    valid_inputs, 
+        					  	    queue_batch_size=valid_provider.batch_size, 
+        					  	    n_threads=n_threads)
+            
+            queues += [new_queue]       
+            new_model_kwargs = copy.deepcopy(model_kwargs)
+            new_model_kwargs['seed'] = None
+            new_model_kwargs['cfg0'] = cfg     
+            valid_outputs, _cfg = model_func(inputs=valid_inputs, 
+            						         train=False, 
+            						         **new_model_kwargs)
+            assert cfg1 == _cfg, (cfg1, _cfg)
+            valid_targets = valid_targets_func(valid_inputs,
+            						          valid_outputs, 
+            						          **valid_targets_kwargs)
         else:
             valid_targets = None
 
@@ -315,6 +341,16 @@ def run_base(params,
                                 allow_soft_placement=True,
                                 log_device_placement=log_device_placement))
 
+		model_kwargs_final = copy.deepcopy(model_kwargs)
+		model_kwargs_final['cfg1'] = cfg1
+	    params = {'model_kwargs': model_kwargs_final,
+	    	      'train_data_kwargs': train_data_kwargs,
+	    	      'loss_kwargs': loss_kwargs,
+	    	      'optimizer_kwargs': opt_kwargs,
+	    	      'valid_targets_kwargs': valid_targets_kwargs
+	    	      #... other stuff?  how are the function names passed? 
+	    	      } 
+	    	      
         saver = Saver(sess, params, **saver_kwargs)
         run(sess,
             queues,
