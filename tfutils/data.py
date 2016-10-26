@@ -220,9 +220,9 @@ class CustomQueue(object):
 class ImageNet(HDF5DataProvider):
 
     def __init__(self, 
-    		     data_path, 
-    		     subslice, 
-    		     crop_size=None,
+                 data_path, 
+                 subslice, 
+                 crop_size=None,
                  batch_size=256, 
                  *args, 
                  **kwargs):

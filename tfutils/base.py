@@ -82,8 +82,8 @@ class Saver(tf.train.Saver):
         """
         # fetch record from database and get the filename info from record
         rec, cache_filename = self.load_from_db({'exp_id': self.exp_id, 
-        									     'saved_filters': True},
-        									     cache_model=True)
+                                                 'saved_filters': True},
+                                                 cache_model=True)
         # tensorflow restore
         self.restore(self.sess, cache_filename)
         print('Model variables restored.')
@@ -118,23 +118,23 @@ class Saver(tf.train.Saver):
         print('Loading checkpoint from ', loading_from)
         
         if cache_model:
-			# should be of form *-1000 (step)
-			filename = os.path.basename(ckpt_record.filename.split)
-			cache_filename = os.path.join(self.cache_path, filename)
-			# TODO: check that these filenames are unique
+            # should be of form *-1000 (step)
+            filename = os.path.basename(ckpt_record.filename.split)
+            cache_filename = os.path.join(self.cache_path, filename)
+            # TODO: check that these filenames are unique
 
-			# check if there is no local copy
-			if not os.path.isfile(cache_filename) and not force_fetch:
-				# create new file to write from gridfs
-				load_dest = open(cache_filename, "w+")
-				load_dest.close()
-				load_dest = open(cache_filename, 'rwb+')
-				fsbucket = gridfs.GridFSBucket(ckpt_record._GridOut__files.database,
-								bucket_name=ckpt_record._GridOut__files.name.split('.')[0])
-				# save to local disk
-				fsbucket.download_to_stream(ckpt_record._id, load_dest)        
-		else:
-			cache_filename = None
+            # check if there is no local copy
+            if not os.path.isfile(cache_filename) and not force_fetch:
+                # create new file to write from gridfs
+                load_dest = open(cache_filename, "w+")
+                load_dest.close()
+                load_dest = open(cache_filename, 'rwb+')
+                fsbucket = gridfs.GridFSBucket(ckpt_record._GridOut__files.database,
+                                bucket_name=ckpt_record._GridOut__files.name.split('.')[0])
+                # save to local disk
+                fsbucket.download_to_stream(ckpt_record._id, load_dest)        
+        else:
+            cache_filename = None
         
         return ckpt_record, cache_filename
 
@@ -291,19 +291,19 @@ def run_base(model_func,
                         initializer=tf.constant_initializer(0),
                         trainable=False)
 
-		#train_data_func returns dictionary of iterators, with one key per input to model
-		n_threads = train_data_kwargs.pop('n_threads')
+        #train_data_func returns dictionary of iterators, with one key per input to model
+        n_threads = train_data_kwargs.pop('n_threads')
         train_inputs = train_data_func(**train_data_kwargs)
         queues = [CustomQueue(train_inputs.node, 
-        					  train_inputs, 
-        					  queue_batch_size=train_provider.batch_size, 
-        					  n_threads=n_threads)]
+                              train_inputs, 
+                              queue_batch_size=train_provider.batch_size, 
+                              n_threads=n_threads)]
         
-		assert 'cfg0' in model_kwargs
-		assert 'seed' in model_kwargs
+        assert 'cfg0' in model_kwargs
+        assert 'seed' in model_kwargs
         train_outputs, cfg1 = model_func(inputs=train_inputs, 
-              			                train=True, 
-        			                    **model_kwargs)
+                                        train=True, 
+                                        **model_kwargs)
 
         loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
         lr = lr_func(**lr_kwargs)
@@ -318,21 +318,21 @@ def run_base(model_func,
         if valid_data_func is not None:
             valid_inputs = valid_data_func(**valid_data_kwargs)
             new_queue = CustomQueue(valid_inputs.node, 
-        					 	    valid_inputs, 
-        					  	    queue_batch_size=valid_provider.batch_size, 
-        					  	    n_threads=n_threads)
+                                    valid_inputs, 
+                                    queue_batch_size=valid_provider.batch_size, 
+                                    n_threads=n_threads)
             
             queues += [new_queue]       
             new_model_kwargs = copy.deepcopy(model_kwargs)
             new_model_kwargs['seed'] = None
             new_model_kwargs['cfg0'] = cfg     
             valid_outputs, _cfg = model_func(inputs=valid_inputs, 
-            						         train=False, 
-            						         **new_model_kwargs)
+                                             train=False, 
+                                             **new_model_kwargs)
             assert cfg1 == _cfg, (cfg1, _cfg)
             valid_targets = valid_targets_func(valid_inputs,
-            						          valid_outputs, 
-            						          **valid_targets_kwargs)
+                                              valid_outputs, 
+                                              **valid_targets_kwargs)
         else:
             valid_targets = None
 
@@ -341,16 +341,16 @@ def run_base(model_func,
                                 allow_soft_placement=True,
                                 log_device_placement=log_device_placement))
 
-		model_kwargs_final = copy.deepcopy(model_kwargs)
-		model_kwargs_final['cfg1'] = cfg1
-	    params = {'model_kwargs': model_kwargs_final,
-	    	      'train_data_kwargs': train_data_kwargs,
-	    	      'loss_kwargs': loss_kwargs,
-	    	      'optimizer_kwargs': opt_kwargs,
-	    	      'valid_targets_kwargs': valid_targets_kwargs
-	    	      #... other stuff?  how are the function names passed? 
-	    	      } 
-	    	      
+        model_kwargs_final = copy.deepcopy(model_kwargs)
+        model_kwargs_final['cfg1'] = cfg1
+        params = {'model_kwargs': model_kwargs_final,
+                  'train_data_kwargs': train_data_kwargs,
+                  'loss_kwargs': loss_kwargs,
+                  'optimizer_kwargs': opt_kwargs,
+                  'valid_targets_kwargs': valid_targets_kwargs
+                  #... other stuff?  how are the function names passed? 
+                  } 
+                  
         saver = Saver(sess, params, **saver_kwargs)
         run(sess,
             queues,
