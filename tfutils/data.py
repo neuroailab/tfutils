@@ -176,7 +176,7 @@ def isin(X,Y):
 
 class CustomQueue(object):
 
-    def __init__(self, node, data_iter, queue_batch_size=128, n_threads=4):
+    def __init__(self, node, data_iter, queue_batch_size=128, n_threads=4, seed=0):
         """
         A generic queue for reading data
 
@@ -193,7 +193,8 @@ class CustomQueue(object):
         self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
                                         min_after_dequeue=n_threads * queue_batch_size,
                                         dtypes=dtypes,
-                                        shapes=shapes)
+                                        shapes=shapes,
+                                        seed=seed)
         self.enqueue_op = self.queue.enqueue(node.values())
         data_batch = self.queue.dequeue_many(queue_batch_size)
         self.batch = {k:v for k,v in zip(node.keys(), data_batch)}

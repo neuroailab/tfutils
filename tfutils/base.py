@@ -1,6 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
-import os, sys, time, math, importlib, argparse, json
+import (os, 
+        sys,
+        time,
+        math,
+        importlib,
+        argparse,
+        json,
+        copy)
 
 import numpy as np
 import pymongo
@@ -9,18 +16,19 @@ import gridfs
 
 import tfutils.error as error
 import tfutils.data as data
-
+from tfutils.utils import (make_mongo_safe,
+                           SONify)
 
 class Saver(tf.train.Saver):
 
     def __init__(self,
                  sess,
                  params,
-                 host='localhost',
-                 port=31001,
-                 dbname='testdb',
-                 collname='testcoll',
-                 exp_id='test',
+                 host,
+                 port
+                 dbname,
+                 collname,
+                 exp_id,
                  save=True,
                  restore=True,
                  save_metrics_freq=5,
@@ -42,9 +50,12 @@ class Saver(tf.train.Saver):
             If None, don't save
         NOTE: Not working yet
         """
+        
+        SONified_params = SONify(params)
         super(Saver, self).__init__(*args, **kwargs)
         self.sess = sess
         self.params = params
+        self.SONified_params = SONified_params
         self.exp_id = exp_id
         self.dosave = save
         self.save_metrics_freq = save_metrics_freq
@@ -70,7 +81,6 @@ class Saver(tf.train.Saver):
             self.cache_path = os.path.join(os.environ['HOME'], '.tfutils')
         else:
             self.cache_path = cache_path
-        # import pdb; pdb.set_trace()
         if not os.path.isdir(self.cache_path):
             os.makedirs(self.cache_path)
 
@@ -135,6 +145,8 @@ class Saver(tf.train.Saver):
                 fsbucket.download_to_stream(ckpt_record._id, load_dest)        
         else:
             cache_filename = None
+            
+        #TODO: create numpy-readable format for filter data if user desires
         
         return ckpt_record, cache_filename
 
@@ -143,7 +155,7 @@ class Saver(tf.train.Saver):
         just_saved = False  # for saving filters
 
         rec = {'exp_id': self.exp_id,
-               'params': self.params,
+               'params': self.SONified_params,
                'saved_filters': False,
                'step': step,
                'duration': int(1000 * elapsed_time_step)}
@@ -174,37 +186,39 @@ class Saver(tf.train.Saver):
                 message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items())
                 print(message)
 
-        # save to db -- ERROR HERE? REMOVE THIS?
-        if self.dosave:
-            self.coll.insert_one(rec)
 
-        # save filters to cache and recent db
-        if self.cache_filters_freq not in (None, False, 0) and self.dosave:
-            if step % self.cache_filters_freq == 0 and step > 0:
-                saved_path = super(Saver, self).save(self.sess,
-                                                     save_path=self.cache_path,
-                                                     global_step=step,
-                                                     write_meta_graph=False)
-                rec['saved_filters'] = True
-                self.collfs_recent.put(open(saved_path, 'rb'),
-                                       filename=saved_path,
-                                       **rec)
-                just_saved = True
-                print('Saved filters to the recent database.')
+        save_rec = make_mongo_safe(SONify(rec))
 
         # save filters to db
         if self.save_filters_freq not in (None, False, 0):
             if step % self.save_filters_freq == 0 and step > 0:
-                if not just_saved:  # avoid resaving if already done above
-                    saved_path = super(Saver, self).save(self.sess,
+                saved_path = super(Saver, self).save(self.sess,
                                                       save_path=self.cache_path,
                                                       global_step=step,
                                                       write_meta_graph=False)
-                rec['saved_filters'] = True
+                just_saved = True
+                save_rec['saved_filters'] = True
+                self.collfs.put(open(saved_path, 'rb'),
+                                       filename=saved_path,
+                                       **save_rec)
+                print('Saved filters to the long-term database.')
+
+
+        # save filters to cache and recent db
+        if self.cache_filters_freq not in (None, False, 0) and self.dosave:
+            if step % self.cache_filters_freq == 0 and step > 0:
+                if not just_saved:
+                    saved_path = super(Saver, self).save(self.sess,
+                                                     save_path=self.cache_path,
+                                                     global_step=step,
+                                                     write_meta_graph=False)
+                save_rec['saved_filters'] = True
                 self.collfs_recent.put(open(saved_path, 'rb'),
                                        filename=saved_path,
-                                       **rec)
-                print('Saved filters to the long-term database.')
+                                       **save_rec)          
+                print('Saved filters to the recent database.')
+
+
 
         sys.stdout.flush()  # flush the stdout buffer
         self.start_time_step = time.time()
@@ -275,10 +289,7 @@ def run_base(model_func,
              saver_kwargs,
              train_targets_func=None,
              train_targets_kwargs={},
-             valid_data_func=None,
-             valid_data_kwargs={},
-             valid_targets_func=None,
-             valid_targets_kwargs=None,
+             validation=None,
              thres_loss=100,
              seed=None,
              start_step=0,
@@ -292,16 +303,20 @@ def run_base(model_func,
                         trainable=False)
 
         #train_data_func returns dictionary of iterators, with one key per input to model
-        n_threads = train_data_kwargs.pop('n_threads')
-        train_inputs = train_data_func(**train_data_kwargs)
+        pass_train_data_kwargs = copy.deepcopy(train_data_kwargs)
+        batch_size = pass_train_data_kwargs.pop('batch_size')
+        n_threads = pass_train_data_kwargs.pop('n_threads')
+        data_seed = pass_train_data_kwargs.pop('seed')
+        train_inputs = train_data_func(**pass_train_data_kwargs)
         queues = [CustomQueue(train_inputs.node, 
                               train_inputs, 
-                              queue_batch_size=train_provider.batch_size, 
-                              n_threads=n_threads)]
+                              queue_batch_size=batch_size, 
+                              n_threads=n_threads,
+                              seed=data_seed)]
         
-        assert 'cfg0' in model_kwargs
+        assert 'cfg_initial' in model_kwargs
         assert 'seed' in model_kwargs
-        train_outputs, cfg1 = model_func(inputs=train_inputs, 
+        train_outputs, cfg_final = model_func(inputs=train_inputs, 
                                         train=True, 
                                         **model_kwargs)
 
@@ -315,63 +330,79 @@ def run_base(model_func,
             ttarg = train_targets_func(train_inputs, train_outputs, **train_targets_kwargs)
             train_targets.update(ttarg)
 
-        if valid_data_func is not None:
-            valid_inputs = valid_data_func(**valid_data_kwargs)
-            new_queue = CustomQueue(valid_inputs.node, 
-                                    valid_inputs, 
-                                    queue_batch_size=valid_provider.batch_size, 
-                                    n_threads=n_threads)
+        valid_targetsdict = None
+        if validation is not None:
+            for vtarg in valid_targets:
+                vdatafunc = valid_targets[vtarg]['data_func']
+                vdatakwargs = valid_targets[vtarg]['data_kwargs']
+                vtargsfunc = valid_targets[vtarg]['targets_func']
+                vtargskwargs = valid_targets[vtarg]['targets_kwargs']
+                vinputs = vdatafunc(**vdatakwargs)
+                new_queue = CustomQueue(vinputs.node, 
+                                        vinputs,
+                                        queue_batch_size=batch_size, 
+                                        n_threads=n_threads)
             
-            queues += [new_queue]       
-            new_model_kwargs = copy.deepcopy(model_kwargs)
-            new_model_kwargs['seed'] = None
-            new_model_kwargs['cfg0'] = cfg     
-            valid_outputs, _cfg = model_func(inputs=valid_inputs, 
+                queues.append(new_queue)
+                new_model_kwargs = copy.deepcopy(model_kwargs)
+                new_model_kwargs['seed'] = None
+                new_model_kwargs['cfg_initial'] = cfg_final
+                voutputs, _cfg = model_func(inputs=vinputs, 
                                              train=False, 
                                              **new_model_kwargs)
-            assert cfg1 == _cfg, (cfg1, _cfg)
-            valid_targets = valid_targets_func(valid_inputs,
-                                              valid_outputs, 
-                                              **valid_targets_kwargs)
-        else:
-            valid_targets = None
+                assert cfg_final == _cfg, (cfg_final, _cfg)
+                vtargets = vtargsfunc(vinputs,
+                                      voutputs, 
+                                      **vtargskwargs)
+                valid_targetsdict[vtarg] = vtargets
 
         # create session
-        sess = tf.Session(config=tf.ConfigProto(
-                                allow_soft_placement=True,
-                                log_device_placement=log_device_placement))
+        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
+                                        log_device_placement=log_device_placement))
 
         model_kwargs_final = copy.deepcopy(model_kwargs)
-        model_kwargs_final['cfg1'] = cfg1
-        params = {'model_kwargs': model_kwargs_final,
-                  'train_data_kwargs': train_data_kwargs,
-                  'loss_kwargs': loss_kwargs,
-                  'optimizer_kwargs': opt_kwargs,
-                  'valid_targets_kwargs': valid_targets_kwargs
-                  #... other stuff?  how are the function names passed? 
-                  } 
+        model_kwargs_final['cfg_final'] = cfg_final
                   
-        saver = Saver(sess, params, **saver_kwargs)
+        params = {'model_func' model_func,
+                  'model_kwargs': model_kwargs_final,
+                  'train_data_func': train_data_func,
+                  'train_data_kwargs': train_data_kwargs,
+                  'loss_func': loss_func, 
+                  'loss_kwargs': loss_kwargs,
+                  'learningrate_func': lr_func,
+                  'learningrate_kwargs': lr_kwargs,
+                  'optimizer_func': opt_func,
+                  'optimizer_kwargs': optimizer_kwargs,
+                  'saver_kwargs': save_kwargs,
+                  'train_targets': train_targets,
+                  'validation': validation,
+                  'thres_loss': thres_loss,
+                  'seed': seed,
+                  'start_step': start_step,
+                  'end_step': end_step,
+                  'log_device_placement': log_device_placement}
+        for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
+            assert sk in saver_kwargs
+        saver = Saver(sess=sess, params=params, **saver_kwargs)
+        
         run(sess,
             queues,
             saver,
             train_targets=train_targets,
-            valid_targets=valid_targets,
+            valid_targets=valid_targetsdict,
             start_step=start_step,
             end_step=end_step,
             thres_loss=thres_loss)
 
 
-def get_params():
+def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--params', default=None)
+    parser.add_argument('-p', '--params', type=json.loads, default=None)
     parser.add_argument('-g', '--gpu', default='0', type=str)
-    args = parser.parse_args()
-
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
-    if args.params is not None:
-        params = json.load(open(args.params))
-        return params
-    else:
-        return None
+    args = vars(parser.parse_args())
+    os.environ['CUDA_VISIBLE_DEVICES'] = args['gpu']
+    for p in filter(lambda x: x.endswith('_func'), args):
+        modname, objname = args[p].rsplit('.', 1)
+        mod = importlib.import_module(modname)
+        args[p] = getattr(mod, objname)
+    run(**args)

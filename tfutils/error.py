@@ -4,3 +4,7 @@ class HiLossError(Exception):
 
 class NoChangeError(Exception):
   pass
+
+
+class RepoIsDirtyError(Exception):
+  pass
