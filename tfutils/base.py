@@ -1,13 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
-import (os, 
-        sys,
-        time,
-        math,
-        importlib,
-        argparse,
-        json,
-        copy)
+import os
+import sys
+import time
+import math
+import importlib
+import argparse
+import json
+import copy
 
 import numpy as np
 import pymongo
@@ -25,7 +25,7 @@ class Saver(tf.train.Saver):
                  sess,
                  params,
                  host,
-                 port
+                 port,
                  dbname,
                  collname,
                  exp_id,
@@ -363,7 +363,7 @@ def run_base(model_func,
         model_kwargs_final = copy.deepcopy(model_kwargs)
         model_kwargs_final['cfg_final'] = cfg_final
                   
-        params = {'model_func' model_func,
+        params = {'model_func': model_func,
                   'model_kwargs': model_kwargs_final,
                   'train_data_func': train_data_func,
                   'train_data_kwargs': train_data_kwargs,
@@ -394,8 +394,7 @@ def run_base(model_func,
             end_step=end_step,
             thres_loss=thres_loss)
 
-
-def main():
+def get_params():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--params', type=json.loads, default=None)
     parser.add_argument('-g', '--gpu', default='0', type=str)
@@ -405,4 +404,8 @@ def main():
         modname, objname = args[p].rsplit('.', 1)
         mod = importlib.import_module(modname)
         args[p] = getattr(mod, objname)
+    return args
+
+def main():
+    args = get_params()
     run(**args)
