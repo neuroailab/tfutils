@@ -106,7 +106,6 @@ def main(data):
         batch = data.batch
     outputs, _ = model.alexnet_nonorm(batch['data'])
     targets = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(outputs, batch['labels']))
-
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                             log_device_placement=False))
     dur = timeit(sess, data, targets, nsteps=20)
@@ -117,16 +116,20 @@ if __name__ == '__main__':
     base.get_params()
 
     durs = []
-    durs.append(['Data input using feed_dict', main(DataInMem())])
-    durs.append(['Numpy data input using feed_dict', main(Data())])
+    print('test 0')
+    #durs.append(['Data input using feed_dict', main(DataInMem())])
+    print('test 1')
+    #durs.append(['Numpy data input using feed_dict', main(Data())])
+    print('test 2')
     queue = DataQueue()
-    durs.append(['Numpy data input using queues', main(queue)])
+    #durs.append(['Numpy data input using queues', main(queue)])
     queue._continue = False  # TODO: cleaning close threads
-    imagenet = data.ImageNet(DATA_PATH, subslice=range(2**12), crop_size=224)
+    print('test 3')
+    imagenet = data.ImageNet(DATA_PATH, crop_size=224)
+    imagenet = data.CustomQueue(imagenet.node, imagenet)
+    print('beginning test 3')
     durs.append(['HDF5 data input using queues', main(imagenet)])
-
-    time.sleep(2)  # clear queue outputs
-
+    time.sleep(10)  # clear queue outputs
     print()
     print('{:-^80}'.format('Benchmarking results'))
     for message, dur in durs:

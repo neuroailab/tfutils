@@ -222,7 +222,7 @@ class ImageNet(HDF5DataProvider):
 
     def __init__(self, 
                  data_path, 
-                 subslice, 
+                 subslice=None,
                  crop_size=None,
                  batch_size=256, 
                  *args, 
