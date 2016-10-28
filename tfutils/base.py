@@ -288,13 +288,14 @@ def run_base(model_func,
              opt_kwargs,
              saver_kwargs,
              train_targets_func=None,
-             train_targets_kwargs={},
+             train_targets_kwargs=None,
              validation=None,
              thres_loss=100,
              seed=None,
              start_step=0,
              end_step=float('inf'),
-             log_device_placement=True
+             log_device_placement=True,
+             queue_kwargs=None
              ):
 
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
@@ -303,30 +304,27 @@ def run_base(model_func,
                         trainable=False)
 
         #train_data_func returns dictionary of iterators, with one key per input to model
-        pass_train_data_kwargs = copy.deepcopy(train_data_kwargs)
-        batch_size = pass_train_data_kwargs.pop('batch_size')
-        n_threads = pass_train_data_kwargs.pop('n_threads')
-        data_seed = pass_train_data_kwargs.pop('seed')
-        train_inputs = train_data_func(**pass_train_data_kwargs)
+        if queue_kwargs is None:
+            queue_kwargs = {}
+        train_inputs = train_data_func(**train_data_kwargs)
         queues = [CustomQueue(train_inputs.node, 
                               train_inputs, 
-                              queue_batch_size=batch_size, 
-                              n_threads=n_threads,
-                              seed=data_seed)]
-        
-        assert 'cfg_initial' in model_kwargs
-        assert 'seed' in model_kwargs
+                              **queue_kwargs)]        
+        assert 'cfg_initial' in model_kwargs, model_kwargs
+        assert 'seed' in model_kwargs, model_kwargs
         train_outputs, cfg_final = model_func(inputs=train_inputs, 
                                         train=True, 
                                         **model_kwargs)
 
         loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
         lr = lr_func(**lr_kwargs)
-        optimizer = opt_func(loss, lr, **opt_kwargs)
+        optimizer = opt_func(loss=loss, learning_rate=lr, **opt_kwargs)
 
         train_targets = {'loss': loss, 'lr': lr, 'opt': optimizer}
 
         if train_targets_func is not None:
+            if train_targets_kwargs is None:
+                train_targets_kwargs = {}
             ttarg = train_targets_func(train_inputs, train_outputs, **train_targets_kwargs)
             train_targets.update(ttarg)
 
@@ -340,9 +338,7 @@ def run_base(model_func,
                 vinputs = vdatafunc(**vdatakwargs)
                 new_queue = CustomQueue(vinputs.node, 
                                         vinputs,
-                                        queue_batch_size=batch_size, 
-                                        n_threads=n_threads)
-            
+                                        **queue_kwargs)
                 queues.append(new_queue)
                 new_model_kwargs = copy.deepcopy(model_kwargs)
                 new_model_kwargs['seed'] = None
@@ -373,8 +369,9 @@ def run_base(model_func,
                   'learningrate_kwargs': lr_kwargs,
                   'optimizer_func': opt_func,
                   'optimizer_kwargs': optimizer_kwargs,
-                  'saver_kwargs': save_kwargs,
-                  'train_targets': train_targets,
+                  'saver_kwargs': saver_kwargs,
+                  'train_targets_func': train_targets_func,
+                  'train_targets_kwargs': train_targets_kwargs,
                   'validation': validation,
                   'thres_loss': thres_loss,
                   'seed': seed,
@@ -382,7 +379,7 @@ def run_base(model_func,
                   'end_step': end_step,
                   'log_device_placement': log_device_placement}
         for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
-            assert sk in saver_kwargs
+            assert sk in saver_kwargs, (sk, saver_kwargs)
         saver = Saver(sess=sess, params=params, **saver_kwargs)
         
         run(sess,
@@ -408,4 +405,4 @@ def get_params():
 
 def main():
     args = get_params()
-    run(**args)
+    run_base(**args)

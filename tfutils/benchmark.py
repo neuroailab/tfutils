@@ -116,20 +116,19 @@ if __name__ == '__main__':
     base.get_params()
 
     durs = []
-    print('test 0')
-    #durs.append(['Data input using feed_dict', main(DataInMem())])
-    print('test 1')
-    #durs.append(['Numpy data input using feed_dict', main(Data())])
-    print('test 2')
+    print('test 0...')
+    durs.append(['Data input using feed_dict', main(DataInMem())])
+    print('test 1...')
+    durs.append(['Numpy data input using feed_dict', main(Data())])
+    print('test 2...')
     queue = DataQueue()
-    #durs.append(['Numpy data input using queues', main(queue)])
+    durs.append(['Numpy data input using queues', main(queue)])
     queue._continue = False  # TODO: cleaning close threads
-    print('test 3')
+    print('test 3....')
     imagenet = data.ImageNet(DATA_PATH, crop_size=224)
     imagenet = data.CustomQueue(imagenet.node, imagenet)
-    print('beginning test 3')
     durs.append(['HDF5 data input using queues', main(imagenet)])
-    time.sleep(10)  # clear queue outputs
+    time.sleep(2)  # clear queue outputs
     print()
     print('{:-^80}'.format('Benchmarking results'))
     for message, dur in durs:
