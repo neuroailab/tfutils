@@ -1,6 +1,9 @@
+import collections
+import logging
 import json 
 import datetime
 import inspect
+import pkg_resources
 
 import numpy as np
 from bson.objectid import ObjectId
@@ -8,6 +11,7 @@ import git
 
 from tfutils.error import RepoIsDirtyError
 
+log = logging.getLogger('tfutils')
 
 def jsonize(x):
     try:
@@ -17,9 +21,36 @@ def jsonize(x):
     else:
         return x
         
+def version_info(module):
+    if hasattr(module, '__version__'):
+        version = module.__version__
+    elif hasattr(module, 'VERSION'):
+        version = module.VERSION
+    else:
+        pkgname = module.__name__.split('.')[0]
+        try:
+            info = pkg_resources.get_distribution(pkgname)
+        except pkg_resources.DistributionNotFound:
+            version = None
+            log.warning('version information not found for %s' % module.__name__)
+        else:
+            version = info.version
+            
+    return {'version': version}
 
-def git_check_and_info(srcpath):
-    repo = git.Repo(srcpath, search_parent_directories=True)
+def version_check_and_info(module):
+    srcpath = inspect.getsourcefile(module)
+    try:
+        repo = git.Repo(srcpath, search_parent_directories=True)
+    except git.InvalidGitRepositoryError:
+        log.info('module %s not in a git repo, checking package version' % module.__name__)
+        info = version_info(module)
+    else:
+        info = git_info(repo)
+    info['source_path'] = srcpath
+    return info
+
+def git_info(repo):
     if repo.is_dirty():
     	raise RepoIsDirtyError('repo at %s is dirty' % repo.git_dir)
     branchname = repo.active_branch.name
@@ -33,20 +64,17 @@ def git_check_and_info(srcpath):
     shas = [_r.oldhexsha for _r in log] + [_r.newhexsha for _r in log]
     assert commit in shas, 'Commit %s not in remote origin log for branch %s' % (commit,
                                                                             branchname)
-    info = {'srcpath': srcpath,
-    	    'git_dir': repo.git_dir,
+    info = {'git_dir': repo.git_dir,
     	    'active_branch': branchname,
     	    'commit': commit, 
     	    'remote_urls': urls}
     return info
     	    
-    	    
-    	    
+
 def make_mongo_safe(_d):
 	klist = _d.keys()[:]
 	for _k in klist:
 		if hasattr(_d[_k], 'keys'):
-			print(_k)
 			make_mongo_safe(_d[_k])
 		if '.' in _k:
 			_d[_k.replace('.', '___')] = _d.pop(_k)
@@ -83,12 +111,12 @@ def SONify(arg, memo=None):
     elif arg in (True, False):
         rval = int(arg)
     elif callable(arg):
-    	modname = inspect.getmodule(arg).__name__
+        mod = inspect.getmodule(arg)
+    	modname = mod.__name__
     	objname = arg.__name__
-    	srcpth = inspect.getsourcefile(arg)
-    	rval = git_check_and_info(srcpth) 
+    	rval = version_check_and_info(mod) 
     	rval.update({'objname': objname,
-    			     'modname': modname})   	
+                     'modname': modname})
     	rval = SONify(rval)
     else:
         raise TypeError('SONify', arg)

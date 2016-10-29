@@ -20,8 +20,8 @@ def exponential_decay(**kwargs):
                                       **kwargs)
 
 
-def get_optimizer(loss, learning_rate, optimizer_func, grad_clip=True, optimizer_kwargs={}):
-    optimizer = optimizer_func(learning_rate=learning_rate, **optimizer_kwargs)
+def get_optimizer(loss, learning_rate, opt_func, opt_kwargs={}, grad_clip=True):
+    optimizer = opt_func(learning_rate=learning_rate, **opt_kwargs)
     gvs = optimizer.compute_gradients(loss)
     global_step = [v for v in tf.all_variables() if v.name == 'global_step:0'][0]
     if grad_clip:
@@ -38,7 +38,17 @@ def get_optimizer(loss, learning_rate, optimizer_func, grad_clip=True, optimizer
 
     return optimizer
     
-    
+
+def get_loss(inputs, outputs, target, loss_func, agg_func=None, loss_func_kwargs=None, agg_func_kwargs=None):
+    if loss_func_kwargs is None:
+        loss_func_kwargs = {}
+    loss = loss_func(outputs, inputs[target], **loss_func_kwargs)
+    if agg_func is not None:
+        if agg_func_kwargs is None:
+            agg_func_kwargs = {}
+        loss = agg_func(loss, **agg_func_kwargs)
+    return loss
+
 
 if __name__ == '__main__':
     num_batches_per_epoch = 2**20//256
@@ -48,16 +58,18 @@ if __name__ == '__main__':
     params['train_data_func'] = data.ImageNet
     params['train_data_kwargs'] = {'data_path': DATA_PATH,
                                    'crop_size': 224}
-    params['loss_func'] = tf.nn.sparse_softmax_cross_entropy_with_logits
-    params['loss_func_kwargs'] = {}
-    params['lr_func'] = exponential_decay
-    params['lr_kwargs'] = {'learning_rate': 0.01,
+    params['loss_func'] = get_loss
+    params['loss_kwargs'] = {'target': 'labels',
+                             'loss_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+                             'agg_func': tf.reduce_mean}
+    params['learning_rate_func'] = exponential_decay
+    params['learning_rate_kwargs'] = {'learning_rate': 0.01,
                            'decay_steps': num_batches_per_epoch,
                            'decay_rate': 0.95,
-                           'stair_case': True}
-    params['opt_func'] = get_optimizer
-    params['opt_kwargs'] = {'optimizer_func': tf.train.MomentumOptimizer,
-                            'optimizer_kwargs': {'momentum': 0.9}}
+                           'staircase': True}
+    params['optimizer_func'] = get_optimizer
+    params['optimizer_kwargs'] = {'opt_func': tf.train.MomentumOptimizer,
+                                  'opt_kwargs': {'momentum': 0.9}}
     params['saver_kwargs'] = {'host': 'localhost',
                               'port': 31001,
                               'dbname': 'tfutils-test',

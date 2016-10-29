@@ -14,8 +14,8 @@ import pymongo
 import tensorflow as tf
 import gridfs
 
-import tfutils.error as error
-import tfutils.data as data
+from tfutils.error import HiLossError
+from tfutils.data import CustomQueue
 from tfutils.utils import (make_mongo_safe,
                            SONify)
 
@@ -265,7 +265,7 @@ def run(sess, queues, saver, train_targets, valid_targets=None,
         # get run output as dictionary {'2': loss2, 'lr': lr, etc..}
         train_results = sess.run(train_targets)
         if train_results['loss'] > thres_loss:
-            raise error.HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
+            raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
 
         if valid_targets is not None:
             valid_results = sess.run(valid_targets)
@@ -282,10 +282,10 @@ def run_base(model_func,
              train_data_kwargs,
              loss_func,
              loss_kwargs,
-             lr_func,
-             lr_kwargs,
-             opt_func,
-             opt_kwargs,
+             learning_rate_func,
+             learning_rate_kwargs,
+             optimizer_func,
+             optimizer_kwargs,
              saver_kwargs,
              train_targets_func=None,
              train_targets_kwargs=None,
@@ -307,21 +307,22 @@ def run_base(model_func,
         if queue_kwargs is None:
             queue_kwargs = {}
         train_inputs = train_data_func(**train_data_kwargs)
-        queues = [CustomQueue(train_inputs.node, 
+        queue = CustomQueue(train_inputs.node, 
                               train_inputs, 
-                              **queue_kwargs)]        
-        assert 'cfg_initial' in model_kwargs, model_kwargs
-        assert 'seed' in model_kwargs, model_kwargs
+                              **queue_kwargs)
+        train_inputs = queue.batch
+        queues = [queue]
+        if 'cfg_initial' not in model_kwargs:
+            model_kwargs['cfg_initial'] = None
+        if 'seed' not in model_kwargs:
+            model_kwargs['seed'] = 0
         train_outputs, cfg_final = model_func(inputs=train_inputs, 
                                         train=True, 
                                         **model_kwargs)
-
         loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
-        lr = lr_func(**lr_kwargs)
-        optimizer = opt_func(loss=loss, learning_rate=lr, **opt_kwargs)
-
-        train_targets = {'loss': loss, 'lr': lr, 'opt': optimizer}
-
+        learning_rate = learning_rate_func(**learning_rate_kwargs)
+        optimizer = optimizer_func(loss=loss, learning_rate=learning_rate, **optimizer_kwargs)
+        train_targets = {'loss': loss, 'learning_rate': learning_rate, 'optimizer': optimizer}
         if train_targets_func is not None:
             if train_targets_kwargs is None:
                 train_targets_kwargs = {}
@@ -330,11 +331,11 @@ def run_base(model_func,
 
         valid_targetsdict = None
         if validation is not None:
-            for vtarg in valid_targets:
-                vdatafunc = valid_targets[vtarg]['data_func']
-                vdatakwargs = valid_targets[vtarg]['data_kwargs']
-                vtargsfunc = valid_targets[vtarg]['targets_func']
-                vtargskwargs = valid_targets[vtarg]['targets_kwargs']
+            for vtarg in validation:
+                vdatafunc = validation[vtarg]['data_func']
+                vdatakwargs = validation[vtarg]['data_kwargs']
+                vtargsfunc = validation[vtarg]['targets_func']
+                vtargskwargs = validation[vtarg]['targets_kwargs']
                 vinputs = vdatafunc(**vdatakwargs)
                 new_queue = CustomQueue(vinputs.node, 
                                         vinputs,
@@ -365,9 +366,9 @@ def run_base(model_func,
                   'train_data_kwargs': train_data_kwargs,
                   'loss_func': loss_func, 
                   'loss_kwargs': loss_kwargs,
-                  'learningrate_func': lr_func,
-                  'learningrate_kwargs': lr_kwargs,
-                  'optimizer_func': opt_func,
+                  'learning_rate_func': learning_rate_func,
+                  'learning_rate_kwargs': learning_rate_kwargs,
+                  'optimizer_func': optimizer_func,
                   'optimizer_kwargs': optimizer_kwargs,
                   'saver_kwargs': saver_kwargs,
                   'train_targets_func': train_targets_func,

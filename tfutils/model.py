@@ -102,9 +102,9 @@ def alexnet(images, train=True):
     return fc3, m.parameters
 
 
-def alexnet_nonorm(images, train=True):
+def alexnet_nonorm(inputs, train=True, cfg_initial=None, seed=None):
     m = ConvNet(train=train)
-    conv1 = m.conv(images, 3, 64, 11, 4, stddev=.01, bias=0)
+    conv1 = m.conv(inputs['data'], 3, 64, 11, 4, stddev=.01, bias=0)
     pool1 = m.pool(conv1, 3, 2)
     conv2 = m.conv(pool1, 64, 192, 5, 1, stddev=.01, bias=1)
     pool2 = m.pool(conv2, 3, 2)
