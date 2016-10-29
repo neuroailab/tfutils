@@ -381,6 +381,7 @@ def run_base(model_func,
                   'log_device_placement': log_device_placement}
         for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
             assert sk in saver_kwargs, (sk, saver_kwargs)
+        print(params)
         saver = Saver(sess=sess, params=params, **saver_kwargs)
         
         run(sess,

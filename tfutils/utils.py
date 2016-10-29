@@ -52,7 +52,10 @@ def version_check_and_info(module):
 
 def git_info(repo):
     if repo.is_dirty():
-    	raise RepoIsDirtyError('repo at %s is dirty' % repo.git_dir)
+        log.warning('repo %s is dirty' % repo.git_dir)
+        clean = False
+    else:
+        clean = True
     branchname = repo.active_branch.name
     commit = repo.active_branch.commit.hexsha
     origin = repo.remote('origin')
@@ -67,7 +70,8 @@ def git_info(repo):
     info = {'git_dir': repo.git_dir,
     	    'active_branch': branchname,
     	    'commit': commit, 
-    	    'remote_urls': urls}
+    	    'remote_urls': urls,
+            'clean': clean}
     return info
     	    
 
