@@ -71,9 +71,12 @@ def main():
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
-                              'exp_id': 'tfutils-test-1'}
+                              'exp_id': 'tfutils-test-2',
+                              'save_valid_freq': 20,
+                              'save_filters_freq': 100,
+                              'cache_filters_freq': 40}
     params['queue_kwargs'] = {'seed': 0}
-    params['num_steps'] = 10
+    params['num_steps'] = 460
 
     return base.run_base(**params)
 

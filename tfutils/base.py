@@ -11,7 +11,7 @@ import copy
 import logging
 logging.basicConfig()
 log = logging.getLogger('tfutils')
-
+log.setLevel('DEBUG')
 import numpy as np
 import pymongo
 import tensorflow as tf
@@ -37,20 +37,35 @@ class Saver(tf.train.Saver):
                  restore=True,
                  save_metrics_freq=5,
                  save_valid_freq=3000,
-                 cache_filters_freq=3000,
-                 cache_path=None,
                  save_filters_freq=30000,
+                 cache_filters_freq=3000,
+                 cache_dir=None,
                  tensorboard_dir=None,
                  force_fetch=False,
+                 save_initial=True,
                  *args, **kwargs):
         """
-        Output printer, logger and saver to a database
-        Kwargs:
-        - save_vars_freq
-            0 or None not to save. Otherwise the number of steps.
-        - restore_vars_file
-            If None, don't save
-        NOTE: Not working yet
+        ARGS: 
+            sess: (tesorflow.Session) object in which to run calculations
+            global_step: (tensorflow.Variable) global step variable, the one that is updated by apply_gradients
+            params: (dict) describing all parameters of experiment
+            host: (str) hostname where database connection lives
+            port: (int) port where database connection lives
+            dbname: (str) name of database for storage
+            collname: (str) name of collection for storage
+            exp_id: (str) experiment id descriptor
+            save: (bool) whether to save to database
+            restore: (bool) whether to restore from saved model
+            save_metrics_freq: (int) how often to store train results to database
+            save_valid_freq: (int) how often to calculate and store validation results to database
+            save_filters_freq: (int) how often to save filter values to database
+            cache_filters_freq: (int) how often to cache filter values locally and save to ___RECENT database
+            cache_dir: (str) path where caches will be saved locally
+            tensorboard_dir: (str or None) if not None, directory to put tensorboard stuff
+                                           if None, tensorboard is disabled
+            force_fetch: (bool) whether to fetch stored model from database even if its locally cached
+            save_initial: (bool) whether to save initial model state at step = 0,
+            *args, **kwargs -- additional arguments are passed onto base Saver class constructor
         """
         
         SONified_params = SONify(params)
@@ -65,22 +80,31 @@ class Saver(tf.train.Saver):
         self.save_valid_freq = save_valid_freq
         self.cache_filters_freq = cache_filters_freq
         self.save_filters_freq = save_filters_freq
+        self.save_initial = save_initial
 
         if self.dosave:
             self.conn = pymongo.MongoClient(host=host, port=port)
-            self.collfs = gridfs.GridFS(self.conn[dbname], collname)
+            self.database = self.conn[dbname]
+            self.collfs = gridfs.GridFS(self.database, collname)
+            self.coll = self.collfs._GridFS__files
             recent_name = '_'.join([dbname, collname, exp_id, '__RECENT'])
             self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
+            self.coll_recent = self.collfs_recent._GridFS__files
 
         if tensorboard_dir is not None:  # save graph to tensorboard
             tf.train.SummaryWriter(tensorboard_dir, tf.get_default_graph())
 
-        if cache_path is None:
-            self.cache_path = os.path.join(os.environ['HOME'], '.tfutils')
+        if cache_dir is None:
+            self.cache_dir = os.path.join(os.environ['HOME'], 
+                                           '.tfutils', 
+                                           '%s:%d' % (host, port),
+                                           dbname,
+                                           collname,
+                                           exp_id)
         else:
-            self.cache_path = cache_path
-        if not os.path.isdir(self.cache_path):
-            os.makedirs(self.cache_path)
+            self.cache_dir = cache_dir
+        if not os.path.isdir(self.cache_dir):
+            os.makedirs(self.cache_dir)
 
         if restore:
             self.restore_model(force_fetch=force_fetch)
@@ -89,22 +113,22 @@ class Saver(tf.train.Saver):
 
     def restore_model(self, force_fetch=False):
         """
-        Fetches record, saves locally, then uses tf's saver.restore
+        Fetches record then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
         load = self.load_from_db({'exp_id': self.exp_id, 
-                                                 'saved_filters': True},
+                                  'saved_filters': True},
                                  cache_model=True,
                                  force_fetch=force_fetch)
         if load is not None:
             rec, cache_filename = load
             # tensorflow restore
             self.restore(self.sess, cache_filename)
-            print('Model variables restored.')
+            log.info('Model variables restored from record %s (step %d).' % (str(rec['_id']), rec['step']))
         else:
             init = tf.initialize_all_variables()
             self.sess.run(init)
-            print('variables initialized')
+            log.info('Model variables initialized from scratch.')
 
 
     def load_from_db(self, query, cache_model=False, force_fetch=False):
@@ -118,30 +142,29 @@ class Saver(tf.train.Saver):
         """
         count = self.collfs.find(query).count()
         if count > 0:  # get latest that matches query
-            ckpt_record = self.collfs.find(query,
-                            sort=[('uploadDate', -1)])[0]
-            loading_from = 'long-term storage'
+            ckpt_record = self.coll.find(query,
+                                         sort=[('uploadDate', -1)])[0]
+            loading_from = self.coll
 
         count_recent = self.collfs_recent.find(query).count()
         if count_recent > 0:  # get latest that matches query
-            ckpt_record_rec = self.collfs_recent.find(query,
-                                sort=[('uploadDate', -1)])[0]
+            ckpt_record_recent = self.coll_recent.find(query,
+                                                       sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
-            if ckpt_record is None or ckpt_record_rec['uploadDate'] > ckpt_record['uploadDate']:
-                loading_from = 'recent storage'
-                ckpt_record = ckpt_record_rec
+            if ckpt_record is None or ckpt_record_recent['uploadDate'] > ckpt_record['uploadDate']:
+                loading_from = self.coll_recent
+                ckpt_record = ckpt_record_recent
 
         if count + count_recent == 0:  # no matches for query
             log.warning('No matching checkpoint for query "{}"'.format(repr(query)))
             return 
 
-        print('Loading checkpoint from ', loading_from)
+        log.info('Loading checkpoint from %s' % loading_from.full_name)
         
         if cache_model:
             # should be of form *-1000 (step)
-            filename = os.path.basename(ckpt_record.filename)
-            cache_filename = os.path.join(self.cache_path, filename)
-            # TODO: check that these filenames are unique and correct
+            filename = os.path.basename(ckpt_record['filename'])
+            cache_filename = os.path.join(self.cache_dir, filename)
 
             # check if there is no local copy
             if not os.path.isfile(cache_filename) and not force_fetch:
@@ -149,65 +172,71 @@ class Saver(tf.train.Saver):
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
                 load_dest = open(cache_filename, 'rwb+')
-                fsbucket = gridfs.GridFSBucket(ckpt_record._GridOut__files.database,
-                                bucket_name=ckpt_record._GridOut__files.name.split('.')[0])
+                fsbucket = gridfs.GridFSBucket(self.database,
+                                               bucket_name=loading_from.name.split('.')[0])
                 # save to local disk
-                fsbucket.download_to_stream(ckpt_record._id, load_dest)        
+                fsbucket.download_to_stream(ckpt_record['_id'], load_dest)        
         else:
             cache_filename = None            
         #TODO: create numpy-readable format for filter data if user desires
         return ckpt_record, cache_filename
 
     def save(self, train_res, valid_res):
+        """
+        actually saves record into DB and makes local filter caches
+        """
         elapsed_time_step = time.time() - self.start_time_step
+        duration = 1000 * elapsed_time_step
         just_saved = False  # for saving filters
 
         step = self.global_step.eval(session=self.sess)
+
+        # TODO??: also include error rate of the train set to monitor overfitting
+        message = 'Step {} ({:.2f} ms) -- '.format(step, duration)
+        message += ', '.join(['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer'])
+        log.info(message)
+    
         if step % self.save_metrics_freq == 0:
             rec = {'exp_id': self.exp_id,
                    'params': self.SONified_params,
                    'saved_filters': False,
                    'step': step,
-                   'duration': int(1000 * elapsed_time_step)}
+                   'duration': duration}
             if 'optimizer' in train_res:
                 del train_res['optimizer']
             rec['train_results'] = train_res
         
-            # print loss, learning rate etc
-            # TODO: also include error rate of the train set to monitor overfitting
-            message = 'Step {} ({:.0f} ms) -- '.format(rec['step'], rec['duration'])
-            message += ', '.join(['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer'])
-            print(message)
-
-            # print validation set performance etc
-            if valid_res is not None:
+            # print validation set performance
+            if valid_res:
                 rec['validation_results'] = valid_res
-                message = 'Step {} ({:.0f} ms) validation -- '.format(rec['step'], rec['duration'])
+                message = 'Step {} validation -- '.format(step)
                 message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items())
-                print(message)
+                log.info(message)
 
             save_rec = SONify(rec)
             make_mongo_safe(save_rec)
 
             # save filters to db
-            save_permanent = step % self.save_filters_freq == 0
-            save_cache = self.dosave and step % self.cache_filters_freq == 0
-            if save_permanent or save_cache:
+            save_filters_permanent = step % self.save_filters_freq == 0
+            save_filters_tmp = self.dosave and step % self.cache_filters_freq == 0
+            if save_filters_permanent or save_filters_tmp:
                 save_rec['saved_filters'] = True 
+                save_path = os.path.join(self.cache_dir, 'checkpoint')
+                log.info('Saving model to %s ... ' % save_path)
                 saved_path = super(Saver, self).save(self.sess,
-                                                     save_path=self.cache_path,
+                                                     save_path=save_path,
                                                      global_step=step,
                                                      write_meta_graph=False)
-                if save_permanent:
-                    putfs = self.collfs
-                else:
-                    putfs = self.collfs_recent
-                putfs.put(open(saved_path, 'rb'),
-                          filename=saved_path,
-                          **save_rec)
+                log.info('... done saving.')
+                putfs = self.collfs if save_filters_permanent else self.collfs_recent
+                log.info('Putting filters into %s database' % repr(putfs))
+                with open(saved_path, 'rb') as _fp:
+                    putfs.put(_fp, filename=saved_path, **save_rec)
+                log.info('... done putting filters into database.')
             
-            if not save_permanent:
+            if not save_filters_permanent:
                 save_rec['saved_filters'] = False
+                log.info('Inserting record into database.')
                 self.collfs._GridFS__files.insert(save_rec)
 
             #Vars = tf.all_variables()
@@ -261,25 +290,28 @@ def run(sess,
     for queue in queues:
         queue.start_threads(sess)
 
-    # start_time_step = time.time()  # start timer
-    #pass_targets = {'loss': train_targets['loss'], 'lr': train_targets['learning_rate']}
-    #train_results = sess.run(pass_targets)
-    #saver.save(train_results, {})
-    print('start training')
+    start_time_step = time.time()  # start timer
     step = global_step.eval(session=sess)
-    print("tip", step)
+    if step == 0 and saver.save_initial:
+        log.info('Saving initial ...')
+        pass_targets = {'loss': train_targets['loss'], 'lr': train_targets['learning_rate']}
+        train_results = sess.run(pass_targets)
+        saver.save(train_results, {})
+        log.info('... done saving initial.')
+
+    if step < num_steps:
+        log.info('Training beginning ...')
+    else:
+        log.info('Training cancelled since step (%d) is >= num_steps (%d)' % (step, num_steps))
     while step < num_steps:
-        # get run output as dictionary {'2': loss2, 'lr': lr, etc..}
         train_results = sess.run(train_targets)
         step = global_step.eval(session=sess)
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
-
         if step % saver.save_valid_freq  == 0 and valid_targets is not None:
             valid_results = sess.run(valid_targets)
         else:
             valid_results = {}
-        # print output, save variables to checkpoint and save loss etc
         saver.save(train_results, valid_results)
     sess.close()
 
