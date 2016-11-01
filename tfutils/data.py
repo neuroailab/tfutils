@@ -176,7 +176,11 @@ def isin(X,Y):
 
 class CustomQueue(object):
 
-    def __init__(self, node, data_iter, queue_batch_size=128, n_threads=4, seed=0):
+    def __init__(self, node, data_iter,
+                 queue_type='fifo',
+                 queue_batch_size=128,
+                 n_threads=4,
+                 seed=0):
         """
         A generic queue for reading data
 
@@ -190,11 +194,26 @@ class CustomQueue(object):
 
         dtypes = [d.dtype for d in node.values()]
         shapes = [d.get_shape() for d in node.values()]
-        self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
-                                        min_after_dequeue=n_threads * queue_batch_size,
-                                        dtypes=dtypes,
-                                        shapes=shapes,
-                                        seed=seed)
+        if queue_type == 'random':
+            self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
+                                               min_after_dequeue=n_threads * queue_batch_size,
+                                               dtypes=dtypes,
+                                               shapes=shapes,
+                                               seed=seed)
+        elif queue_type == 'fifo':
+            self.queue = tf.FIFOQueue(capacity=n_threads * queue_batch_size * 2,
+                                      dtypes=dtypes,
+                                      shapes=shapes)
+        elif queue_type == 'padding_fifo':
+            self.queue = tf.PaddingFIFOQueue(capacity=n_threads * queue_batch_size * 2,
+                                             dtypes=dtypes,
+                                             shapes=shapes)
+        elif queue_type == 'priority':
+            self.queue = tf.PriorityQueue(capacity=n_threads * queue_batch_size * 2,
+                                          types=dtypes,
+                                          shapes=shapes)
+        else:
+            Exception('Queue type %s not recognized' % queue_type)
         self.enqueue_op = self.queue.enqueue(node.values())
         data_batch = self.queue.dequeue_many(queue_batch_size)
         self.batch = {k:v for k,v in zip(node.keys(), data_batch)}

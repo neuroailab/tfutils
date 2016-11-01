@@ -11,6 +11,7 @@ import git
 
 from tfutils.error import RepoIsDirtyError
 
+logging.basicConfig()
 log = logging.getLogger('tfutils')
 
 def jsonize(x):
@@ -63,8 +64,8 @@ def git_info(repo):
     remote_ref = [_r for _r in origin.refs if _r.name == 'origin/' + branchname]
     assert len(remote_ref) > 0, 'Active branch %s not in origin ref' % branchname
     remote_ref = remote_ref[0]
-    log = remote_ref.log()
-    shas = [_r.oldhexsha for _r in log] + [_r.newhexsha for _r in log]
+    gitlog = remote_ref.log()
+    shas = [_r.oldhexsha for _r in gitlog] + [_r.newhexsha for _r in gitlog]
     assert commit in shas, 'Commit %s not in remote origin log for branch %s' % (commit,
                                                                             branchname)
     info = {'git_dir': repo.git_dir,
@@ -76,12 +77,13 @@ def git_info(repo):
     	    
 
 def make_mongo_safe(_d):
-	klist = _d.keys()[:]
-	for _k in klist:
-		if hasattr(_d[_k], 'keys'):
-			make_mongo_safe(_d[_k])
-		if '.' in _k:
-			_d[_k.replace('.', '___')] = _d.pop(_k)
+    klist = _d.keys()[:]
+    for _k in klist:
+        if hasattr(_d[_k], 'keys'):
+            make_mongo_safe(_d[_k])
+        if '.' in _k:
+            _d[_k.replace('.', '___')] = _d.pop(_k)
+
 
 def SONify(arg, memo=None):
     if memo is None:
