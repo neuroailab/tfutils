@@ -314,7 +314,7 @@ def run(sess,
     step = global_step.eval(session=sess)
     if step == 0 and saver.save_initial:
         log.info('Saving initial ...')
-        pass_targets = {_k: train_targets[_k] for k in train_targets if _k != 'optimizer'}
+        pass_targets = {_k: train_targets[_k] for _k in train_targets if _k != 'optimizer'}
         train_results = sess.run(pass_targets)
         saver.save(train_results, {})
         log.info('... done saving initial.')
@@ -338,23 +338,17 @@ def run(sess,
     sess.close()
 
 
-def run_base(saver_kwargs,
-             model_func,
-             train_data_func,
-             model_kwargs=None,
-             train_data_kwargs=None,
-             loss_func=utils.get_loss,
-             loss_kwargs=default_loss_kwargs(),
-             learning_rate_func=tf.train.exponential_decay,
-             learning_rate_kwargs=None,
-             optimizer_func=ClipOptimizer,
-             optimizer_kwargs=default_optimizer_kwargs(),
-             training_targets=None,
-             validation_targets=None,
+def run_base(saver_params,
+             train_params,
+             model_params,
+             loss_params=None,
+             learning_rate_params=None,
+             optimizer_params=None,
+             validation_params=None,
+             queue_params=None,
              thres_loss=100,
              num_steps=1000000,
              log_device_placement=True,
-             queue_kwargs=None
              ):
     """
     Main interface function. 
@@ -420,20 +414,20 @@ def run_base(saver_kwargs,
                                       trainable=False)
 
         #train_data_func returns dictionary of iterators, with one key per input to model
-        if train_data_kwargs is None:
-            train_data_kwargs = {}
+        train_data_func = train_params['data_func']
+        train_data_kwargs = train_params.get('data_kwargs', {})
         train_inputs = train_data_func(**train_data_kwargs)
 
-        if queue_kwargs is None:
-            queue_kwargs = {}
+        if queue_params is None:
+            queue_params = {}
         queue = CustomQueue(train_inputs.node, 
                             train_inputs, 
-                            **queue_kwargs)
+                            **queue_params)
         train_inputs = queue.batch
         queues = [queue]
 
-        if model_kwargs is None:
-            model_kwargs = {}
+        model_func = model_params['model_func']
+        model_kwargs = model_params.get('model_kwargs', {})
         if 'cfg_initial' not in model_kwargs:
             model_kwargs['cfg_initial'] = None
         if 'seed' not in model_kwargs:
@@ -441,26 +435,38 @@ def run_base(saver_kwargs,
         train_outputs, cfg_final = model_func(inputs=train_inputs, 
                                         train=True, 
                                         **model_kwargs)
+        if loss_params is None:
+            loss_params = {}
+        loss_func = loss_params.get('loss_func', utils.get_loss)
+        loss_kwargs = loss_params.get('loss_kwargs', default_loss_kwargs())
         loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
-        if learning_rate_kwargs is None:
-            learning_rate_kwargs = {}
+
+        if learning_rate_params is None:
+            learning_rate_params = {}
+        learning_rate_func = learning_rate_params.get('learning_rate_func', tf.train.exponential_decay)
+        learning_rate_kwargs = learning_rate_params.get('learning_rate_kwargs', {})
         learning_rate = learning_rate_func(global_step=global_step, **learning_rate_kwargs)
+
+        if optimizer_params is None:
+            optimizer_params = {}
+        optimizer_func = optimizer_params.get('optimizer_func', ClipOptimizer)
+        optimizer_kwargs = optimizer_params.get('optimizer_kwargs', default_optimizer_kwargs())
         optimizer_base = optimizer_func(learning_rate=learning_rate, **optimizer_kwargs)
         optimizer = optimizer_base.minimize(loss, global_step)
         train_targets = {'loss': loss, 'learning_rate': learning_rate, 'optimizer': optimizer}
-        if training_targets is not None:
-            ttargsfunc = training_targets['targets_func']
-            ttargskwargs = training_targets.get('targets_kwargs', {})
+        if train_params.get('targets_func') is not None:
+            ttargsfunc = train_params['targets_func']
+            ttargskwargs = train_params.get('targets_kwargs', {})
             ttarg = ttargsfunc(train_inputs, train_outputs, **ttargskwargs)
             train_targets.update(ttarg)
 
         valid_targetsdict = None
-        if validation_targets is not None:
-            for vtarg in validation_targets:
-                vdatafunc = validation_targets[vtarg]['data_func']
-                vdatakwargs = validation_targets[vtarg].get('data_kwargs', {})
-                vtargsfunc = validation_targets[vtarg]['targets_func']
-                vtargskwargs = validation_targets[vtarg].get('targets_kwargs', {})
+        if validation_params is not None:
+            for vtarg in validation_params:
+                vdatafunc = validation_params[vtarg]['data_func']
+                vdatakwargs = validation_params[vtarg].get('data_kwargs', {})
+                vtargsfunc = validation_params[vtarg]['targets_func']
+                vtargskwargs = validation_params[vtarg].get('targets_kwargs', {})
                 vinputs = vdatafunc(**vdatakwargs)
                 new_queue = CustomQueue(vinputs.node, 
                                         vinputs,
@@ -485,25 +491,20 @@ def run_base(saver_kwargs,
         model_kwargs_final = copy.deepcopy(model_kwargs)
         model_kwargs_final['cfg_final'] = cfg_final
                   
-        params = {'model_func': model_func,
-                  'model_kwargs': model_kwargs_final,
-                  'train_data_func': train_data_func,
-                  'train_data_kwargs': train_data_kwargs,
-                  'loss_func': loss_func, 
-                  'loss_kwargs': loss_kwargs,
-                  'learning_rate_func': learning_rate_func,
-                  'learning_rate_kwargs': learning_rate_kwargs,
-                  'optimizer_func': optimizer_func,
-                  'optimizer_kwargs': optimizer_kwargs,
-                  'saver_kwargs': saver_kwargs,
-                  'training_targets': training_targets,
-                  'validation_targets': validation_targets,
+        params = {'saver_params': saver_params,
+                  'train_params': train_params,
+                  'model_params': model_params,
+                  'loss_params': loss_params,
+                  'learning_rate_params': learning_rate_params,
+                  'optimizer_params': optimizer_params,
+                  'validation_params': validation_params,
+                  'queue_params': queue_params,
                   'thres_loss': thres_loss,
                   'num_steps': num_steps,
                   'log_device_placement': log_device_placement}
         for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
-            assert sk in saver_kwargs, (sk, saver_kwargs)
-        saver = Saver(sess=sess, global_step=global_step, params=params, **saver_kwargs)
+            assert sk in saver_params, (sk, saver_params)
+        saver = Saver(sess=sess, global_step=global_step, params=params, **saver_params)
         run(sess,
             queues,
             saver,

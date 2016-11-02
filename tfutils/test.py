@@ -17,20 +17,19 @@ else:  # agents
 def main():
     num_batches_per_epoch = 2**20//256
     params = {}
-    params['model_func'] = model.alexnet_nonorm
-    params['model_kwargs'] = {}
-    params['train_data_func'] = data.ImageNet
-    params['train_data_kwargs'] = {'data_path': DATA_PATH,
-                                   'crop_size': 224}
-    params['learning_rate_kwargs'] = {'learning_rate': 0.01,
-                           'decay_steps': num_batches_per_epoch,
-                           'decay_rate': 0.95,
-                           'staircase': True}
-    params['saver_kwargs'] = {'host': 'localhost',
+    params['model_params'] = {'model_func':  model.alexnet_nonorm}
+    params['train_params'] = {'data_func': data.ImageNet,
+                              'data_kwargs': {'data_path': DATA_PATH,
+                                              'crop_size': 224}}
+    params['learning_rate_params'] = {'learning_rate_kwargs': {'learning_rate': 0.01,
+                                                               'decay_steps': num_batches_per_epoch,
+                                                               'decay_rate': 0.95,
+                                                               'staircase': True}}
+    params['saver_params'] = {'host': 'localhost',
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
-                              'exp_id': 'tfutils-test-2',
+                              'exp_id': 'tfutils-test-3',
                               'save_valid_freq': 20,
                               'save_filters_freq': 100,
                               'cache_filters_freq': 40}
