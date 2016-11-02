@@ -63,12 +63,14 @@ def git_info(repo):
     origin = repo.remote('origin')
     urls = map(str, list(origin.urls))
     remote_ref = [_r for _r in origin.refs if _r.name == 'origin/' + branchname]
-    assert len(remote_ref) > 0, 'Active branch %s not in origin ref' % branchname
+    if not len(remote_ref) > 0:
+        log.warning('Active branch %s not in origin ref' % branchname)
     remote_ref = remote_ref[0]
     gitlog = remote_ref.log()
     shas = [_r.oldhexsha for _r in gitlog] + [_r.newhexsha for _r in gitlog]
-    assert commit in shas, 'Commit %s not in remote origin log for branch %s' % (commit,
-                                                                            branchname)
+    if commit not in shas:
+        log.warning('Commit %s not in remote origin log for branch %s' % (commit,
+                                                                        branchname))
     info = {'git_dir': repo.git_dir,
     	    'active_branch': branchname,
     	    'commit': commit, 

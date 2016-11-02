@@ -22,6 +22,14 @@ from tfutils.data import CustomQueue
 from tfutils.utils import (make_mongo_safe,
                            SONify)
 
+"""
+TODO: 
+    - There should be a dead-simple way to load a human-readable object (as opposed to being in the
+      TF saver binary format) containing filter parameters from a record in the database, 
+      without having to load up lots of extraneous objects.  
+    - epoch and batch_num should be added to what is saved.   But how to do that with Queues? 
+"""
+
 class Saver(tf.train.Saver):
 
     def __init__(self,
@@ -138,10 +146,6 @@ class Saver(tf.train.Saver):
         record.
         Args:
             query: dict expressing MongoDB query
-
-        TODO: make this function able to return human-readable filters for inspection. 
-              --> Actually, there should be a way to get filters trivially for a given record without 
-                  having to load up lots of extraneous objects.   
         """
         query['saved_filters'] = True
         count = self.collfs.find(query).count()
