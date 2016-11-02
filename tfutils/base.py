@@ -19,6 +19,8 @@ import gridfs
 
 from tfutils.error import HiLossError
 from tfutils.data import CustomQueue
+from tfutils.optimizer import ClipOptimizer
+import tfutils.utils as utils
 from tfutils.utils import (make_mongo_safe,
                            SONify)
 
@@ -29,6 +31,17 @@ TODO:
       without having to load up lots of extraneous objects.  
     - epoch and batch_num should be added to what is saved.   But how to do that with Queues? 
 """
+
+def default_loss_kwargs():
+    return {'target': 'labels',
+            'loss_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+            'agg_func': tf.reduce_mean}
+
+
+def default_optimizer_kwargs():
+    return {'optimizer_class': tf.train.MomentumOptimizer,
+            'momentum': 0.9}
+
 
 class Saver(tf.train.Saver):
 
@@ -204,7 +217,7 @@ class Saver(tf.train.Saver):
         log.info(message)
 
 
-        save_filters_permanent = step % self.save_filters_freq == 0
+        save_filters_permanent = self.dosave and step % self.save_filters_freq == 0
         save_filters_tmp = self.dosave and step % self.cache_filters_freq == 0
         save_metrics_now = step % self.save_metrics_freq == 0
         save_valid_now = step % self.save_valid_freq == 0
@@ -325,26 +338,29 @@ def run(sess,
     sess.close()
 
 
-def run_base(model_func,
-             model_kwargs,
+def run_base(saver_kwargs,
+             model_func,
              train_data_func,
-             train_data_kwargs,
-             loss_func,
-             loss_kwargs,
-             learning_rate_func,
-             learning_rate_kwargs,
-             optimizer_func,
-             optimizer_kwargs,
-             saver_kwargs,
-             train_targets_func=None,
-             train_targets_kwargs=None,
-             validation=None,
+             model_kwargs=None,
+             train_data_kwargs=None,
+             loss_func=utils.get_loss,
+             loss_kwargs=default_loss_kwargs(),
+             learning_rate_func=tf.train.exponential_decay,
+             learning_rate_kwargs=None,
+             optimizer_func=ClipOptimizer,
+             optimizer_kwargs=default_optimizer_kwargs(),
+             training_targets=None,
+             validation_targets=None,
              thres_loss=100,
              num_steps=1000000,
              log_device_placement=True,
              queue_kwargs=None
              ):
     """
+    Main interface function. 
+
+    Args:
+    - saver_kwargs (dict): dictionary of arguments for creating saver object (see Saver class)
     - model_func (callable): function that produces model.  
         Must accept the following arguments
            "inputs" -- data object
@@ -354,18 +370,18 @@ def run_base(model_func,
         Must return two arguments (a, b):
               a = train output tensorflow nodes
               b = final configuration used in model
-    - model_kwargs (dict): Dictionary of arguments used to create model.   
     - train_data_func (callable): function that produces dictionary of data iterators
-    - train_data_kwargs (dict): kwargs for train_data_func
-    - loss_func (callable): Function called like so:
+    - model_kwargs (dict, optional): Dictionary of arguments used to create model.   
+    - train_data_kwargs (dict, optional): kwargs for train_data_func
+    - loss_func (callable, optional): Function called like so:
            loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
       "loss" is then a tensorflow node that evaluates to a scalar optimization target
-    - loss_kwargs (dict): dictionary of arguments for loss_func
-    - learning_rate_func (callable): function producing learning_rate node
+    - loss_kwargs (dict, optional): dictionary of arguments for loss_func
+    - learning_rate_func (callable, optional): function producing learning_rate node
        Must accept:
           "global_step" -- global step used for determine learning rate
-    - learning_rate_kwargs (dict): dictionary of arguments for learning_rate_func
-    - optimizer_func (callable): Function producing optimizer object
+    - learning_rate_kwargs (dict, optional): dictionary of arguments for learning_rate_func
+    - optimizer_func (callable, optional): Function producing optimizer object
          Must accept:
              "learning_rate" -- the result of the learning_rate_func call 
           Must return object with a method called "minimize" with the same call signature as
@@ -376,27 +392,24 @@ def run_base(model_func,
                 Must return: 
                     tensorflow node which computes gradients and applies them, and must increment 
                     "global_step"
-    - optimizer_kwargs (dict):  dictionary of arguments for optimizer_func
-    - saver_kwargs (dict): dictionary of arguments for creating saver object (see Saver class)
-    - train_targets_func (callable, optional): if specified, produces additional targets 
-         to be computed at each training step.   The signature is:
-            Like loss_func, must accept "train_inputs" and "train_outputs"
-            Must return a dictionary of tensorflow nodes.  
-    - train_targets_kwargs (dict): dictionary of arguments for train_targets_func
+    - optimizer_kwargs (dict, optional):  dictionary of arguments for optimizer_func
+    - training_targets (dict or None): if not None, this is a dictionary with the following form:
+                      {'targets_func': (callable) returning targets,
+                       'targets_kwargs': (dict, optional) arguments for targets_func}
     - validation (dict): dictionary of validation sources.  The structure if this dictionary is:
            {validation_target_name: {'data_func': (callable) data source function for this validation,
-                                     'data_kwargs': (dict) arguments for data source function,
+                                     'data_kwargs': (dict, optional) arguments for data source function,
                                      'targets_func': (callable) returning targets,
-                                     'targets_kwargs': (dict) arguments for targets_func},
+                                     'targets_kwargs': (dict, optional) arguments for targets_func},
                   ...}
         For each validation_target_name key, the targets are computed and then added to 
         the output dictionary to be computed every so often -- unlike train_targets which 
         are computed on each time step, these are computed on a basic controlled by the 
         valid_save_freq specific in the saver_kwargs. 
-    - thres_loss (float): if loss exceeds this during training, HiLossError is thrown
-    - num_steps (int): how many total steps of the optimization are run
-    - log_device_placement (bool): whether to log device placement in tensorflow session
-    - queue_kwargs (dict):  dictionary of arguments to CustomQueue object (see 
+    - thres_loss (float, optional): if loss exceeds this during training, HiLossError is thrown
+    - num_steps (int, optional): how many total steps of the optimization are run
+    - log_device_placement (bool, optional): whether to log device placement in tensorflow session
+    - queue_kwargs (dict, optional):  dictionary of arguments to CustomQueue object (see 
               tfutils.data.CustomQueue documentation)
     """
 
@@ -407,14 +420,20 @@ def run_base(model_func,
                                       trainable=False)
 
         #train_data_func returns dictionary of iterators, with one key per input to model
+        if train_data_kwargs is None:
+            train_data_kwargs = {}
+        train_inputs = train_data_func(**train_data_kwargs)
+
         if queue_kwargs is None:
             queue_kwargs = {}
-        train_inputs = train_data_func(**train_data_kwargs)
         queue = CustomQueue(train_inputs.node, 
                             train_inputs, 
                             **queue_kwargs)
         train_inputs = queue.batch
         queues = [queue]
+
+        if model_kwargs is None:
+            model_kwargs = {}
         if 'cfg_initial' not in model_kwargs:
             model_kwargs['cfg_initial'] = None
         if 'seed' not in model_kwargs:
@@ -423,23 +442,25 @@ def run_base(model_func,
                                         train=True, 
                                         **model_kwargs)
         loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
+        if learning_rate_kwargs is None:
+            learning_rate_kwargs = {}
         learning_rate = learning_rate_func(global_step=global_step, **learning_rate_kwargs)
         optimizer_base = optimizer_func(learning_rate=learning_rate, **optimizer_kwargs)
         optimizer = optimizer_base.minimize(loss, global_step)
         train_targets = {'loss': loss, 'learning_rate': learning_rate, 'optimizer': optimizer}
-        if train_targets_func is not None:
-            if train_targets_kwargs is None:
-                train_targets_kwargs = {}
-            ttarg = train_targets_func(train_inputs, train_outputs, **train_targets_kwargs)
+        if training_targets is not None:
+            ttargsfunc = training_targets['targets_func']
+            ttargskwargs = training_targets.get('targets_kwargs', {})
+            ttarg = ttargsfunc(train_inputs, train_outputs, **ttargskwargs)
             train_targets.update(ttarg)
 
         valid_targetsdict = None
-        if validation is not None:
-            for vtarg in validation:
-                vdatafunc = validation[vtarg]['data_func']
-                vdatakwargs = validation[vtarg]['data_kwargs']
-                vtargsfunc = validation[vtarg]['targets_func']
-                vtargskwargs = validation[vtarg]['targets_kwargs']
+        if validation_targets is not None:
+            for vtarg in validation_targets:
+                vdatafunc = validation_targets[vtarg]['data_func']
+                vdatakwargs = validation_targets[vtarg].get('data_kwargs', {})
+                vtargsfunc = validation_targets[vtarg]['targets_func']
+                vtargskwargs = validation_targets[vtarg].get('targets_kwargs', {})
                 vinputs = vdatafunc(**vdatakwargs)
                 new_queue = CustomQueue(vinputs.node, 
                                         vinputs,
@@ -475,9 +496,8 @@ def run_base(model_func,
                   'optimizer_func': optimizer_func,
                   'optimizer_kwargs': optimizer_kwargs,
                   'saver_kwargs': saver_kwargs,
-                  'train_targets_func': train_targets_func,
-                  'train_targets_kwargs': train_targets_kwargs,
-                  'validation': validation,
+                  'training_targets': training_targets,
+                  'validation_targets': validation_targets,
                   'thres_loss': thres_loss,
                   'num_steps': num_steps,
                   'log_device_placement': log_device_placement}
@@ -504,6 +524,7 @@ def get_params():
         mod = importlib.import_module(modname)
         args[p] = getattr(mod, objname)
     return args
+
 
 def main():
     args = get_params()
