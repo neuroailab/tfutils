@@ -2,8 +2,9 @@ import tensorflow as tf
 
 
 class ConvNet(object):
-
-    def __init__(self, train=True, seed=0):
+    """Basic implementation of ConvNet class compatible with tfutils.
+    """
+    def __init__(self, train=True, seed=0, cfg_initial=None):
         self.train = train
         self.seed = seed
         self.conv_counter = 0
@@ -145,8 +146,8 @@ class ConvNet(object):
         print(t.op.name, ' ', t.get_shape().as_list())
 
 
-def alexnet(inputs, train=True):
-    m = ConvNet(train=train)
+def alexnet(inputs, **kwargs):
+    m = ConvNet(**kwargs)
     conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
     norm1 = m.norm(conv1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
     pool1 = m.pool(norm1, 3, 2)
@@ -165,8 +166,8 @@ def alexnet(inputs, train=True):
     return fc3, m.architecture
 
 
-def alexnet_nonorm(inputs, train=True, cfg_initial=None, seed=0):
-    m = ConvNet(train=train, seed=seed)
+def alexnet_nonorm(inputs, **kwargs):
+    m = ConvNet(**kwargs)
     conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
     pool1 = m.pool(conv1, 3, 2)
     conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
@@ -183,8 +184,8 @@ def alexnet_nonorm(inputs, train=True, cfg_initial=None, seed=0):
     return fc3, m.architecture
 
 
-def alexnet_conv(inputs, train=True, seed=0):
-    m = ConvNet(train=train, seed=seed)
+def alexnet_conv(inputs, **kwargs):
+    m = ConvNet(**kwargs)
     conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
     pool1 = m.pool(conv1, 3, 2)
     conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
@@ -198,8 +199,8 @@ def alexnet_conv(inputs, train=True, seed=0):
     return resh1, m.architecture
 
 
-def alexnet_caffe(inputs, train=True):
-    m = ConvNet(train=train)
+def alexnet_caffe(inputs, **kwargs):
+    m = ConvNet(**kwargs)
     conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
     pool1 = m.pool(conv1, 3, 2)
     conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
@@ -216,8 +217,8 @@ def alexnet_caffe(inputs, train=True):
     return fc3, m.parameters
 
 
-def alexnet_nocrop(inputs, train=True):
-    m = ConvNet(train=train)
+def alexnet_nocrop(inputs, **kwargs):
+    m = ConvNet(**kwargs)
     conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
     pool1 = m.pool(conv1, 3, 2)
     conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
@@ -234,8 +235,9 @@ def alexnet_nocrop(inputs, train=True):
     return fc3, m.architecture
 
 
-def mnist_tf(inputs, train=True):
-    m = ConvNet(train=train, seed=66478)
+def mnist_tf(inputs, **kwargs):
+    kwargs['seed'] = 66478
+    m = ConvNet(**kwargs)
     conv1 = m.conv(inputs['data'], 64, 7, 4, stddev=.01, bias=0)
     pool1 = m.pool(conv1, 3, 2, padding='VALID')
     conv2 = m.conv(pool1, 256, 5, 1, stddev=.01, bias=0)

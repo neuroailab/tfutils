@@ -13,16 +13,10 @@ from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
-
-def jsonize(x):
-    try:
-        json.dumps(x)
-    except TypeError:
-        return SONify(x)
-    else:
-        return x
         
 def version_info(module):
+    """Gets version of a standard python module
+    """
     if hasattr(module, '__version__'):
         version = module.__version__
     elif hasattr(module, 'VERSION'):
@@ -40,6 +34,11 @@ def version_info(module):
     return {'version': version}
 
 def version_check_and_info(module):
+    """returns either git information or standard module version if not a git repo
+      
+    Args: - module (module): python module object to get info for.
+    Returns: dictionary of info
+    """
     srcpath = inspect.getsourcefile(module)
     try:
         repo = git.Repo(srcpath, search_parent_directories=True)
@@ -52,6 +51,8 @@ def version_check_and_info(module):
     return info
 
 def git_info(repo):
+    """information about a git repo
+    """
     if repo.is_dirty():
         log.warning('repo %s is dirty' % repo.git_dir)
         clean = False
@@ -77,6 +78,8 @@ def git_info(repo):
     	    
 
 def make_mongo_safe(_d):
+    """Makes a json-izable actually safe for insertion into Mongo. 
+    """
     klist = _d.keys()[:]
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
@@ -86,6 +89,9 @@ def make_mongo_safe(_d):
 
 
 def SONify(arg, memo=None):
+    """when possible, returns version of argument that can be 
+       serialized trivally to json format
+    """
     if memo is None:
         memo = {}
     if id(arg) in memo:
@@ -128,3 +134,15 @@ def SONify(arg, memo=None):
         raise TypeError('SONify', arg)
     memo[id(rval)] = rval
     return rval
+
+
+def jsonize(x):
+    """returns version of x that can be serialized trivally to json format
+    """
+    try:
+        json.dumps(x)
+    except TypeError:
+        return SONify(x)
+    else:
+        return x
+

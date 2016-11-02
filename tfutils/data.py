@@ -17,6 +17,24 @@ class HDF5DataProvider(object):
                  postprocess=None,
                  pad=False):
 
+        """
+        - hdf5source (str): path where hdf5 file resides 
+        - sourcelist (list of strs): list of keys in the hdf5file to use as source dataarrays
+        - batch_size (int): size of batches to be returned
+        - subslice (string, array of ints, callable):  
+             if str: name of key in hdf5file refering to array of indexes into the source dataarrays
+             if array of ints: indexes into the source dataarrays
+             if callable: function producing array of indexes into the source datarrays
+           Regardless of how it's constructed, the provider subsets its returns to the only the indices
+           specified in the subslice.  
+        - mini_batch_size (int):  Used only if subslice is specifiied, this sets the size of minibatches used 
+          when constructing one full batch within the subslice to return
+        - preprocess (dict of callables): functions for preprocessing data in the datasources.  keys of this are subset 
+          of sourcelist. preprocessing is done on object instantiation
+        - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist. 
+          Postprocessing is done when get_batch is called. 
+        - pad (bool): whether to pad data returned if amount of data left to return is less then full batch size
+        """
         self.hdf5source = hdf5source
         self.file = h5py.File(self.hdf5source, 'r')
         self.sourcelist = sourcelist
@@ -175,17 +193,15 @@ def isin(X,Y):
 
 
 class CustomQueue(object):
+    """ A generic queue for reading data
+        Based on https://indico.io/blog/tensorflow-data-input-part2-extensions/
+    """
 
     def __init__(self, node, data_iter,
                  queue_type='fifo',
                  queue_batch_size=128,
                  n_threads=4,
                  seed=0):
-        """
-        A generic queue for reading data
-
-        Based on https://indico.io/blog/tensorflow-data-input-part2-extensions/
-        """
         self.node = node
         self.data_iter = data_iter
         self.queue_batch_size = queue_batch_size
