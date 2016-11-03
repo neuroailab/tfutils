@@ -17,6 +17,24 @@ class HDF5DataProvider(object):
                  postprocess=None,
                  pad=False):
 
+        """
+        - hdf5source (str): path where hdf5 file resides 
+        - sourcelist (list of strs): list of keys in the hdf5file to use as source dataarrays
+        - batch_size (int): size of batches to be returned
+        - subslice (string, array of ints, callable):  
+             if str: name of key in hdf5file refering to array of indexes into the source dataarrays
+             if array of ints: indexes into the source dataarrays
+             if callable: function producing array of indexes into the source datarrays
+           Regardless of how it's constructed, the provider subsets its returns to the only the indices
+           specified in the subslice.  
+        - mini_batch_size (int):  Used only if subslice is specifiied, this sets the size of minibatches used 
+          when constructing one full batch within the subslice to return
+        - preprocess (dict of callables): functions for preprocessing data in the datasources.  keys of this are subset 
+          of sourcelist. preprocessing is done on object instantiation
+        - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist. 
+          Postprocessing is done when get_batch is called. 
+        - pad (bool): whether to pad data returned if amount of data left to return is less then full batch size
+        """
         self.hdf5source = hdf5source
         self.file = h5py.File(self.hdf5source, 'r')
         self.sourcelist = sourcelist
@@ -175,13 +193,15 @@ def isin(X,Y):
 
 
 class CustomQueue(object):
-
-    def __init__(self, node, data_iter, queue_batch_size=128, n_threads=4):
-        """
-        A generic queue for reading data
-
+    """ A generic queue for reading data
         Based on https://indico.io/blog/tensorflow-data-input-part2-extensions/
-        """
+    """
+
+    def __init__(self, node, data_iter,
+                 queue_type='fifo',
+                 queue_batch_size=128,
+                 n_threads=4,
+                 seed=0):
         self.node = node
         self.data_iter = data_iter
         self.queue_batch_size = queue_batch_size
@@ -190,10 +210,26 @@ class CustomQueue(object):
 
         dtypes = [d.dtype for d in node.values()]
         shapes = [d.get_shape() for d in node.values()]
-        self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
-                                        min_after_dequeue=n_threads * queue_batch_size,
-                                        dtypes=dtypes,
-                                        shapes=shapes)
+        if queue_type == 'random':
+            self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
+                                               min_after_dequeue=n_threads * queue_batch_size,
+                                               dtypes=dtypes,
+                                               shapes=shapes,
+                                               seed=seed)
+        elif queue_type == 'fifo':
+            self.queue = tf.FIFOQueue(capacity=n_threads * queue_batch_size * 2,
+                                      dtypes=dtypes,
+                                      shapes=shapes)
+        elif queue_type == 'padding_fifo':
+            self.queue = tf.PaddingFIFOQueue(capacity=n_threads * queue_batch_size * 2,
+                                             dtypes=dtypes,
+                                             shapes=shapes)
+        elif queue_type == 'priority':
+            self.queue = tf.PriorityQueue(capacity=n_threads * queue_batch_size * 2,
+                                          types=dtypes,
+                                          shapes=shapes)
+        else:
+            Exception('Queue type %s not recognized' % queue_type)
         self.enqueue_op = self.queue.enqueue(node.values())
         data_batch = self.queue.dequeue_many(queue_batch_size)
         self.batch = {k:v for k,v in zip(node.keys(), data_batch)}
@@ -217,10 +253,15 @@ class CustomQueue(object):
         return threads
 
 
-class ImageNet(HDF5DataProvider, CustomQueue):
+class ImageNet(HDF5DataProvider):
 
-    def __init__(self, data_path, subslice, crop_size=None,
-                 batch_size=256, n_threads=4, *args, **kwargs):
+    def __init__(self, 
+                 data_path, 
+                 subslice=None,
+                 crop_size=None,
+                 batch_size=256, 
+                 *args, 
+                 **kwargs):
         """
         A specific reader for IamgeNet stored as a HDF5 file
 
@@ -245,15 +286,13 @@ class ImageNet(HDF5DataProvider, CustomQueue):
             self.crop_size = 256
         else:
             self.crop_size = crop_size
-        node = {'data': tf.placeholder(tf.float32,
+        self.node = {'data': tf.placeholder(tf.float32,
                                             shape=(self.crop_size, self.crop_size, 3),
                                             name='data'),
                      'labels': tf.placeholder(tf.int64,
                                               shape=[],
                                               name='labels')}
-        CustomQueue.__init__(self, node, self, queue_batch_size=batch_size,
-                             n_threads=n_threads)
-
+ 
     def postproc(self, ims, f):
         norm = ims / 255. - .5
         resh = norm.reshape((3, 256, 256))
