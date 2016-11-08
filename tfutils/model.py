@@ -1,254 +1,216 @@
+from __future__ import absolute_import, division, print_function
+from collections import OrderedDict
+
+import numpy as np
 import tensorflow as tf
 
 
 class ConvNet(object):
     """Basic implementation of ConvNet class compatible with tfutils.
     """
-    def __init__(self, train=True, seed=0, cfg_initial=None):
-        self.train = train
-        self.seed = seed
-        self.conv_counter = 0
-        self.pool_counter = 0
-        self.fc_counter = 0
-        self.norm_counter = 0
-        self.global_counter = 0
-        self.parameters = []
-        self.architecture = {}
 
-    def conv(self, 
-             in_layer,
+    def __init__(self, seed=None, **kwargs):
+        self.seed = seed
+        self.output = None
+        self._params = OrderedDict()
+
+    @property
+    def params(self):
+        return self._params
+
+    @params.setter
+    def params(self, value):
+        name = tf.get_variable_scope().name
+        if name not in self._params:
+            self._params[name] = OrderedDict()
+        self._params[name][value['type']] = value
+
+    @property
+    def graph(self):
+        return tf.get_default_graph().as_graph_def()
+
+    def initializer(self, kind='xavier', stddev=.1):
+        if kind == 'xavier':
+            init = tf.contrib.layers.initializers.xavier_initializer(seed=self.seed)
+        elif kind == 'trunc_norm':
+            init = tf.truncated_normal_initializer(mean=0, stddev=stddev, seed=self.seed)
+        else:
+            raise ValueError('Please provide an appropriate initialization '
+                             'method: xavier or trunc_norm')
+        return init
+
+    def conv(self,
              out_shape,
              ksize=3,
              stride=1,
              padding='SAME',
+             init='xavier',
              stddev=.01,
              bias=1,
-             name=None):
+             activation='relu',
+             weight_decay=None,
+             in_layer=None):
+        if in_layer is None: in_layer = self.output
+        if weight_decay is None: weight_decay = 0.
         in_shape = in_layer.get_shape().as_list()[-1]
-        self.conv_counter += 1
-        self.global_counter += 1
-        if name is None:
-            name = 'conv' + str(self.conv_counter)
-        with tf.name_scope(name) as scope:
-            kernel = tf.Variable(
-                tf.truncated_normal([ksize, ksize, in_shape, out_shape],
-                                     dtype=tf.float32, stddev=stddev,
-                                     seed=self.seed),
-                name=name+'_weights')
-            conv = tf.nn.conv2d(in_layer, 
-                                kernel, 
-                                [1, stride, stride, 1],
-                                padding=padding,
-                                name=name)
-            biases = tf.Variable(tf.constant(bias,
-                                             shape=[out_shape],
-                                             dtype=tf.float32), 
-                                 name=name+'_biases')
-            conv_bias = tf.nn.bias_add(conv, biases)
-            conv_out = tf.nn.relu(conv_bias, name=scope)
-            self.parameters += [kernel, biases]
-            self.architecture[name] = {'input': in_layer.name,
-                                       'type': 'conv',
-                                       'num_filters': out_shape,
-                                       'stride': stride,
-                                       'kernel_size': ksize,
-                                       'padding': padding, 
-                                       'bias': bias,
-                                       'stddev': stddev,
-                                       'seed': self.seed}
-            return conv_out
 
-    def norm(self,
-             in_layer,
-             depth_radius=4,
-             bias=1.00, 
-             alpha=0.001 / 9.0,
-             beta=007,
-             name=None):
-        self.norm_counter += 1
-        self.global_counter += 1
-        if name is None:
-            name = 'norm' + str(self.norm_counter)
-        self.architecture[name] = {'input': in_layer.name,
-                                   'type': 'lrnorm',
-                                   'depth_radius': depth_radius,
-                                   'bias': bias,
-                                   'alpha': alpha,
-                                   'beta': beta}
-        return tf.nn.lrn(in_layer, 
-                         depth_radius=depth_radius, 
-                         bias=bias, 
-                         alpha=alpha, 
-                         beta=beta,
-                         name=name)
+        kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
+                                 shape=[ksize, ksize, in_shape, out_shape],
+                                 dtype=tf.float32,
+                                 regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                 name='weights')
+        conv = tf.nn.conv2d(in_layer, kernel,
+                            strides=[1, stride, stride, 1],
+                            padding=padding)
+        biases = tf.get_variable(initializer=tf.constant_initializer(bias),
+                                 shape=[out_shape],
+                                 dtype=tf.float32,
+                                 name='bias')
+        out = tf.nn.bias_add(conv, biases, name='conv')
+        if activation is not None:
+            out = self.activation(out, kind=activation)
+        self.params = {'input': in_layer.name,
+                       'type': 'conv',
+                       'num_filters': out_shape,
+                       'stride': stride,
+                       'kernel_size': ksize,
+                       'padding': padding,
+                       'init': init,
+                       'stddev': stddev,
+                       'bias': bias,
+                       'activation': activation,
+                       'weight_decay': weight_decay,
+                       'seed': self.seed}
+        self.output = out
+        return self.output
 
     def fc(self,
-           in_layer,
            out_shape,
-           dropout=None,
+           init='xavier',
            stddev=.01,
            bias=1,
-           name=None):
-        in_shape = in_layer.get_shape().as_list()[-1]
-        self.fc_counter += 1
-        self.global_counter += 1
-        if name is None:
-            name = 'fc' + str(self.fc_counter)
-        # stdevs = [.01,.01,.01] #[.0005, .005, .1]
-        with tf.name_scope(name) as scope:
-            kernel = tf.Variable(tf.truncated_normal([in_shape, out_shape],
-                                                     dtype=tf.float32,
-                                                     stddev=stddev, 
-                                                     seed=self.seed),
-                                 name=name + '_weights')
-            biases = tf.Variable(tf.constant(
-                bias,
-                shape=[out_shape],
-                dtype=tf.float32), name=name + '_biases')
-            if dropout is None:
-                fcm = tf.matmul(in_layer, kernel)
-                fc_out = tf.nn.bias_add(fcm, biases, name=scope)
-            elif not self.train:
-                fc_out = tf.nn.relu_layer(in_layer, kernel, biases, name=scope)
-            else:
-                fcr = tf.nn.relu_layer(in_layer, kernel, biases)
-                # fck = tf.matmul(in_layer, kernel)
-                # bias = tf.nn.bias_add(fck, biases)
-                # fcr = tf.nn.relu(bias)
-                fc_out = tf.nn.dropout(fcr, dropout, seed=self.seed, name=scope)
-            self.parameters += [kernel, biases]
-            self.architecture[name] = {'input': in_layer.name,
-                                       'type': 'fc',
-                                       'num_filters': out_shape,
-                                       'dropout': dropout,
-                                       'bias': bias,
-                                       'stddev': stddev,
-                                       'seed': self.seed}
-            return fc_out
+           activation='relu',
+           dropout=.5,
+           in_layer=None):
+        if in_layer is None: in_layer = self.output
+        resh = tf.reshape(in_layer,
+                          [in_layer.get_shape().as_list()[0], -1],
+                          name='reshape')
+        in_shape = resh.get_shape().as_list()[-1]
 
-    def pool(self, in_layer, ksize=3, stride=2, padding='VALID', name=None):
-        self.pool_counter += 1
-        self.global_counter += 1
-        if name is None:
-            name = 'pool' + str(self.pool_counter)
-        self.architecture[name] = {'input': in_layer.name,
-                                   'type': 'maxpool',
-                                   'kernel_size': ksize,
-                                   'stride': stride,
-                                   'padding': padding}
-        return tf.nn.max_pool(in_layer,
-                              ksize=[1, ksize, ksize, 1],
-                              strides=[1, stride, stride, 1],
-                              padding=padding,
-                              name=name)
+        kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
+                                 shape=[in_shape, out_shape],
+                                 dtype=tf.float32,
+                                 name='weights')
+        biases = tf.get_variable(initializer=tf.constant_initializer(bias),
+                                 shape=[out_shape],
+                                 dtype=tf.float32,
+                                 name='bias')
+        fcm = tf.matmul(resh, kernel)
+        out = tf.nn.bias_add(fcm, biases, name='fc')
+        if activation is not None:
+            out = self.activation(out, kind=activation)
+        if dropout is not None:
+            out = self.dropout(out)
 
-    def print_activations(self, t):
-        print(t.op.name, ' ', t.get_shape().as_list())
+        self.params = {'input': in_layer.name,
+                       'type': 'fc',
+                       'num_filters': out_shape,
+                       'init': init,
+                       'bias': bias,
+                       'stddev': stddev,
+                       'activation': activation,
+                       'dropout': dropout,
+                       'seed': self.seed}
+        self.output = out
+        return self.output
+
+    def norm(self,
+             depth_radius=2,
+             bias=1,
+             alpha=2e-5,
+             beta=.75,
+             in_layer=None):
+        if in_layer is None: in_layer = self.output
+        self.output = tf.nn.lrn(in_layer,
+                                depth_radius=np.float(depth_radius),
+                                bias=np.float(bias),
+                                alpha=alpha,
+                                beta=beta,
+                                name='norm')
+        self.params = {'input': in_layer.name,
+                       'type': 'lrnorm',
+                       'depth_radius': depth_radius,
+                       'bias': bias,
+                       'alpha': alpha,
+                       'beta': beta}
+        return self.output
+
+    def pool(self,
+             ksize=3,
+             stride=2,
+             padding='SAME',
+             in_layer=None):
+        if in_layer is None: in_layer = self.output
+        self.output = tf.nn.max_pool(in_layer,
+                                     ksize=[1, ksize, ksize, 1],
+                                     strides=[1, stride, stride, 1],
+                                     padding=padding,
+                                     name='pool')
+        self.params = {'input': in_layer.name,
+                       'type': 'maxpool',
+                       'kernel_size': ksize,
+                       'stride': stride,
+                       'padding': padding}
+        return self.output
+
+    def activation(self, in_layer, kind='relu'):
+        if kind == 'relu':
+            out = tf.nn.relu(in_layer, name='relu')
+        else:
+            raise ValueError("Activation '{}' not defined".format(kind))
+        return out
+
+    def dropout(self, in_layer, dropout=.5):
+        drop = tf.nn.dropout(in_layer, dropout, seed=self.seed, name='dropout')
+        return drop
 
 
 def alexnet(inputs, **kwargs):
     m = ConvNet(**kwargs)
-    conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
-    norm1 = m.norm(conv1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
-    pool1 = m.pool(norm1, 3, 2)
-    conv2 = m.conv(pool1, 64, 192, 5, 1, stddev=.01, bias=1)
-    norm2 = m.norm(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
-    pool2 = m.pool(norm2, 3, 2)
-    conv3 = m.conv(pool2, 192, 384, 3, 1, stddev=.01, bias=0)
-    conv4 = m.conv(conv3, 384, 256, 3, 1, stddev=.01, bias=1)
-    conv5 = m.conv(conv4, 256, 256, 3, 1, stddev=.01, bias=1)
-    pool5 = m.pool(conv5, 3, 2)
-    resh1 = tf.reshape(pool5, [-1, 256 * 6 * 6], name='reshape1')
-    m.architecture['reshape1'] = {'inputs': pool5.name}
-    fc1 = m.fc(resh1, 256 * 6 * 6, 4096, dropout=.5, stddev=.01, bias=1)
-    fc2 = m.fc(fc1, 4096, 4096, dropout=.5, stddev=.01, bias=1)
-    fc3 = m.fc(fc2, 4096, 1000, dropout=None, stddev=.01, bias=0)
-    return fc3, m.architecture
+
+    with tf.variable_scope('conv1'):
+        m.conv(64, 11, 4, stddev=.01, bias=0, activation='relu', in_layer=inputs)
+        m.norm(depth_radius=4, bias=1, alpha=.001 / 9.0, beta=.75)
+        m.pool(3, 2)
+
+    with tf.variable_scope('conv2'):
+        m.conv(192, 5, 1, stddev=.01, bias=1, activation='relu')
+        m.norm(depth_radius=4, bias=1, alpha=.001 / 9.0, beta=.75)
+        m.pool(3, 2)
+
+    with tf.variable_scope('conv3'):
+        m.conv(384, 3, 1, stddev=.01, bias=0, activation='relu')
+
+    with tf.variable_scope('conv4'):
+        m.conv(256, 3, 1, stddev=.01, bias=1, activation='relu')
+
+    with tf.variable_scope('conv5'):
+        m.conv(256, 3, 1, stddev=.01, bias=1, activation='relu')
+        m.pool(3, 2)
+
+    with tf.variable_scope('fc6'):
+        m.fc(4096, stddev=.01, bias=1, activation='relu', dropout=.5)
+
+    with tf.variable_scope('fc7'):
+        m.fc(4096, stddev=.01, bias=1, activation='relu', dropout=.5)
+
+    with tf.variable_scope('fc8'):
+        m.fc(1000, stddev=.01, bias=0, activation=None, dropout=None)
+
+    return m
 
 
-def alexnet_nonorm(inputs, **kwargs):
-    m = ConvNet(**kwargs)
-    conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
-    pool1 = m.pool(conv1, 3, 2)
-    conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
-    pool2 = m.pool(conv2, 3, 2)
-    conv3 = m.conv(pool2, 384, 3, 1, stddev=.01, bias=0)
-    conv4 = m.conv(conv3, 256, 3, 1, stddev=.01, bias=1)
-    conv5 = m.conv(conv4, 256, 3, 1, stddev=.01, bias=1)
-    pool5 = m.pool(conv5, 3, 2)
-    resh1 = tf.reshape(pool5, [-1, 256 * 6 * 6], name='reshape1')
-    m.architecture['reshape1'] = {'inputs': pool5.name}
-    fc1 = m.fc(resh1, 4096, dropout=.5, stddev=.01, bias=1)
-    fc2 = m.fc(fc1, 4096, dropout=.5, stddev=.01, bias=1)
-    fc3 = m.fc(fc2, 1000, dropout=None, stddev=.01, bias=0)
-    return fc3, m.architecture
-
-
-def alexnet_conv(inputs, **kwargs):
-    m = ConvNet(**kwargs)
-    conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
-    pool1 = m.pool(conv1, 3, 2)
-    conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
-    pool2 = m.pool(conv2, 3, 2)
-    conv3 = m.conv(pool2, 384, 3, 1, stddev=.01, bias=0)
-    conv4 = m.conv(conv3, 256, 3, 1, stddev=.01, bias=1)
-    conv5 = m.conv(conv4, 256, 3, 1, stddev=.01, bias=1)
-    pool5 = m.pool(conv5, 3, 2)
-    resh1 = tf.reshape(pool5, [-1, 256 * 6 * 6], name='reshape1')
-    m.architecture['reshape1'] = {'inputs': pool5.name}
-    return resh1, m.architecture
-
-
-def alexnet_caffe(inputs, **kwargs):
-    m = ConvNet(**kwargs)
-    conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
-    pool1 = m.pool(conv1, 3, 2)
-    conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
-    pool2 = m.pool(conv2, 3, 2)
-    conv3 = m.conv(pool2, 384, 3, 1, stddev=.01, bias=0)
-    conv4 = m.conv(conv3, 256, 3, 1, stddev=.01, bias=1)
-    conv5 = m.conv(conv4, 256, 3, 1, stddev=.01, bias=1)
-    pool5 = m.pool(conv5, 3, 2)
-    resh1 = tf.reshape(pool5, [-1, 256 * 6 * 6], name='reshape1')
-    m.architecture['reshape1'] = {'inputs': pool5.name}
-    fc1 = m.fc(resh1, 4096, dropout=.5, stddev=.005, bias=1)
-    fc2 = m.fc(fc1, 4096, dropout=.5, stddev=.005, bias=1)
-    fc3 = m.fc(fc2, 1000, dropout=None, stddev=.01, bias=0)
-    return fc3, m.parameters
-
-
-def alexnet_nocrop(inputs, **kwargs):
-    m = ConvNet(**kwargs)
-    conv1 = m.conv(inputs['data'], 64, 11, 4, stddev=.01, bias=0)
-    pool1 = m.pool(conv1, 3, 2)
-    conv2 = m.conv(pool1, 192, 5, 1, stddev=.01, bias=1)
-    pool2 = m.pool(conv2, 3, 2)
-    conv3 = m.conv(pool2, 384, 3, 1, stddev=.01, bias=0)
-    conv4 = m.conv(conv3, 256, 3, 1, stddev=.01, bias=1)
-    conv5 = m.conv(conv4, 256, 3, 1, stddev=.01, bias=1)
-    pool5 = m.pool(conv5, 3, 2)
-    resh1 = tf.reshape(pool5, [-1, 256 * 7 * 7], name='reshape1')
-    m.architecture['reshape1'] = {'inputs': pool5.name}
-    fc1 = m.fc(resh1, 4096, dropout=.5, stddev=.01, bias=1)
-    fc2 = m.fc(fc1, 4096, dropout=.5, stddev=.01, bias=1)
-    fc3 = m.fc(fc2, 1000, dropout=None, stddev=.01, bias=0)
-    return fc3, m.architecture
-
-
-def mnist_tf(inputs, **kwargs):
-    kwargs['seed'] = 66478
-    m = ConvNet(**kwargs)
-    conv1 = m.conv(inputs['data'], 64, 7, 4, stddev=.01, bias=0)
-    pool1 = m.pool(conv1, 3, 2, padding='VALID')
-    conv2 = m.conv(pool1, 256, 5, 1, stddev=.01, bias=0)
-    pool2 = m.pool(conv2, 3, 2, padding='VALID')
-    conv3 = m.conv(pool2, 512, 3, 1, stddev=.01, bias=0)
-    conv4 = m.conv(conv3, 1024, 3, 1, stddev=.01, bias=0)
-    conv5 = m.conv(conv4, 512, 3, 1, stddev=.01, bias=0)
-    pool5 = m.pool(conv5, 3, 2, padding='VALID')
-    resh1 = tf.reshape(pool5, [-1, 512 * 7 * 7], name='reshape1')
-    m.architecture['reshape1'] = {'inputs': pool5.name}
-    fc1 = m.fc(resh1, 4096, dropout=.5, stddev=.01, bias=.01)
-    fc2 = m.fc(fc1, 4096, dropout=.5, stddev=.01, bias=.01)
-    fc3 = m.fc(fc2, 1000, dropout=None, stddev=.01, bias=.1)
-    return fc3, m.architecture
+def alexnet_tfutils(inputs, **kwargs):
+    m = alexnet(inputs['data'], **kwargs)
+    return m.output, m.params
