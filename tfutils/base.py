@@ -25,11 +25,11 @@ from tfutils.utils import (make_mongo_safe,
                            SONify)
 
 """
-TODO: 
+TODO:
     - There should be a dead-simple way to load a human-readable object (as opposed to being in the
-      TF saver binary format) containing filter parameters from a record in the database, 
-      without having to load up lots of extraneous objects.  
-    - epoch and batch_num should be added to what is saved.   But how to do that with Queues? 
+      TF saver binary format) containing filter parameters from a record in the database,
+      without having to load up lots of extraneous objects.
+    - epoch and batch_num should be added to what is saved.   But how to do that with Queues?
 """
 
 def default_loss_params():
@@ -67,7 +67,7 @@ class Saver(tf.train.Saver):
                  save_initial=True,
                  *args, **kwargs):
         """
-        ARGS: 
+        ARGS:
             sess: (tesorflow.Session) object in which to run calculations
             global_step: (tensorflow.Variable) global step variable, the one that is updated by apply_gradients
             params: (dict) describing all parameters of experiment
@@ -89,7 +89,7 @@ class Saver(tf.train.Saver):
             save_initial: (bool) whether to save initial model state at step = 0,
             *args, **kwargs -- additional arguments are passed onto base Saver class constructor
         """
-        
+
         SONified_params = SONify(params)
         super(Saver, self).__init__(*args, **kwargs)
         self.sess = sess
@@ -117,8 +117,8 @@ class Saver(tf.train.Saver):
             tf.train.SummaryWriter(tensorboard_dir, tf.get_default_graph())
 
         if cache_dir is None:
-            self.cache_dir = os.path.join(os.environ['HOME'], 
-                                           '.tfutils', 
+            self.cache_dir = os.path.join(os.environ['HOME'],
+                                           '.tfutils',
                                            '%s:%d' % (host, port),
                                            dbname,
                                            collname,
@@ -138,7 +138,7 @@ class Saver(tf.train.Saver):
         Fetches record then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
-        load = self.load_from_db({'exp_id': self.exp_id, 
+        load = self.load_from_db({'exp_id': self.exp_id,
                                   'saved_filters': True},
                                  cache_model=True,
                                  force_fetch=force_fetch)
@@ -179,10 +179,10 @@ class Saver(tf.train.Saver):
 
         if count + count_recent == 0:  # no matches for query
             log.warning('No matching checkpoint for query "{}"'.format(repr(query)))
-            return 
+            return
 
         log.info('Loading checkpoint from %s' % loading_from.full_name)
-        
+
         if cache_model:
             # should be of form *-1000 (step)
             filename = os.path.basename(ckpt_record['filename'])
@@ -196,9 +196,9 @@ class Saver(tf.train.Saver):
                 load_dest = open(cache_filename, 'rwb+')
                 fsbucket = gridfs.GridFSBucket(self.database,
                                                bucket_name=loading_from.name.split('.')[0])
-                fsbucket.download_to_stream(ckpt_record['_id'], load_dest)        
+                fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
         else:
-            cache_filename = None            
+            cache_filename = None
         return ckpt_record, cache_filename
 
     def save(self, train_res, valid_res):
@@ -212,8 +212,8 @@ class Saver(tf.train.Saver):
         step = self.global_step.eval(session=self.sess)
 
         # TODO: also include error rate of the train set to monitor overfitting
-        # DY: I don't understand this TODO -- isn't this already here? 
-        message = 'Step {} ({:.2f} ms) -- '.format(step, duration)
+        # DY: I don't understand this TODO -- isn't this already here?
+        message = 'Step {} ({:.0f} ms) -- '.format(step, duration)
         message += ', '.join(['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer'])
         log.info(message)
 
@@ -232,7 +232,7 @@ class Saver(tf.train.Saver):
             if 'optimizer' in train_res:
                 del train_res['optimizer']
             rec['train_results'] = train_res
-        
+
             # print validation set performance
             if valid_res:
                 rec['validation_results'] = valid_res
@@ -245,7 +245,7 @@ class Saver(tf.train.Saver):
 
             # save filters to db
             if save_filters_permanent or save_filters_tmp:
-                save_rec['saved_filters'] = True 
+                save_rec['saved_filters'] = True
                 save_path = os.path.join(self.cache_dir, 'checkpoint')
                 log.info('Saving model to %s ... ' % save_path)
                 saved_path = super(Saver, self).save(self.sess,
@@ -258,12 +258,12 @@ class Saver(tf.train.Saver):
                 with open(saved_path, 'rb') as _fp:
                     putfs.put(_fp, filename=saved_path, **save_rec)
                 log.info('... done putting filters into database.')
-            
+
             if not save_filters_permanent:
                 save_rec['saved_filters'] = False
                 log.info('Inserting record into database.')
                 self.collfs._GridFS__files.insert(save_rec)
-            
+
         sys.stdout.flush()  # flush the stdout buffer
         self.start_time_step = time.time()
 
@@ -283,22 +283,22 @@ def test(step, results):
     raise NotImplementedError
 
 
-def run(sess, 
-        queues, 
-        saver, 
-        train_targets, 
+def run(sess,
+        queues,
+        saver,
+        train_targets,
         global_step,
         num_steps,
         valid_targets=None,
         thres_loss=100):
     """
-    Actually runs the evaluation loop. 
+    Actually runs the evaluation loop.
 
     Args:
         - sess: (tesorflow.Session) object in which to run calculations
         - queues (list of CustomQueue) objects containing asynchronously queued data iterators
         - saver (Saver object) saver throughwhich to save results
-        - train_targets (dict of tensorflow nodes) targets to train one 
+        - train_targets (dict of tensorflow nodes) targets to train one
                   --> one item in this dict must be "optimizer" or similar to make anything happen
         - num_steps (int) how many steps to train to before quitting
         - valid_targets (dict of tensorflow objects) objects on which validation will be computed
@@ -352,7 +352,7 @@ def run_base(saver_params,
              log_device_placement=True,
              ):
     """
-    Main interface function. 
+    Main interface function.
 
     Args:
     - saver_params (dict): dictionary of arguments for creating saver object (see Saver class)
@@ -363,7 +363,7 @@ def run_base(saver_params,
                "train" -- boolean if training is happening
                "cfg_initial" -- dictionary of params to be used to create final config
                "seed" -- seed for use in random generation of final config
-             Must return two arguments (a, b): 
+             Must return two arguments (a, b):
                 a = train output tensorflow nodes
                 b = final configuration used in model
         Remaining itmes in model_params are dictionary of arguments massed to func.
@@ -377,37 +377,37 @@ def run_base(saver_params,
     - loss_params (dict): parameters for specifying loss function
         loss_params['func'] is callable producing the tensorflow node used for training loss
         remainder of loss_params are then parameters to func
-    - learning_rate_params (dict): parameters for specifying learning_rate 
+    - learning_rate_params (dict): parameters for specifying learning_rate
         learning_rate_params['func'] is a function producing tensorflow node acting as learning rate
-             This function must accept argument "global_step". 
-        reaminder of learning_rate_params are arugments to func. 
-    - optimizer_params (dict): parameters for creating optimizer. 
-        optimizer_params['func'] is a function producing a tensorflow optimizer object (like a subclass of tf.train.Optimizer) 
+             This function must accept argument "global_step".
+        reaminder of learning_rate_params are arugments to func.
+    - optimizer_params (dict): parameters for creating optimizer.
+        optimizer_params['func'] is a function producing a tensorflow optimizer object (like a subclass of tf.train.Optimizer)
           This function must accept:
-             "learning_rate" -- the result of the learning_rate_func call 
+             "learning_rate" -- the result of the learning_rate_func call
           Must return object with a method called "minimize" with the same call signature as
           tensorflow.train.Optimizer.minimize --- that is:
                 Must accept:
-                   "loss" -- result of loss_func call 
-                   "global_step" -- global step used for determine learning rate, 
-                Must return: 
-                    tensorflow node which computes gradients and applies them, and must increment 
+                   "loss" -- result of loss_func call
+                   "global_step" -- global step used for determine learning rate,
+                Must return:
+                    tensorflow node which computes gradients and applies them, and must increment
                     "global_step"
-      Remainder of optimizer_params (aside form "func") are arguments to the optimizer func 
+      Remainder of optimizer_params (aside form "func") are arguments to the optimizer func
     - validation_params (dict): dictionary of validation sources.  The structure if this dictionary is:
            {validation_target_name: {'data': {'func': (callable) data source function for this validation,
                                               + other keys sent as arguments to 'func'}
                                      'targets': {'func': (callable) returning targets,
                                                  + other keys sent as arguments to 'func'}}
                   ...}
-        For each validation_target_name key, the targets are computed and then added to 
-        the output dictionary to be computed every so often -- unlike train_targets which 
-        are computed on each time step, these are computed on a basic controlled by the 
-        valid_save_freq specific in the saver_params. 
+        For each validation_target_name key, the targets are computed and then added to
+        the output dictionary to be computed every so often -- unlike train_targets which
+        are computed on each time step, these are computed on a basic controlled by the
+        valid_save_freq specific in the saver_params.
     - thres_loss (float, optional): if loss exceeds this during training, HiLossError is thrown
     - num_steps (int, optional): how many total steps of the optimization are run
     - log_device_placement (bool, optional): whether to log device placement in tensorflow session
-    - queue_params (dict, optional):  dictionary of arguments to CustomQueue object (see 
+    - queue_params (dict, optional):  dictionary of arguments to CustomQueue object (see
               tfutils.data.CustomQueue documentation)
     """
 
@@ -424,8 +424,8 @@ def run_base(saver_params,
 
         if queue_params is None:
             queue_params = {}
-        queue = CustomQueue(train_inputs.node, 
-                            train_inputs, 
+        queue = CustomQueue(train_inputs.node,
+                            train_inputs,
                             **queue_params)
         train_inputs = queue.batch
         queues = [queue]
@@ -436,8 +436,8 @@ def run_base(saver_params,
             model_kwargs['cfg_initial'] = None
         if 'seed' not in model_kwargs:
             model_kwargs['seed'] = 0
-        train_outputs, cfg_final = model_func(inputs=train_inputs, 
-                                        train=True, 
+        train_outputs, cfg_final = model_func(inputs=train_inputs,
+                                        train=True,
                                         **model_kwargs)
         if loss_params is None:
             loss_params = default_loss_params()
@@ -448,9 +448,9 @@ def run_base(saver_params,
         if learning_rate_params is None:
             learning_rate_params = {}
         learning_rate_kwargs = copy.deepcopy(learning_rate_params)
-        learning_rate_func = learning_rate_kwargs.pop('func', 
+        learning_rate_func = learning_rate_kwargs.pop('func',
                                                       tf.train.exponential_decay)
-        learning_rate = learning_rate_func(global_step=global_step, 
+        learning_rate = learning_rate_func(global_step=global_step,
                                            **learning_rate_kwargs)
 
         if optimizer_params is None:
@@ -476,19 +476,19 @@ def run_base(saver_params,
                 vtargskwargs = copy.deepcopy(validation_params[vtag]['targets'])
                 vtargsfunc = vtargskwargs.pop('func')
                 vinputs = vdatafunc(**vdatakwargs)
-                new_queue = CustomQueue(vinputs.node, 
+                new_queue = CustomQueue(vinputs.node,
                                         vinputs,
                                         **queue_kwargs)
                 queues.append(new_queue)
                 new_model_kwargs = copy.deepcopy(model_kwargs)
                 new_model_kwargs['seed'] = None
                 new_model_kwargs['cfg_initial'] = cfg_final
-                voutputs, _cfg = model_func(inputs=vinputs, 
-                                             train=False, 
+                voutputs, _cfg = model_func(inputs=vinputs,
+                                             train=False,
                                              **new_model_kwargs)
                 assert cfg_final == _cfg, (cfg_final, _cfg)
                 vtargets = vtargsfunc(vinputs,
-                                      voutputs, 
+                                      voutputs,
                                       **vtargskwargs)
                 valid_targetsdict[vtarg] = vtargets
 
@@ -498,7 +498,7 @@ def run_base(saver_params,
 
         model_kwargs_final = copy.deepcopy(model_kwargs)
         model_kwargs_final['cfg_final'] = cfg_final
-                  
+
         params = {'saver_params': saver_params,
                   'train_params': train_params,
                   'model_params': model_params,
@@ -542,7 +542,7 @@ def main():
 
 """
 Something like this could be used to create and save variables
-in a readable format. 
+in a readable format.
     def save_variables_to_readable_format()
         Vars = tf.all_variables()
         tmp = int(time.time())

@@ -12,12 +12,12 @@ if host.startswith('node') or host == 'openmind7':  # OpenMind
     DATA_PATH = '/om/user/qbilius/imagenet/data.raw'
 else:  # agents
     DATA_PATH = '/data/imagenet_dataset/hdf5_cached_from_om7/data.raw'
-        
+
 
 def main():
     num_batches_per_epoch = 2**20//256
     params = {}
-    params['model_params'] = {'func':  model.alexnet_nonorm}
+    params['model_params'] = {'func': model.alexnet_tfutils}
     params['train_params'] = {'data': {'func': data.ImageNet,
                                        'data_path': DATA_PATH,
                                        'crop_size': 224}}
@@ -29,7 +29,7 @@ def main():
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
-                              'exp_id': 'tfutils-test-4',
+                              'exp_id': 'tfutils-test-6',
                               'save_valid_freq': 20,
                               'save_filters_freq': 100,
                               'cache_filters_freq': 80}
