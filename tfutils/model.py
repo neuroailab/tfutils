@@ -54,8 +54,14 @@ class ConvNet(object):
         if weight_decay is None: weight_decay = 0.
         in_shape = in_layer.get_shape().as_list()[-1]
 
+        if isinstance(ksize, int):
+            ksize1 = ksize
+            ksize2 = ksize
+        else:
+            ksize1, ksize2 = ksize
+
         kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
-                                 shape=[ksize, ksize, in_shape, out_shape],
+                                 shape=[ksize1, ksize2, in_shape, out_shape],
                                  dtype=tf.float32,
                                  regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                                  name='weights')
@@ -73,7 +79,7 @@ class ConvNet(object):
                        'type': 'conv',
                        'num_filters': out_shape,
                        'stride': stride,
-                       'kernel_size': ksize,
+                       'kernel_size': (ksize1, ksize2),
                        'padding': padding,
                        'init': init,
                        'stddev': stddev,
@@ -152,14 +158,21 @@ class ConvNet(object):
              padding='SAME',
              in_layer=None):
         if in_layer is None: in_layer = self.output
+
+        if isinstance(ksize, int):
+            ksize1 = ksize
+            ksize2 = ksize
+        else:
+            ksize1, ksize2 = ksize
+
         self.output = tf.nn.max_pool(in_layer,
-                                     ksize=[1, ksize, ksize, 1],
+                                     ksize=[1, ksize1, ksize2, 1],
                                      strides=[1, stride, stride, 1],
                                      padding=padding,
                                      name='pool')
         self.params = {'input': in_layer.name,
                        'type': 'maxpool',
-                       'kernel_size': ksize,
+                       'kernel_size': (ksize1, ksize2),
                        'stride': stride,
                        'padding': padding}
         return self.output
