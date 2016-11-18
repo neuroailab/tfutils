@@ -1,6 +1,5 @@
 from __future__ import division, print_function, absolute_import
-import os, sys, math, time
-from datetime import datetime
+import os, time
 
 import numpy as np
 import tensorflow as tf
@@ -22,6 +21,7 @@ class DataInMem(object):
         self.batch = {'data': tf.Variable(tf.random_normal([self.batch_size, 224, 224, 3],
                                             dtype=tf.float32, stddev=1e-1)),
                     'labels': tf.Variable(tf.ones([self.batch_size], dtype=tf.int32))}
+
 
 class Data(object):
 

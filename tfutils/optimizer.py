@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 class ClipOptimizer(object):
 
     def __init__(self, optimizer_class, clip=True, *optimizer_args, **optimizer_kwargs):
@@ -9,6 +10,8 @@ class ClipOptimizer(object):
     def compute_gradients(self, *args, **kwargs):
         gvs = self._optimizer.compute_gradients(*args, **kwargs)
         if self.clip:
+            # gradient clipping. Some gradients returned are 'None' because
+            # no relation between the variable and loss; so we skip those.
             gvs = [(tf.clip_by_value(grad, -1., 1.), var)
                           for grad, var in gvs if grad is not None]
         return gvs

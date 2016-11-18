@@ -1,6 +1,6 @@
 import collections
 import logging
-import json 
+import json
 import datetime
 import inspect
 import pkg_resources
@@ -13,7 +13,8 @@ from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
-        
+
+
 def version_info(module):
     """Gets version of a standard python module
     """
@@ -30,12 +31,13 @@ def version_info(module):
             log.warning('version information not found for %s' % module.__name__)
         else:
             version = info.version
-            
+
     return {'version': version}
+
 
 def version_check_and_info(module):
     """returns either git information or standard module version if not a git repo
-      
+
     Args: - module (module): python module object to get info for.
     Returns: dictionary of info
     """
@@ -49,6 +51,7 @@ def version_check_and_info(module):
         info = git_info(repo)
     info['source_path'] = srcpath
     return info
+
 
 def git_info(repo):
     """information about a git repo
@@ -72,15 +75,15 @@ def git_info(repo):
         log.warning('Commit %s not in remote origin log for branch %s' % (commit,
                                                                         branchname))
     info = {'git_dir': repo.git_dir,
-    	    'active_branch': branchname,
-    	    'commit': commit, 
-    	    'remote_urls': urls,
+            'active_branch': branchname,
+            'commit': commit,
+            'remote_urls': urls,
             'clean': clean}
     return info
-    	    
+
 
 def make_mongo_safe(_d):
-    """Makes a json-izable actually safe for insertion into Mongo. 
+    """Makes a json-izable actually safe for insertion into Mongo.
     """
     klist = _d.keys()[:]
     for _k in klist:
@@ -91,13 +94,12 @@ def make_mongo_safe(_d):
 
 
 def SONify(arg, memo=None):
-    """when possible, returns version of argument that can be 
+    """when possible, returns version of argument that can be
        serialized trivally to json format
     """
-    if memo is None:
-        memo = {}
-    if id(arg) in memo:
-        rval = memo[id(arg)]
+    if memo is None: memo = {}
+    if id(arg) in memo: rval = memo[id(arg)]
+
     if isinstance(arg, ObjectId):
         rval = arg
     elif isinstance(arg, datetime.datetime):
@@ -120,20 +122,21 @@ def SONify(arg, memo=None):
         if arg.ndim == 0:
             rval = SONify(arg.sum())
         else:
-            rval = map(SONify, arg) # N.B. memo None
+            rval = map(SONify, arg)  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
     elif arg in (True, False):
         rval = int(arg)
     elif callable(arg):
         mod = inspect.getmodule(arg)
-    	modname = mod.__name__
-    	objname = arg.__name__
-    	rval = version_check_and_info(mod) 
-    	rval.update({'objname': objname,
-                     'modname': modname})
-    	rval = SONify(rval)
+        modname = mod.__name__
+        objname = arg.__name__
+        rval = version_check_and_info(mod)
+        rval.update({'objname': objname,
+                        'modname': modname})
+        rval = SONify(rval)
     else:
         raise TypeError('SONify', arg)
+
     memo[id(rval)] = rval
     return rval
 

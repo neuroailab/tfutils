@@ -72,9 +72,9 @@ class ConvNet(object):
                                  shape=[out_shape],
                                  dtype=tf.float32,
                                  name='bias')
-        out = tf.nn.bias_add(conv, biases, name='conv')
+        self.output = tf.nn.bias_add(conv, biases, name='conv')
         if activation is not None:
-            out = self.activation(out, kind=activation)
+            self.output = self.activation(kind=activation)
         self.params = {'input': in_layer.name,
                        'type': 'conv',
                        'num_filters': out_shape,
@@ -87,7 +87,6 @@ class ConvNet(object):
                        'activation': activation,
                        'weight_decay': weight_decay,
                        'seed': self.seed}
-        self.output = out
         return self.output
 
     def fc(self,
@@ -113,11 +112,11 @@ class ConvNet(object):
                                  dtype=tf.float32,
                                  name='bias')
         fcm = tf.matmul(resh, kernel)
-        out = tf.nn.bias_add(fcm, biases, name='fc')
+        self.output = tf.nn.bias_add(fcm, biases, name='fc')
         if activation is not None:
-            out = self.activation(out, kind=activation)
+            self.activation(kind=activation)
         if dropout is not None:
-            out = self.dropout(out)
+            self.dropout(dropout=dropout)
 
         self.params = {'input': in_layer.name,
                        'type': 'fc',
@@ -128,7 +127,6 @@ class ConvNet(object):
                        'activation': activation,
                        'dropout': dropout,
                        'seed': self.seed}
-        self.output = out
         return self.output
 
     def norm(self,
@@ -177,16 +175,19 @@ class ConvNet(object):
                        'padding': padding}
         return self.output
 
-    def activation(self, in_layer, kind='relu'):
+    def activation(self, kind='relu', in_layer=None):
+        if in_layer is None: in_layer = self.output
         if kind == 'relu':
             out = tf.nn.relu(in_layer, name='relu')
         else:
             raise ValueError("Activation '{}' not defined".format(kind))
+        self.output = out
         return out
 
-    def dropout(self, in_layer, dropout=.5):
-        drop = tf.nn.dropout(in_layer, dropout, seed=self.seed, name='dropout')
-        return drop
+    def dropout(self, dropout=.5, in_layer=None):
+        if in_layer is None: in_layer = self.output
+        self.output = tf.nn.dropout(in_layer, dropout, seed=self.seed, name='dropout')
+        return self.output
 
 
 def alexnet(inputs, **kwargs):

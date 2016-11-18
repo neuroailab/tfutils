@@ -199,39 +199,39 @@ class CustomQueue(object):
 
     def __init__(self, node, data_iter,
                  queue_type='fifo',
-                 queue_batch_size=128,
+                 batch_size=128,
                  n_threads=4,
                  seed=0):
         self.node = node
         self.data_iter = data_iter
-        self.queue_batch_size = queue_batch_size
+        self.batch_size = batch_size
         self.n_threads = n_threads
         self._continue = True
 
         dtypes = [d.dtype for d in node.values()]
         shapes = [d.get_shape() for d in node.values()]
         if queue_type == 'random':
-            self.queue = tf.RandomShuffleQueue(capacity=n_threads * queue_batch_size * 2,
-                                               min_after_dequeue=n_threads * queue_batch_size,
+            self.queue = tf.RandomShuffleQueue(capacity=n_threads * batch_size * 2,
+                                               min_after_dequeue=n_threads * batch_size,
                                                dtypes=dtypes,
                                                shapes=shapes,
                                                seed=seed)
         elif queue_type == 'fifo':
-            self.queue = tf.FIFOQueue(capacity=n_threads * queue_batch_size * 2,
+            self.queue = tf.FIFOQueue(capacity=n_threads * batch_size * 2,
                                       dtypes=dtypes,
                                       shapes=shapes)
         elif queue_type == 'padding_fifo':
-            self.queue = tf.PaddingFIFOQueue(capacity=n_threads * queue_batch_size * 2,
+            self.queue = tf.PaddingFIFOQueue(capacity=n_threads * batch_size * 2,
                                              dtypes=dtypes,
                                              shapes=shapes)
         elif queue_type == 'priority':
-            self.queue = tf.PriorityQueue(capacity=n_threads * queue_batch_size * 2,
+            self.queue = tf.PriorityQueue(capacity=n_threads * batch_size * 2,
                                           types=dtypes,
                                           shapes=shapes)
         else:
             Exception('Queue type %s not recognized' % queue_type)
         self.enqueue_op = self.queue.enqueue(node.values())
-        data_batch = self.queue.dequeue_many(queue_batch_size)
+        data_batch = self.queue.dequeue_many(batch_size)
         self.batch = {k:v for k,v in zip(node.keys(), data_batch)}
 
     def thread_main(self, sess):
@@ -259,7 +259,6 @@ class ImageNet(HDF5DataProvider):
                  data_path,
                  subslice=None,
                  crop_size=None,
-                 batch_size=256,
                  *args,
                  **kwargs):
         """
