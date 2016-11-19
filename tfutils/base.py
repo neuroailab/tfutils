@@ -380,7 +380,6 @@ def run_base(saver_params,
              learning_rate_params=None,
              optimizer_params=None,
              validation_params=None,
-             queue_params=None,
              thres_loss=100,
              num_steps=1000000,
              log_device_placement=False,
@@ -411,6 +410,9 @@ def run_base(saver_params,
                 - train_params['data'] contains params for the data
                     - train_params['data']['func'] is the function that produces
                       dictionary of data iterators
+                    - train_params['data']['queue_params'] is an optional dict of 
+                      params used to specify creation for the queue, passed to the 
+                      CustomQueue.__init__ method.   Default is {}. 
                     - remainder of train_params['data'] are kwargs passed to func
                 - train_params['targets'] (optional) contains params for additional train targets
                     - train_params['targets']['func'] is a function that produces
@@ -460,6 +462,10 @@ def run_base(saver_params,
                     <validation_target_name_1>: {
                         'data': {
                             'func': (callable) data source function for this validation,
+                            'queue_params': (optional, dict) params for creating queue for
+                                this validation. NB: if this is NOT specified, queue params 
+                                for this validation default to those used in constructing
+                                the training data queue. 
                             <kwarg1>: <value1> for 'func',
                             ...
                             },
@@ -499,11 +505,10 @@ def run_base(saver_params,
         #  train_data_func returns dictionary of iterators, with one key per input to model
         train_data_kwargs = copy.deepcopy(train_params['data'])
         train_data_func = train_data_kwargs.pop('func')
+        train_queue_params = train_data_kwargs.pop('queue_params', {})
         train_inputs = train_data_func(**train_data_kwargs)
 
-        if queue_params is None:
-            queue_params = {}
-        queue = CustomQueue(train_inputs.node, train_inputs, **queue_params)
+        queue = CustomQueue(train_inputs.node, train_inputs, **train_queue_params)
         queues = [queue]
         train_inputs = queue.batch
 
@@ -539,7 +544,9 @@ def run_base(saver_params,
                                         **optimizer_kwargs)
         optimizer = optimizer_base.minimize(loss, global_step)
 
-        train_targets = {'loss': loss, 'learning_rate': learning_rate, 'optimizer': optimizer}
+        train_targets = {'loss': loss,
+        	             'learning_rate': learning_rate,
+        	             'optimizer': optimizer}
         if train_params.get('targets') is not None:
             ttargs_kwargs = copy.deepcopy(train_params['targets'])
             ttargs_func = ttargs_kwargs.pop('func')
@@ -551,11 +558,14 @@ def run_base(saver_params,
             for vtarg in validation_params:
                 vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
                 vdata_func = vdata_kwargs.pop('func')
+                vqueue_params = vdata_kwargs.pop('queue_params', None)
+                if vqueue_params is None:
+                	vqueue_params = train_queue_params
                 vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
                 vtargs_func = vtargs_kwargs.pop('func')
 
                 vinputs = vdata_func(**vdata_kwargs)
-                queue = CustomQueue(vinputs.node, vinputs, **queue_params)
+                queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
                 queues.append(queue)
                 vinputs = queue.batch
 
@@ -583,7 +593,6 @@ def run_base(saver_params,
                   'learning_rate_params': learning_rate_params,
                   'optimizer_params': optimizer_params,
                   'validation_params': validation_params,
-                  'queue_params': queue_params,
                   'thres_loss': thres_loss,
                   'num_steps': num_steps,
                   'log_device_placement': log_device_placement}
