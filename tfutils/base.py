@@ -119,6 +119,8 @@ class Saver(tf.train.Saver):
         self.cache_filters_freq = cache_filters_freq
         self.save_filters_freq = save_filters_freq
         self.save_initial = save_initial
+        self._restore = restore
+        self._restored = False
 
         if self.dosave:
             self.conn = pymongo.MongoClient(host=host, port=port)
@@ -144,29 +146,29 @@ class Saver(tf.train.Saver):
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
 
-        if restore:
-            self.restore_model(force_fetch=force_fetch)
+        self.load_model(force_fetch=force_fetch)
 
         self.start_time_step = time.time()  # start timer
 
-    def restore_model(self, force_fetch=False):
+    def load_model(self, force_fetch=False):
         """
         Fetches record then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
-        if self.dosave:
+        if self._restore:
             load = self.load_from_db({'exp_id': self.exp_id,
-                                    'saved_filters': True},
-                                    cache_model=True,
-                                    force_fetch=force_fetch)
+                                      'saved_filters': True},
+                                     cache_model=True,
+                                     force_fetch=force_fetch)
             if load is not None:
                 rec, cache_filename = load
                 # tensorflow restore
                 self.restore(self.sess, cache_filename)
+                self._restored = True
                 log.info('Model variables restored from record %s (step %d).'
                          % (str(rec['_id']), rec['step']))
 
-        if not self.dosave or load is None:
+        if not self._restore or load is None:
             init = tf.initialize_all_variables()
             self.sess.run(init)
             log.info('Model variables initialized from scratch.')
@@ -334,10 +336,6 @@ def run(sess,
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
     """
-    # initialize and/or restore variables for graph
-    init = tf.initialize_all_variables()
-    sess.run(init)
-
     tf.train.start_queue_runners(sess=sess)
     # start our custom queue runner's threads
     if not hasattr(queues, '__iter__'):
@@ -347,7 +345,7 @@ def run(sess,
 
     start_time_step = time.time()  # start timer
     step = global_step.eval(session=sess)
-    if step == 0 and saver.save_initial and saver.dosave:
+    if step == 0 and saver.save_initial and not saver._restored:
         log.info('Saving initial ...')
         pass_targets = {k:v for k,v in train_targets.items() if k != 'optimizer'}
         train_results = sess.run(pass_targets)
@@ -365,7 +363,7 @@ def run(sess,
         assert (step > old_step), (step, old_step)
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
-        if step % saver.save_valid_freq == 0 and valid_targets is not None:
+        if step % saver.save_valid_freq == 0 and valid_targets:
             valid_results = sess.run(valid_targets)
         else:
             valid_results = {}
@@ -545,8 +543,8 @@ def run_base(saver_params,
         optimizer = optimizer_base.minimize(loss, global_step)
 
         train_targets = {'loss': loss,
-        	             'learning_rate': learning_rate,
-        	             'optimizer': optimizer}
+                         'learning_rate': learning_rate,
+                         'optimizer': optimizer}
         if train_params.get('targets') is not None:
             ttargs_kwargs = copy.deepcopy(train_params['targets'])
             ttargs_func = ttargs_kwargs.pop('func')

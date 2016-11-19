@@ -29,7 +29,7 @@ def main():
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
-                              'exp_id': 'tfutils-test-6',
+                              'exp_id': 'tfutils-test-7',
                               'save_valid_freq': 20,
                               'save_filters_freq': 100,
                               'cache_filters_freq': 80}
