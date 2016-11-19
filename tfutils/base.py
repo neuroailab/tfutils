@@ -241,18 +241,18 @@ class Saver(tf.train.Saver):
         message += ', '.join(msg2)
         log.info(message)
 
-        save_filters_permanent = self.dosave and step % self.save_filters_freq == 0
-        save_filters_tmp = self.dosave and step % self.cache_filters_freq == 0
+        save_filters_permanent = step % self.save_filters_freq == 0
+        save_filters_tmp = step % self.cache_filters_freq == 0
         save_metrics_now = step % self.save_metrics_freq == 0
         save_valid_now = step % self.save_valid_freq == 0
         need_to_save = self.dosave and (save_filters_permanent or
                         save_filters_tmp or save_metrics_now or save_valid_now)
 
         rec = {'exp_id': self.exp_id,
-                'params': self.SONified_params,
-                'saved_filters': False,
-                'step': step,
-                'duration': duration}
+               'params': self.SONified_params,
+               'saved_filters': False,
+               'step': step,
+               'duration': duration}
         if 'optimizer' in train_res:
             del train_res['optimizer']
         rec['train_results'] = train_res
