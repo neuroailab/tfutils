@@ -255,14 +255,18 @@ class CustomQueue(object):
 
 class ImageNet(HDF5DataProvider):
 
+    N_TRAIN = 1281167
+    N_VAL = 50000
+    N_TEST = 100000
+
     def __init__(self,
                  data_path,
-                 subslice=None,
+                 group='train',
                  crop_size=None,
                  *args,
                  **kwargs):
         """
-        A specific reader for IamgeNet stored as a HDF5 file
+        A specific reader for ImageNet stored as a HDF5 file
 
         Args:
             - data_path: path to imagenet data
@@ -272,37 +276,42 @@ class ImageNet(HDF5DataProvider):
         Kwargs:
             - **kwargs: extra keyword arguments for HDF5DataProvider
         """
+        self.group = group
+        images = group + '/images'
+        labels = group + '/labels'
         HDF5DataProvider.__init__(self,
             data_path,
-            ['data', 'labels'],
+            [images, labels],
             batch_size=1,  # fill up the queue one image at a time
-            subslice=subslice,
-            preprocess={'labels': get_unique_labels},
-            postprocess={'data': self.postproc},
+            postprocess={images: self.postproc_img, labels: self.postproc_labels},
             pad=True,
             *args, **kwargs)
         if crop_size is None:
             self.crop_size = 256
         else:
             self.crop_size = crop_size
-        self.node = {'data': tf.placeholder(tf.float32,
-                                            shape=(self.crop_size, self.crop_size, 3),
-                                            name='data'),
+        self.node = {'images': tf.placeholder(tf.float32,
+                                              shape=(self.crop_size, self.crop_size, 3),
+                                              name='images'),
                      'labels': tf.placeholder(tf.int64,
                                               shape=[],
                                               name='labels')}
 
-    def postproc(self, ims, f):
-        norm = ims / 255. - .5
-        resh = norm.reshape((3, 256, 256))
-        sw = resh.swapaxes(0, 1).swapaxes(1, 2)
+    def postproc_img(self, ims, f):
+        norm = ims.astype(np.float32) / 255
+        # resh = norm.reshape((3, 256, 256))
+        # sw = resh.swapaxes(0, 1).swapaxes(1, 2)
         off = np.random.randint(0, 256 - self.crop_size, size=2)
-        images_batch = sw[off[0]: off[0] + self.crop_size,
-                          off[1]: off[1] + self.crop_size]
-        return images_batch.astype(np.float32)
+        images_batch = norm[:,
+                            off[0]: off[0] + self.crop_size,
+                            off[1]: off[1] + self.crop_size]
+        return images_batch[0]  # because batch is size 1
+
+    def postproc_labels(self, labels, f):
+        return labels[0]  # because batch is size 1
 
     def next(self):
         batch = super(ImageNet, self).next()
-        feed_dict = {self.node['data']: batch['data'],
-                     self.node['labels']: batch['labels'][0]}
+        feed_dict = {self.node['images']: batch[self.group + '/images'],
+                     self.node['labels']: batch[self.group + '/labels']}
         return feed_dict
