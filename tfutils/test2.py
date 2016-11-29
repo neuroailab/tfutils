@@ -29,7 +29,7 @@ def main():
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
-                              'exp_id': 'tfutils-test-7-nosave',
+                              'exp_id': 'tfutils-test-7',
                               'save': False}
     params['num_steps'] = 230
 
