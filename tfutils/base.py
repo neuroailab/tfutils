@@ -122,14 +122,14 @@ class Saver(tf.train.Saver):
         self._restore = restore
         self._restored = False
 
-        if self.dosave:
-            self.conn = pymongo.MongoClient(host=host, port=port)
-            self.database = self.conn[dbname]
-            self.collfs = gridfs.GridFS(self.database, collname)
-            self.coll = self.collfs._GridFS__files
-            recent_name = '_'.join([dbname, collname, exp_id, '__RECENT'])
-            self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
-            self.coll_recent = self.collfs_recent._GridFS__files
+
+        self.conn = pymongo.MongoClient(host=host, port=port)
+        self.database = self.conn[dbname]
+        self.collfs = gridfs.GridFS(self.database, collname)
+        self.coll = self.collfs._GridFS__files
+        recent_name = '_'.join([dbname, collname, exp_id, '__RECENT'])
+        self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
+        self.coll_recent = self.collfs_recent._GridFS__files
 
         if tensorboard_dir is not None:  # save graph to tensorboard
             tf.train.SummaryWriter(tensorboard_dir, tf.get_default_graph())
@@ -345,7 +345,7 @@ def run(sess,
 
     start_time_step = time.time()  # start timer
     step = global_step.eval(session=sess)
-    if step == 0 and saver.save_initial and not saver._restored:
+    if step == 0 and saver.dosave and saver.save_initial and not saver._restored:
         log.info('Saving initial ...')
         pass_targets = {k:v for k,v in train_targets.items() if k != 'optimizer'}
         train_results = sess.run(pass_targets)
