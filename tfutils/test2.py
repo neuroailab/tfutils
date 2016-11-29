@@ -29,10 +29,8 @@ def main():
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
-                              'exp_id': 'tfutils-test-7',
-                              'save_valid_freq': 20,
-                              'save_filters_freq': 100,
-                              'cache_filters_freq': 80}
+                              'exp_id': 'tfutils-test-7-nosave',
+                              'save': False}
     params['num_steps'] = 230
 
     return base.run_base(**params)
