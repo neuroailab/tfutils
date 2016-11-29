@@ -29,7 +29,7 @@ class ConvNet(object):
     def graph(self):
         return tf.get_default_graph().as_graph_def()
 
-    def initializer(self, kind='xavier', stddev=.1):
+    def initializer(self, kind='xavier', stddev=.01):
         if kind == 'xavier':
             init = tf.contrib.layers.initializers.xavier_initializer(seed=self.seed)
         elif kind == 'trunc_norm':
@@ -39,6 +39,7 @@ class ConvNet(object):
                              'method: xavier or trunc_norm')
         return init
 
+    @tf.contrib.framework.add_arg_scope
     def conv(self,
              out_shape,
              ksize=3,
@@ -190,41 +191,44 @@ class ConvNet(object):
         return self.output
 
 
-def alexnet(inputs, **kwargs):
+def alexnet(inputs, train=True, **kwargs):
     m = ConvNet(**kwargs)
+    reuse = None if train else True
 
-    with tf.variable_scope('conv1'):
-        m.conv(64, 11, 4, stddev=.01, bias=0, activation='relu', in_layer=inputs)
-        m.norm(depth_radius=4, bias=1, alpha=.001 / 9.0, beta=.75)
-        m.pool(3, 2)
+    with tf.contrib.framework.arg_scope([m.conv], init='xavier',
+                                        stddev=.01, bias=.1, activation='relu'):
+        with tf.variable_scope('conv1', reuse=reuse):
+            m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
+            # m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.pool(3, 2)
 
-    with tf.variable_scope('conv2'):
-        m.conv(192, 5, 1, stddev=.01, bias=1, activation='relu')
-        m.norm(depth_radius=4, bias=1, alpha=.001 / 9.0, beta=.75)
-        m.pool(3, 2)
+        with tf.variable_scope('conv2', reuse=reuse):
+            m.conv(256, 5, 1)
+            # m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.pool(3, 2)
 
-    with tf.variable_scope('conv3'):
-        m.conv(384, 3, 1, stddev=.01, bias=0, activation='relu')
+        with tf.variable_scope('conv3', reuse=reuse):
+            m.conv(384, 3, 1)
 
-    with tf.variable_scope('conv4'):
-        m.conv(256, 3, 1, stddev=.01, bias=1, activation='relu')
+        with tf.variable_scope('conv4', reuse=reuse):
+            m.conv(256, 3, 1)
 
-    with tf.variable_scope('conv5'):
-        m.conv(256, 3, 1, stddev=.01, bias=1, activation='relu')
-        m.pool(3, 2)
+        with tf.variable_scope('conv5', reuse=reuse):
+            m.conv(256, 3, 1)
+            m.pool(3, 2)
 
-    with tf.variable_scope('fc6'):
-        m.fc(4096, stddev=.01, bias=1, activation='relu', dropout=.5)
+        with tf.variable_scope('fc6', reuse=reuse):
+            m.fc(4096, init='trunc_norm', dropout=.5)
 
-    with tf.variable_scope('fc7'):
-        m.fc(4096, stddev=.01, bias=1, activation='relu', dropout=.5)
+        with tf.variable_scope('fc7', reuse=reuse):
+            m.fc(4096, init='trunc_norm', dropout=.5)
 
-    with tf.variable_scope('fc8'):
-        m.fc(1000, stddev=.01, bias=0, activation=None, dropout=None)
+        with tf.variable_scope('fc8', reuse=reuse):
+            m.fc(1000, init='trunc_norm', activation=None, dropout=None)
 
     return m
 
 
-def alexnet_tfutils(inputs, **kwargs):
-    m = alexnet(inputs['data'], **kwargs)
+def alexnet_tfutils(inputs, train=True, **kwargs):
+    m = alexnet(inputs['images'], train=train, **kwargs)
     return m.output, m.params
