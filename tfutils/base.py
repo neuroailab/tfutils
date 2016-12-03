@@ -41,15 +41,16 @@ def default_optimizer_params():
 class Saver(tf.train.Saver):
 
     def __init__(self,
-                 sess,
-                 global_step,
+                 sess, 
                  params,
                  host,
                  port,
                  dbname,
                  collname,
                  exp_id,
+                 global_step=None,
                  restore=True,
+                 load=True,
                  save=True,
                  save_initial=True,
                  save_metrics_freq=5,
@@ -59,6 +60,8 @@ class Saver(tf.train.Saver):
                  cache_dir=None,
                  tensorboard_dir=None,
                  force_fetch=False,
+                 load_data=None,
+                 save_to_gfs=None,
                  *args, **kwargs):
         """
         :Args:
@@ -121,18 +124,42 @@ class Saver(tf.train.Saver):
         self.save_initial = save_initial
         self._restore = restore
         self._restored = False
+        self.save_to_gfs = save_to_gfs
 
-
+        self.host = host
+        self.port = port
+        self.dbname = dbname
+        self.collname = collname
         self.conn = pymongo.MongoClient(host=host, port=port)
-        self.database = self.conn[dbname]
-        self.collfs = gridfs.GridFS(self.database, collname)
-        self.coll = self.collfs._GridFS__files
-        recent_name = '_'.join([dbname, collname, exp_id, '__RECENT'])
+        self.collfs = gridfs.GridFS(self.conn[self.dbname],
+                                    self.collname)
+        recent_name = '_'.join([self.dbname, self.collname, exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
-        self.coll_recent = self.collfs_recent._GridFS__files
-
-        if tensorboard_dir is not None:  # save graph to tensorboard
-            tf.train.SummaryWriter(tensorboard_dir, tf.get_default_graph())
+        
+        self.load_data = load_data
+        if load_data is not None:
+            self.load_host = load_data.get('host') or self.host
+            self.load_port = load_data.get('port') or self.port
+            self.load_collname = load_data.get('collname') or self.collname
+            self.load_exp_id = load_data.get('exp_id') or self.exp_id
+            if self.params.get('train_params'):
+               assert not (self.load_host == self.host and self.load_port == self.port and self.load_collname == self.collname and self.load_exp_id == self.exp_id),  "Loading destructively & pointlessly"
+            load_query = load_data.get('query')
+            if load_query is not None:
+                load_query = {}
+            load_query.update({'exp_id': self.load_exp_id})
+            self.load_query = load_query       
+            if self.load_host != self.host or self.port != self.load_port:
+                self.load_conn = pymongo.MongoClient(host=self.load_host, port=self.load_port)
+            else:
+                self.load_conn = self.conn
+            self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname], 
+                                             self.load_collname)
+            load_recent_name = '_'.join([self.load_dbname,
+                                         self.load_collname,
+                                         self.load_exp_id,
+                                         '__RECENT'])
+            self.load_collfs_recent = gridfs.GridFS(self.conn[load_recent_name])
 
         if cache_dir is None:
             self.cache_dir = os.path.join(os.environ['HOME'],
@@ -146,6 +173,7 @@ class Saver(tf.train.Saver):
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
 
+        self.load_rec = None
         self.load_model(force_fetch=force_fetch)
 
         self.start_time_step = time.time()  # start timer
@@ -156,11 +184,20 @@ class Saver(tf.train.Saver):
         """
         # fetch record from database and get the filename info from record
         if self._restore:
-            load = self.load_from_db({'exp_id': self.exp_id,
-                                      'saved_filters': True},
+            load = self.load_from_db({'exp_id': self.exp_id},
                                      cache_model=True,
                                      force_fetch=force_fetch)
+            if (not load) and self.load_data:
+                load = self.load_from_db(self.load_query,
+                                         cache_model=True,
+                                         force_fetch=force_fetch,
+                                         collfs=self.load_collfs,
+                                         collfs_recent=self.load_collfs_recent)
+                if load is None:
+                    raise Exeption('You specified load_data but no record was found with the given spec.')
+                    
             if load is not None:
+                self.load_rec = load
                 rec, cache_filename = load
                 # tensorflow restore
                 self.restore(self.sess, cache_filename)
@@ -172,8 +209,13 @@ class Saver(tf.train.Saver):
             init = tf.initialize_all_variables()
             self.sess.run(init)
             log.info('Model variables initialized from scratch.')
-
-    def load_from_db(self, query, cache_model=False, force_fetch=False):
+            
+    def load_from_db(self, 
+                     query,
+                     cache_model=False,
+                     force_fetch=False,
+                     collfs=None,
+                     collfs_recent=None):
         """
         Loads checkpoint from the database
 
@@ -184,26 +226,34 @@ class Saver(tf.train.Saver):
         Args:
             query: dict expressing MongoDB query
         """
+        if collfs is None:
+            collfs = self.collfs
+        coll = collfs._GridFS__files
+        if collfs_recent is None:
+            collfs_recent = self.collfs_recent
+        coll_recent = self.collfs_recent._GridFS__files
+        
         query['saved_filters'] = True
-        count = self.collfs.find(query).count()
+        count = collfs.find(query).count()
         if count > 0:  # get latest that matches query
-            ckpt_record = self.coll.find(query,
+            ckpt_record = coll.find(query,
                                          sort=[('uploadDate', -1)])[0]
-            loading_from = self.coll
+            loading_from = coll
 
-        count_recent = self.collfs_recent.find(query).count()
+        count_recent = collfs_recent.find(query).count()
         if count_recent > 0:  # get latest that matches query
-            ckpt_record_recent = self.coll_recent.find(query,
-                                                       sort=[('uploadDate', -1)])[0]
+            ckpt_record_recent = coll_recent.find(query,
+                                                 sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
             if ckpt_record is None or ckpt_record_recent['uploadDate'] > ckpt_record['uploadDate']:
-                loading_from = self.coll_recent
+                loading_from = coll_recent
                 ckpt_record = ckpt_record_recent
 
         if count + count_recent == 0:  # no matches for query
             log.warning('No matching checkpoint for query "{}"'.format(repr(query)))
             return
 
+        database = loading_from._Collection__database
         log.info('Loading checkpoint from %s' % loading_from.full_name)
 
         if cache_model:
@@ -217,8 +267,8 @@ class Saver(tf.train.Saver):
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
                 load_dest = open(cache_filename, 'rwb+')
-                fsbucket = gridfs.GridFSBucket(self.database,
-                                               bucket_name=loading_from.name.split('.')[0])
+                fsbucket = gridfs.GridFSBucket(database,
+                                        bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
         else:
             cache_filename = None
@@ -232,40 +282,48 @@ class Saver(tf.train.Saver):
         duration = 1000 * elapsed_time_step
         just_saved = False  # for saving filters
 
-        step = self.global_step.eval(session=self.sess)
-
-        # TODO: also include error rate of the train set to monitor overfitting
-        # DY: I don't understand this TODO -- isn't this already here?
-        message = 'Step {} ({:.0f} ms) -- '.format(step, duration)
-        msg2 = ['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer']
-        message += ', '.join(msg2)
-        log.info(message)
-
-        save_filters_permanent = step % self.save_filters_freq == 0
-        save_filters_tmp = step % self.cache_filters_freq == 0
-        save_metrics_now = step % self.save_metrics_freq == 0
-        save_valid_now = step % self.save_valid_freq == 0
-        need_to_save = self.dosave and (save_filters_permanent or
-                        save_filters_tmp or save_metrics_now or save_valid_now)
-
         rec = {'exp_id': self.exp_id,
                'params': self.SONified_params,
                'saved_filters': False,
-               'step': step,
                'duration': duration}
-        if 'optimizer' in train_res:
-            del train_res['optimizer']
-        rec['train_results'] = train_res
+               
+        if train_res:
+            step = self.global_step.eval(session=self.sess)
+            rec['step'] = step
+            # TODO: also include error rate of the train set to monitor overfitting
+            # DY: I don't understand this TODO -- isn't this already here?
+            message = 'Step {} ({:.0f} ms) -- '.format(step, duration)
+            msg2 = ['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer']
+            message += ', '.join(msg2)
+            log.info(message)
+
+            save_filters_permanent = step % self.save_filters_freq == 0
+            save_filters_tmp = step % self.cache_filters_freq == 0
+            save_metrics_now = step % self.save_metrics_freq == 0
+            save_valid_now = step % self.save_valid_freq == 0
+            need_to_save = self.dosave and (save_filters_permanent or
+                            save_filters_tmp or save_metrics_now or save_valid_now)
+
+            if 'optimizer' in train_res:
+                del train_res['optimizer']
+            rec['train_results'] = train_res
+        else:
+            save_filters_permanent = save_filters_tmp = False
+            need_to_save = True
+            rec['validation_only'] = True
 
         # print validation set performance
         if valid_res:
             rec['validation_results'] = valid_res
-            message = 'Step {} validation -- '.format(step)
+            message = 'Validation -- '
             message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items())
             log.info(message)
 
         if need_to_save:
             save_rec = SONify(rec)
+            save_to_gfs = {}
+            for _k in self.save_to_gfs:
+                save_to_gfs[_k] = save_rec.pop(_k)
             make_mongo_safe(save_rec)
 
             # save filters to db
@@ -281,13 +339,18 @@ class Saver(tf.train.Saver):
                 putfs = self.collfs if save_filters_permanent else self.collfs_recent
                 log.info('Putting filters into %s database' % repr(putfs))
                 with open(saved_path, 'rb') as _fp:
-                    putfs.put(_fp, filename=saved_path, **save_rec)
+                    outrec = putfs.put(_fp, filename=saved_path, **save_rec)
                 log.info('... done putting filters into database.')
 
             if not save_filters_permanent:
                 save_rec['saved_filters'] = False
                 log.info('Inserting record into database.')
-                self.collfs._GridFS__files.insert(save_rec)
+                outrec = self.collfs._GridFS__files.insert_one(save_rec)
+                
+            if save_to_gfs:
+                idval = str(outrec['_id'])
+                save_to_gfs_path = idval + "_fileitems"
+                self.collfs.put(json.dumps(save_to_gfs), filename=save_to_gfs_path)
 
         sys.stdout.flush()  # flush the stdout buffer
         self.start_time_step = time.time()
@@ -302,13 +365,77 @@ def predict(step, results):
     preds = [tf.argmax(output, 1) for output in outputs]
 
     return preds
+    
+
+def get_valid_results(sess, valid_targets):
+    valid_results = {}
+    for targname in valid_targets:
+        num_steps = valid_targets[targname]['num_steps']
+        targ = valid_targets[targname]['targets']
+        aggfunc = valid_targets['aggfunc']
+        ress = []
+        for _step in range(num_steps):
+            res = sess.run(targ)
+            ress.append(res)
+        if aggfunc:
+            valid_results[targname] = aggfunc(ress)
+        else:
+            valid_results[targname] = ress
+    return valid_results
+    
+
+def start_queues(sess, queues):
+    tf.train.start_queue_runners(sess=sess)
+    # start our custom queue runner's threads
+    if not hasattr(queues, '__iter__'):
+        queues = [queues]
+    for queue in queues:
+        queue.start_threads(sess)   
 
 
-def test(step, results):
-    raise NotImplementedError
+def test(sess,
+        queues,
+        saver,
+        num_steps,
+        valid_targets=None):
+    start_queues(sess, queues)
+    valid_results = get_valid_results(sess, valid_targets)
+    saver.save({}, valid_results)
+    sess.close()
+    return valid_results
 
 
-def run(sess,
+def test_base(saver_params,
+              model_params,
+              validation_params=None,
+              log_device_placement=False):
+ 
+    with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
+    
+        # create session
+        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
+                                        log_device_placement=log_device_placement))
+
+        saver_params['restore'] = True
+        params = {'saver_params': saver_params,
+                  'model_params': model_params,
+                  'validation_params': validation_params,
+                  'log_device_placement': log_device_placement}
+        for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
+            assert sk in saver_params, (sk, saver_params)
+        saver = Saver(sess=sess, params=params, **saver_params)
+
+        valid_targets_dict, queues = get_valid_targets_dict(validation_params,
+                            model_func, model_kwargs, train_queue_params, cfg_final)
+
+        return test(sess,
+                    queues,
+                    saver,
+                    valid_targets=valid_targets_dict,
+                    thres_loss=thres_loss)
+
+
+def train(sess,
         queues,
         saver,
         train_targets,
@@ -336,12 +463,7 @@ def run(sess,
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
     """
-    tf.train.start_queue_runners(sess=sess)
-    # start our custom queue runner's threads
-    if not hasattr(queues, '__iter__'):
-        queues = [queues]
-    for queue in queues:
-        queue.start_threads(sess)
+    start_queues(sess, queues)
 
     start_time_step = time.time()  # start timer
     step = global_step.eval(session=sess)
@@ -364,14 +486,14 @@ def run(sess,
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
         if step % saver.save_valid_freq == 0 and valid_targets:
-            valid_results = sess.run(valid_targets)
+            valid_results = get_valid_results(sess, valid_targets)
         else:
             valid_results = {}
         saver.save(train_results, valid_results)
     sess.close()
 
 
-def run_base(saver_params,
+def train_base(saver_params,
              model_params,
              train_params,
              loss_params=None,
@@ -413,7 +535,7 @@ def run_base(saver_params,
                     - train_params['targets']['func'] is a function that produces
                       tensorflow nodes as training targets
                     - remainder of train_parms['targets'] are arguments to func
-				- train_params['queue_params'] is an optional dict of 
+                - train_params['queue_params'] is an optional dict of 
                       params used to specify creation for the queue, passed to the 
                       CustomQueue.__init__ method.   Default is {}. 
     :Kwargs:
@@ -467,7 +589,7 @@ def run_base(saver_params,
                             <kwarg1>: <value1> for 'func',
                             ...
                             }
-						'queue_params': (optional, dict) params for creating queue for
+                        'queue_params': (optional, dict) params for creating queue for
                                 this validation. NB: if this is NOT specified, queue params 
                                 for this validation default to those used in constructing
                                 the training data queue.                             
@@ -499,12 +621,13 @@ def run_base(saver_params,
                                       initializer=tf.constant_initializer(0),
                                       dtype=tf.int64,
                                       trainable=False)
+                                                                                                    
         #  train_data_func returns dictionary of iterators, with one key per input to model
         train_data_kwargs = copy.deepcopy(train_params['data'])
         train_data_func = train_data_kwargs.pop('func')    
         train_inputs = train_data_func(**train_data_kwargs)
 
-    	train_queue_params = train_params.get('queue_params', {})
+        train_queue_params = train_params.get('queue_params', {})
         queue = CustomQueue(train_inputs.node, train_inputs, **train_queue_params)
         queues = [queue]
         train_inputs = queue.batch
@@ -550,39 +673,14 @@ def run_base(saver_params,
             ttarg = ttargs_func(train_inputs, train_outputs, **ttargs_kwargs)
             train_targets.update(ttarg)
 
-        valid_targets_dict = OrderedDict()
-        if validation_params is not None:
-            for vtarg in validation_params:
-                vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
-                vdata_func = vdata_kwargs.pop('func')
-                vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
-                vtargs_func = vtargs_kwargs.pop('func')
-                vinputs = vdata_func(**vdata_kwargs)
-                
-                vqueue_params = validation_params[vtarg].get('queue_params', None)
-                if vqueue_params is None:
-                	vqueue_params = train_queue_params
-                queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
-                queues.append(queue)
-                vinputs = queue.batch
-
-                new_model_kwargs = copy.deepcopy(model_kwargs)
-                new_model_kwargs['seed'] = None
-                new_model_kwargs['cfg_initial'] = cfg_final
-                voutputs, _cfg = model_func(inputs=vinputs,
-                                            train=False,
-                                            **new_model_kwargs)
-                assert cfg_final == _cfg, (cfg_final, _cfg)
-                vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
-                valid_targets_dict[vtarg] = vtargets
-
+        valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
+                            model_func, model_kwargs, train_queue_params, cfg_final)
+        queues.append(vqueues)
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                         log_device_placement=log_device_placement))
 
-        model_kwargs_final = copy.deepcopy(model_kwargs)
-        model_kwargs_final['cfg_final'] = cfg_final
-
+        model_params['cfg_final'] = cfg_final
         params = {'saver_params': saver_params,
                   'train_params': train_params,
                   'model_params': model_params,
@@ -596,14 +694,50 @@ def run_base(saver_params,
         for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
             assert sk in saver_params, (sk, saver_params)
         saver = Saver(sess=sess, global_step=global_step, params=params, **saver_params)
-        run(sess,
-            queues,
-            saver,
-            train_targets=train_targets,
-            global_step=global_step,
-            num_steps=num_steps,
-            valid_targets=valid_targets_dict,
-            thres_loss=thres_loss)
+        train(sess,
+              queues,
+              saver,
+              train_targets=train_targets,
+              global_step=global_step,
+              num_steps=num_steps,
+              valid_targets=valid_targets_dict,
+              thres_loss=thres_loss)
+
+
+def get_valid_targets_dict(validation_params, 
+                            model_func, model_kwargs,
+                            default_queue_params, cfg_final):
+    valid_targets_dict = OrderedDict()
+    queues = []
+    if validation_params is not None:
+        for vtarg in validation_params:
+            vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
+            vdata_func = vdata_kwargs.pop('func')
+            vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
+            vtargs_func = vtargs_kwargs.pop('func')
+            aggfunc = vtargs_kwargs.pop('aggfunc')
+            
+            vinputs = vdata_func(**vdata_kwargs)
+            num_steps = vtargs_kwargs.pop('num_steps', vinputs.total_batches)
+            vqueue_params = validation_params[vtarg].get('queue_params', None)
+            if vqueue_params is None:
+                vqueue_params = default_queue_params
+            queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
+            queues.append(queue)
+            vinputs = queue.batch
+            new_model_kwargs = copy.deepcopy(model_kwargs)
+            new_model_kwargs['seed'] = None
+            new_model_kwargs['cfg_initial'] = cfg_final
+            with tf.variable_scope('validation/%s' % vtarg, reuse=True):
+                voutputs, _cfg = model_func(inputs=vinputs,
+                                        train=False,
+                                        **new_model_kwargs)           
+            assert cfg_final == _cfg, (cfg_final, _cfg)
+            vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
+            valid_targets_dict[vtarg] = {'targets': vtargets,
+                                         'aggfunc': aggfunc,
+                                         'num_steps': num_steps}     
+    return valid_targets_dict, queues
 
 
 def get_params():
@@ -621,7 +755,7 @@ def get_params():
 
 def main():
     args = get_params()
-    run_base(**args)
+    train_base(**args)
 
 
 """
