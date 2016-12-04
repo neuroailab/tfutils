@@ -25,7 +25,7 @@ def main():
                                       'decay_steps': num_batches_per_epoch,
                                       'decay_rate': 0.95,
                                       'staircase': True}
-    params['saver_params'] = {'host': 'localhost',
+    params['db_params'] = {'host': 'localhost',
                               'port': 31001,
                               'dbname': 'tfutils-test',
                               'collname': 'test',
@@ -33,7 +33,7 @@ def main():
                               'save': False}
     params['num_steps'] = 230
 
-    return base.run_base(**params)
+    return base.train_base(**params)
 
 if __name__ == '__main__':
     main()
