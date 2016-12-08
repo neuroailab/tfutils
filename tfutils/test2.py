@@ -25,12 +25,12 @@ def main():
                                       'decay_steps': num_batches_per_epoch,
                                       'decay_rate': 0.95,
                                       'staircase': True}
-    params['db_params'] = {'host': 'localhost',
-                              'port': 31001,
-                              'dbname': 'tfutils-test',
-                              'collname': 'test',
-                              'exp_id': 'tfutils-test-7',
-                              'save': False}
+    params['save_params'] = {'host': 'localhost',
+                             'port': 31001,
+                             'dbname': 'tfutils-test',
+                             'collname': 'test',
+                             'exp_id': 'tfutils-test-7',
+                             'save': False}
     params['num_steps'] = 230
 
     return base.train_base(**params)

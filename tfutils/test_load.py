@@ -23,12 +23,12 @@ def main():
                                             'crop_size': 224},
                                             'num_steps': 10,
                                             'agg_func': np.mean}}
-    params['db_params'] = {'host': 'localhost',
-                           'port': 31001,
-                           'dbname': 'tfutils-test',
-                           'collname': 'test',
-                           'exp_id': 'tfutils-test-7-valid',
-                           'load_params': {'exp_id': 'tfutils-test-7'}}
+    params['load_params'] = {'host': 'localhost',
+                             'port': 31001,
+                             'dbname': 'tfutils-test',
+                             'collname': 'test',
+                             'exp_id': 'tfutils-test-7'}
+    params['save_params'] = {'exp_id': 'tfutils-test-7-valid'}
 
     return base.test_base(**params)
 

@@ -36,31 +36,31 @@ def default_optimizer_params():
     return {'func': ClipOptimizer,
             'optimizer_class': tf.train.MomentumOptimizer,
             'momentum': 0.9}
-    
+
+
+DEFAULT_SAVE_PARAMS = {'save_metrics_freq': 100,
+                       'save_valid_freq': 3000,
+                       'cache_filters_freq': 3000,
+                       'save_filters_freq': 30000,
+                       'save_initial': True,
+                       'save_to_gfs': (),
+                       'do_save': True}
+
+
+DEFAULT_LOAD_PARAMS = {'do_restore': True}
+
 
 class DBInterface(object):
 
     def __init__(self,
-                 params,
-                 host,
-                 port,
-                 dbname,
-                 collname,
-                 exp_id,
+                 params=None,
+                 save_params=None,
+                 load_params=None,
                  sess=None,
                  global_step=None,
-                 restore=True,
-                 save=True,
-                 save_initial=True,
-                 save_metrics_freq=5,
-                 save_valid_freq=3000,
-                 save_filters_freq=30000,
-                 cache_filters_freq=3000,
                  cache_dir=None,
-                 save_to_gfs=(),
-                 load_params=None,
-                 tfsaver_args=(),
-                 tfsaver_kwargs={}):
+                 *tfsaver_args,
+                 **tfsaver_kwargs):
         """
         :Args:
             - sess (tesorflow.Session)
@@ -104,86 +104,91 @@ class DBInterface(object):
 
         self.params = params
         self.SONified_params = SONify(self.params)
+        self.save_params = save_params
+        self.load_params = load_params
         self.sess = sess
         self.global_step = global_step
-        self.dosave = save
-        self.save_metrics_freq = save_metrics_freq
-        self.save_valid_freq = save_valid_freq
-        self.cache_filters_freq = cache_filters_freq
-        self.save_filters_freq = save_filters_freq
-        self.save_initial = save_initial
-        self._restore = restore
-        self.save_to_gfs = save_to_gfs
-
         self.tfsaver_args = tfsaver_args
         self.tfsaver_kwargs = tfsaver_kwargs
-
-        self.load_data = None
-
-        self.host = host
-        self.port = port
-        self.dbname = dbname
-        self.collname = collname
-        self.exp_id = exp_id
-        self.conn = pymongo.MongoClient(host=host, port=port)
-        self.collfs = gridfs.GridFS(self.conn[self.dbname],
-                                    self.collname)
-        recent_name = '_'.join([self.dbname, self.collname, exp_id, '__RECENT'])
-        self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
         
-        self.load_params = load_params
-        if load_params is not None:
-            self.load_host = load_params.get('host') or self.host
-            self.load_port = load_params.get('port') or self.port
-            self.load_dbname = load_params.get('dbname') or self.dbname
-            self.load_collname = load_params.get('collname') or self.collname
-            self.load_exp_id = load_params.get('exp_id') or self.exp_id
-            if self.params.get('train_params'):
-               assert not (self.load_host == self.host and
-                           self.load_port == self.port and
-                           self.load_collname == self.collname
-                           and self.load_exp_id == self.exp_id), "Loading destructively & pointlessly"
-            load_query = load_params.get('query')
-            if load_query is None:
-                load_query = {}
-            load_query.update({'exp_id': self.load_exp_id})
-            self.load_query = load_query       
-            if self.load_host != self.host or self.port != self.load_port:
-                self.load_conn = pymongo.MongoClient(host=self.load_host,
-                                                     port=self.load_port)
+        if save_params is None:
+            save_params = {}
+        if load_params is None:
+            load_params = {}
+        location_variables = ['host', 'port', 'dbname', 'collname', 'exp_id']
+        for _k in location_variables:
+            if _k in save_params:
+                sv = save_params[_k]
             else:
-                self.load_conn = self.conn
-            self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname], 
+                sv = load_params[_k]
+            if _k in load_params:
+                lv = load_params[_k]
+            else:
+                lv = save_params[_k]
+            setattr(self, _k, sv)
+            setattr(self, 'load_' + _k, lv)
+        self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables] )
+
+        for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
+                   'save_filters_freq', 'save_initial', 'save_to_gfs']:
+            setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
+
+        for _k in ['do_restore']:
+            setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
+
+        self.conn = pymongo.MongoClient(host=self.host, port=self.port)
+        self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
+        recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
+        self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
+
+        self.load_data = None     
+        load_query = load_params.get('query')
+        if load_query is None:
+            load_query = {}
+        else:
+            if self.sameloc:
+                raise Exception('Loading pointlessly')
+        load_query.update({'exp_id': self.load_exp_id})
+        self.load_query = load_query       
+        if self.load_host != self.host or self.port != self.load_port:
+            self.load_conn = pymongo.MongoClient(host=self.load_host,
+                                                     port=self.load_port)
+        else:
+            self.load_conn = self.conn
+        self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname], 
                                              self.load_collname)
-            load_recent_name = '_'.join([self.load_dbname,
-                                         self.load_collname,
-                                         self.load_exp_id,
-                                         '__RECENT'])
-            self.load_collfs_recent = gridfs.GridFS(self.load_conn[load_recent_name])
+        load_recent_name = '_'.join([self.load_dbname,
+                                     self.load_collname,
+                                     self.load_exp_id,
+                                     '__RECENT'])
+        self.load_collfs_recent = gridfs.GridFS(self.load_conn[load_recent_name])
 
         if cache_dir is None:
             self.cache_dir = os.path.join(os.environ['HOME'],
                                           '.tfutils',
-                                          '%s:%d' % (host, port),
-                                          dbname,
-                                          collname,
-                                          exp_id)
+                                          '%s:%d' % (self.host, self.port),
+                                          self.dbname,
+                                          self.collname,
+                                          self.exp_id)
         else:
             self.cache_dir = cache_dir
         if not os.path.isdir(self.cache_dir):
             os.makedirs(self.cache_dir)
         
-
     def load_rec(self):
+        #first try and see if anything with the save data exists, since obviously
+        #we dont' want to keep loading from the original load location if some work has
+        #already been done
         load = self.load_from_db({'exp_id': self.exp_id},
                                  cache_model=True)
-        if (not load) and self.load_params:
+        #if not, try loading from the loading location
+        if not load and not self.sameloc:
             load = self.load_from_db(self.load_query,
                                      cache_model=True,
                                      collfs=self.load_collfs,
                                      collfs_recent=self.load_collfs_recent)
             if load is None:
-                raise Exeption('You specified load_params but no record was found with the given spec.')
+                raise Exeption('You specified load parameters but no record was found with the given spec.')
         self.load_data = load
 
     def initialize(self):
@@ -192,7 +197,7 @@ class DBInterface(object):
         """
         # fetch record from database and get the filename info from record
         tf_saver = self.tf_saver
-        if self._restore:
+        if self.do_restore:
             if self.load_data is None:   
                 self.load_rec()
             if self.load_data is not None:
@@ -201,7 +206,7 @@ class DBInterface(object):
                 tf_saver.restore(self.sess, cache_filename)
                 log.info('Model variables restored from record %s (step %d).'
                          % (str(rec['_id']), rec['step']))
-        if not self._restore or self.load_data is None:
+        if not self.do_restore or self.load_data is None:
             init = tf.initialize_all_variables()
             self.sess.run(init)
             log.info('Model variables initialized from scratch.')
@@ -304,7 +309,7 @@ class DBInterface(object):
             save_filters_tmp = step % self.cache_filters_freq == 0
             save_metrics_now = step % self.save_metrics_freq == 0
             save_valid_now = step % self.save_valid_freq == 0
-            need_to_save = self.dosave and (save_filters_permanent or
+            need_to_save = self.do_save and (save_filters_permanent or
                             save_filters_tmp or save_metrics_now or save_valid_now)
 
             if 'optimizer' in train_res:
@@ -408,10 +413,11 @@ def test(sess,
     return valid_results
 
 
-def test_base(db_params,
+def test_base(load_params,
               model_params,
               validation_params=None,
-              log_device_placement=False):
+              log_device_placement=False,
+              save_params=None):
  
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
     
@@ -421,20 +427,23 @@ def test_base(db_params,
 
         model_kwargs = copy.deepcopy(model_params)
         model_func = model_kwargs.pop('func')
-        db_params['restore'] = True
-        dbinterface = DBInterface(params={}, **db_params)
+        dbinterface = DBInterface(load_params=load_params)
         dbinterface.load_rec()
         cfg_final = dbinterface.load_data[0]['params']['model_params']['cfg_final']
-        train_queue_params = dbinterface.load_data[0]['params']['train_params'].get('queue_params', {})
+        train_queue_params = dbinterface.load_data[0]['params']['train_params'].get('queue_params',
+                                                                                    {})
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
                                                             model_func, model_kwargs,
                                                             train_queue_params, cfg_final)
         model_params['cfg_final'] = cfg_final
-        params = {'db_params': db_params,
+        load_params['do_restore'] = True
+        params = {'load_params': load_params,
+                  'sav_params': save_params,
                   'model_params': model_params,
                   'validation_params': validation_params,
                   'log_device_placement': log_device_placement}
-        dbinterface = DBInterface(sess=sess, params=params, **db_params)
+        dbinterface = DBInterface(sess=sess, params=params, 
+                                  load_params=load_params, save_params=save_params)
         dbinterface.initialize()
         return test(sess,
                     queues,
@@ -473,7 +482,7 @@ def train(sess,
     
     start_queues(sess, queues)
     step = global_step.eval(session=sess)
-    if step == 0 and dbinterface.dosave and dbinterface.save_initial and not dbinterface.load_data:
+    if step == 0 and dbinterface.do_save and dbinterface.save_initial and not dbinterface.load_data:
         log.info('Saving initial ...')
         pass_targets = {k:v for k,v in train_targets.items() if k != 'optimizer'}
         dbinterface.start_time_step = time.time()
@@ -501,16 +510,17 @@ def train(sess,
     sess.close()
 
 
-def train_base(db_params,
-             model_params,
-             train_params,
-             loss_params=None,
-             learning_rate_params=None,
-             optimizer_params=None,
-             validation_params=None,
-             thres_loss=100,
-             num_steps=1000000,
-             log_device_placement=False,
+def train_base(save_params,
+               model_params,
+               train_params,
+               loss_params=None,
+               learning_rate_params=None,
+               optimizer_params=None,
+               validation_params=None,
+               thres_loss=100,
+               num_steps=1000000,
+               log_device_placement=False,
+               load_params=None
              ):
     """
     Main interface function.
@@ -698,7 +708,8 @@ def train_base(db_params,
                                         log_device_placement=log_device_placement))
 
         model_params['cfg_final'] = cfg_final
-        params = {'db_params': db_params,
+        params = {'save_params': save_params,
+                  'load_params': load_params,
                   'train_params': train_params,
                   'model_params': model_params,
                   'loss_params': loss_params,
@@ -708,9 +719,8 @@ def train_base(db_params,
                   'thres_loss': thres_loss,
                   'num_steps': num_steps,
                   'log_device_placement': log_device_placement}
-        for sk in ['host', 'port', 'dbname', 'collname', 'exp_id']:
-            assert sk in db_params, (sk, db_params)
-        dbinterface = DBInterface(sess=sess, global_step=global_step, params=params, **db_params)
+        dbinterface = DBInterface(sess=sess, global_step=global_step, params=params,
+                                  save_params=save_params, load_params=load_params)
         dbinterface.initialize()
         train(sess,
               queues,
