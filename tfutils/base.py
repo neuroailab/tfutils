@@ -325,7 +325,7 @@ class DBInterface(object):
         if valid_res:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
-            message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items())
+            message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items() if not k in self.save_to_gfs)
             log.info(message)
 
         if need_to_save:
