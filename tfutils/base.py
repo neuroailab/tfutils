@@ -7,7 +7,7 @@ import pymongo
 import gridfs
 import tensorflow as tf
 
-from tfutils.error import HiLossError
+from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import CustomQueue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
@@ -180,11 +180,11 @@ class DBInterface(object):
         #we dont' want to keep loading from the original load location if some work has
         #already been done
         load = self.load_from_db({'exp_id': self.exp_id},
-                                 cache_model=True)
+                                 cache_filters=True)
         #if not, try loading from the loading location
         if not load and not self.sameloc:
             load = self.load_from_db(self.load_query,
-                                     cache_model=True,
+                                     cache_filters=True,
                                      collfs=self.load_collfs,
                                      collfs_recent=self.load_collfs_recent)
             if load is None:
@@ -196,14 +196,13 @@ class DBInterface(object):
         Fetches record then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
-        tf_saver = self.tf_saver
         if self.do_restore:
             if self.load_data is None:   
                 self.load_rec()
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
                 # tensorflow restore
-                tf_saver.restore(self.sess, cache_filename)
+                self.tf_saver.restore(self.sess, cache_filename)
                 log.info('Model variables restored from record %s (step %d).'
                          % (str(rec['_id']), rec['step']))
         if not self.do_restore or self.load_data is None:
@@ -220,7 +219,7 @@ class DBInterface(object):
 
     def load_from_db(self, 
                      query,
-                     cache_model=False,
+                     cache_filters=False,
                      collfs=None,
                      collfs_recent=None):
         """
@@ -264,7 +263,7 @@ class DBInterface(object):
         database = loading_from._Collection__database
         log.info('Loading checkpoint from %s' % loading_from.full_name)
 
-        if cache_model:
+        if cache_filters:
             # should be of form *-1000 (step)
             filename = os.path.basename(ckpt_record['filename'])
             cache_filename = os.path.join(self.cache_dir, filename)
@@ -296,6 +295,9 @@ class DBInterface(object):
                'duration': duration}
                
         if train_res:
+        	if not hasattr(self.global_step, 'eval'):
+        		raise NoGlobalStepError('When training, you must pass global_step 
+        		                        ' tensorflow operation to the saver.')
             step = self.global_step.eval(session=self.sess)
             rec['step'] = step
             # TODO: also include error rate of the train set to monitor overfitting
@@ -413,7 +415,7 @@ def test(sess,
     return valid_results
 
 
-def test_base(load_params,
+def test_from_params(load_params,
               model_params,
               validation_params=None,
               log_device_placement=False,
@@ -499,7 +501,9 @@ def train(sess,
         dbinterface.start_time_step = time.time()
         train_results = sess.run(train_targets)
         step = global_step.eval(session=sess)
-        assert (step > old_step), (step, old_step)
+        if (step <= old_step):
+        	raise NoChangeError('Your optimizer should have incremented the global step,'
+        	                    ' but did not: old_step=%d, new_step=%d' % (old_step, step))
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
         if step % dbinterface.save_valid_freq == 0 and valid_targets:
@@ -510,7 +514,7 @@ def train(sess,
     sess.close()
 
 
-def train_base(save_params,
+def train_from_params(save_params,
                model_params,
                train_params,
                loss_params=None,
@@ -657,7 +661,7 @@ def train_base(save_params,
             model_kwargs['cfg_initial'] = None
         if 'seed' not in model_kwargs:
             model_kwargs['seed'] = 0
-            train_outputs, cfg_final = model_func(inputs=train_inputs,
+        train_outputs, cfg_final = model_func(inputs=train_inputs,
                                               train=True,
                                               **model_kwargs)
 
@@ -739,41 +743,41 @@ def get_valid_targets_dict(validation_params,
     """NB: this function may modify validation_params"""
     valid_targets_dict = OrderedDict()
     queues = []
-    if validation_params is not None:
-        for vtarg in validation_params:
-            vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
-            vdata_func = vdata_kwargs.pop('func')
-            if 'targets' not in validation_params[vtarg]:
-                validation_params[vtarg]['targets'] = default_loss_params()
-            if 'func' not in validation_params[vtarg]['targets']:
-                validation_params[vtarg]['targets']['func'] = utils.get_loss
-            vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
-            vtargs_func = vtargs_kwargs.pop('func')
-            if 'agg_func' not in validation_params[vtarg]:
-                validation_params[vtarg]['agg_func'] = None
-            agg_func = validation_params[vtarg]['agg_func']
-            vinputs = vdata_func(**vdata_kwargs)
-            if 'num_steps' not in validation_params[vtarg]:
-                validation_params[vtarg]['num_steps'] = vinputs.total_batches
-            num_steps = validation_params[vtarg]['num_steps']
-            if 'queue_params' not in validation_params[vtarg] and default_queue_params:
-                validation_params[vtarg]['queue_params'] = default_queue_params
-            vqueue_params = validation_params[vtarg].get('queue_params', {})
-            queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
-            queues.append(queue)
-            vinputs = queue.batch
-            new_model_kwargs = copy.deepcopy(model_kwargs)
-            new_model_kwargs['seed'] = None
-            new_model_kwargs['cfg_initial'] = cfg_final
-            with tf.name_scope('validation/%s' % vtarg):
-                voutputs, _cfg = model_func(inputs=vinputs,
-                                        train=False,
-                                        **new_model_kwargs)           
-                tf.get_variable_scope().reuse_variables()
-                vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
-                valid_targets_dict[vtarg] = {'targets': vtargets,
-                                             'agg_func': agg_func,
-                                             'num_steps': num_steps}     
+
+	for vtarg in validation_params:
+		vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
+		vdata_func = vdata_kwargs.pop('func')
+		if 'targets' not in validation_params[vtarg]:
+			validation_params[vtarg]['targets'] = default_loss_params()
+		if 'func' not in validation_params[vtarg]['targets']:
+			validation_params[vtarg]['targets']['func'] = utils.get_loss
+		vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
+		vtargs_func = vtargs_kwargs.pop('func')
+		if 'agg_func' not in validation_params[vtarg]:
+			validation_params[vtarg]['agg_func'] = None
+		agg_func = validation_params[vtarg]['agg_func']
+		vinputs = vdata_func(**vdata_kwargs)
+		if 'num_steps' not in validation_params[vtarg]:
+			validation_params[vtarg]['num_steps'] = vinputs.total_batches
+		num_steps = validation_params[vtarg]['num_steps']
+		if 'queue_params' not in validation_params[vtarg] and default_queue_params:
+			validation_params[vtarg]['queue_params'] = default_queue_params
+		vqueue_params = validation_params[vtarg].get('queue_params', {})
+		queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
+		queues.append(queue)
+		vinputs = queue.batch
+		new_model_kwargs = copy.deepcopy(model_kwargs)
+		new_model_kwargs['seed'] = None
+		new_model_kwargs['cfg_initial'] = cfg_final
+		with tf.name_scope('validation/%s' % vtarg):
+			voutputs, _cfg = model_func(inputs=vinputs,
+									train=False,
+									**new_model_kwargs)           
+			tf.get_variable_scope().reuse_variables()
+			vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
+			valid_targets_dict[vtarg] = {'targets': vtargets,
+										 'agg_func': agg_func,
+										 'num_steps': num_steps}     
 
     return valid_targets_dict, queues
 
@@ -793,7 +797,7 @@ def get_params():
 
 def main():
     args = get_params()
-    train_base(**args)
+    train_from_params(**args)
 
 
 """
