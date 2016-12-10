@@ -33,7 +33,7 @@ def main():
                              'save': False}
     params['num_steps'] = 230
 
-    return base.train_base(**params)
+    return base.train_from_params(**params)
 
 if __name__ == '__main__':
     main()

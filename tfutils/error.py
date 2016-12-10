@@ -8,3 +8,7 @@ class NoChangeError(Exception):
 
 class RepoIsDirtyError(Exception):
   pass
+
+
+class NoGlobalStepError(Exception):
+  pass

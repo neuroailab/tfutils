@@ -435,11 +435,14 @@ def test_from_params(load_params,
         dbinterface = DBInterface(load_params=load_params)
         dbinterface.load_rec()
         cfg_final = dbinterface.load_data[0]['params']['model_params']['cfg_final']
+        original_seed = dbinterface.load_data[0]['params']['model_params']['seed']
         train_queue_params = dbinterface.load_data[0]['params']['train_params'].get('queue_params',
                                                                                     {})
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
                                                             model_func, model_kwargs,
-                                                            train_queue_params, cfg_final)
+                                                            train_queue_params,
+                                                            cfg_final,
+                                                            original_seed)
         model_params['cfg_final'] = cfg_final
         load_params['do_restore'] = True
         params = {'load_params': load_params,
@@ -704,11 +707,15 @@ def train_from_params(save_params,
             ttarg = ttargs_func(train_inputs, train_outputs, **ttargs_kwargs)
             train_targets.update(ttarg)
 
+        if validation_params is None:
+            validation_params = {}
         scope = tf.get_variable_scope()
         scope.reuse_variables()
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
                                                              model_func, model_kwargs,
-                                                             train_queue_params, cfg_final)
+                                                             train_queue_params,
+                                                             cfg_final,
+                                                             model_kwargs['seed'])
         queues.extend(vqueues)
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
@@ -742,15 +749,15 @@ def train_from_params(save_params,
 def get_valid_targets_dict(validation_params, 
                            model_func, model_kwargs,
                            default_queue_params,
-                           cfg_final):
+                           cfg_final,
+                           original_seed):
     """NB: this function may modify validation_params"""
     valid_targets_dict = OrderedDict()
     queues = []
-
     for vtarg in validation_params:
         if 'targets' not in validation_params[vtarg]:
             validation_params[vtarg]['targets'] = default_loss_params()
-        if 'func' not in validation_params[vtarg]['targets']:
+        if 'func' not in validatfion_params[vtarg]['targets']:
             validation_params[vtarg]['targets']['func'] = utils.get_loss            
         if 'agg_func' not in validation_params[vtarg]:
             validation_params[vtarg]['agg_func'] = None
@@ -771,7 +778,7 @@ def get_valid_targets_dict(validation_params,
         queues.append(queue)
         vinputs = queue.batch
         new_model_kwargs = copy.deepcopy(model_kwargs)
-        new_model_kwargs['seed'] = None
+        new_model_kwargs['seed'] = original_seed
         new_model_kwargs['cfg_initial'] = cfg_final
         with tf.name_scope('validation/%s' % vtarg):
             voutputs, _cfg = model_func(inputs=vinputs,

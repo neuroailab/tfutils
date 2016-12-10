@@ -35,7 +35,7 @@ def main():
                            'cache_filters_freq': 80}
     params['num_steps'] = 230
 
-    return base.train_base(**params)
+    return base.train_from_params(**params)
 
 if __name__ == '__main__':
     main()

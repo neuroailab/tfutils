@@ -43,7 +43,7 @@ def main():
                              'exp_id': 'tfutils-test-7'}
     params['save_params'] = {'exp_id': 'tfutils-test-7-feats'}
 
-    return base.test_base(**params)
+    return base.test_from_params(**params)
 
 if __name__ == '__main__':
     main()
