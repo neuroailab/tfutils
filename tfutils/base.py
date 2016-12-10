@@ -203,9 +203,10 @@ class DBInterface(object):
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
                 # tensorflow restore
-                tf_saver.restore(self.sess, cache_filename)
-                log.info('Model variables restored from record %s (step %d).'
+                log.info('Restoring variables from record %s (step %d)...'
                          % (str(rec['_id']), rec['step']))
+                tf_saver.restore(self.sess, cache_filename)
+                log.info('... done restoring.')
         if not self.do_restore or self.load_data is None:
             init = tf.initialize_all_variables()
             self.sess.run(init)
@@ -271,6 +272,7 @@ class DBInterface(object):
 
             # check if there is no local copy
             if not os.path.isfile(cache_filename):
+                log.info('No cache file at %s, loading from DB' % cache_filename)
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
@@ -278,6 +280,8 @@ class DBInterface(object):
                 fsbucket = gridfs.GridFSBucket(database,
                                         bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
+            else:
+                log.info('Cache file found at %s, using that to load' % cache_filename)
         else:
             cache_filename = None
         return ckpt_record, cache_filename
@@ -415,7 +419,7 @@ def test(sess,
 
 def test_base(load_params,
               model_params,
-              validation_params=None,
+              validation_params,
               log_device_placement=False,
               save_params=None):
  
@@ -741,23 +745,24 @@ def get_valid_targets_dict(validation_params,
     queues = []
     if validation_params is not None:
         for vtarg in validation_params:
-            vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
-            vdata_func = vdata_kwargs.pop('func')
             if 'targets' not in validation_params[vtarg]:
                 validation_params[vtarg]['targets'] = default_loss_params()
             if 'func' not in validation_params[vtarg]['targets']:
-                validation_params[vtarg]['targets']['func'] = utils.get_loss
-            vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
-            vtargs_func = vtargs_kwargs.pop('func')
+                validation_params[vtarg]['targets']['func'] = utils.get_loss            
             if 'agg_func' not in validation_params[vtarg]:
                 validation_params[vtarg]['agg_func'] = None
+            if 'queue_params' not in validation_params[vtarg] and default_queue_params:
+                validation_params[vtarg]['queue_params'] = default_queue_params
+
+            vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
+            vdata_func = vdata_kwargs.pop('func')
+            vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
+            vtargs_func = vtargs_kwargs.pop('func')
             agg_func = validation_params[vtarg]['agg_func']
             vinputs = vdata_func(**vdata_kwargs)
             if 'num_steps' not in validation_params[vtarg]:
                 validation_params[vtarg]['num_steps'] = vinputs.total_batches
             num_steps = validation_params[vtarg]['num_steps']
-            if 'queue_params' not in validation_params[vtarg] and default_queue_params:
-                validation_params[vtarg]['queue_params'] = default_queue_params
             vqueue_params = validation_params[vtarg].get('queue_params', {})
             queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
             queues.append(queue)
@@ -773,8 +778,7 @@ def get_valid_targets_dict(validation_params,
                 vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
                 valid_targets_dict[vtarg] = {'targets': vtargets,
                                              'agg_func': agg_func,
-                                             'num_steps': num_steps}     
-
+                                             'num_steps': num_steps}
     return valid_targets_dict, queues
 
 
