@@ -11,7 +11,7 @@ from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import CustomQueue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from tfutils.utils import make_mongo_safe, SONify
+from tfutils.utils import make_mongo_safe, sonify
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -103,7 +103,7 @@ class DBInterface(object):
         """
 
         self.params = params
-        self.SONified_params = SONify(self.params)
+        self.sonified_params = sonify(self.params)
         self.save_params = save_params
         self.load_params = load_params
         self.sess = sess
@@ -196,6 +196,7 @@ class DBInterface(object):
         Fetches record then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
+        tf_saver = self.tf_saver
         if self.do_restore:
             if self.load_data is None:   
                 self.load_rec()
@@ -203,7 +204,7 @@ class DBInterface(object):
                 rec, cache_filename = self.load_data
                 # tensorflow restore
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
-                self.tf_saver.restore(self.sess, cache_filename)
+                tf_saver.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
         if not self.do_restore or self.load_data is None:
             init = tf.initialize_all_variables()
@@ -293,7 +294,7 @@ class DBInterface(object):
         just_saved = False  # for saving filters
 
         rec = {'exp_id': self.exp_id,
-               'params': self.SONified_params,
+               'params': self.sonified_params,
                'saved_filters': False,
                'duration': duration}
                
@@ -334,7 +335,7 @@ class DBInterface(object):
             log.info(message)
 
         if need_to_save:
-            save_rec = SONify(rec)
+            save_rec = sonify(rec)
             save_to_gfs = {}
             for _k in self.save_to_gfs:
                 save_to_gfs[_k] = save_rec.pop(_k)
@@ -661,12 +662,12 @@ def train_from_params(save_params,
         queues = [queue]
         train_inputs = queue.batch
 
+        if 'cfg_initial' not in model_params:
+            model_params['cfg_initial'] = None
+        if 'seed' not in model_params:
+            model_params['seed'] = 0
         model_kwargs = copy.deepcopy(model_params)
         model_func = model_kwargs.pop('func')
-        if 'cfg_initial' not in model_kwargs:
-            model_kwargs['cfg_initial'] = None
-        if 'seed' not in model_kwargs:
-            model_kwargs['seed'] = 0
         train_outputs, cfg_final = model_func(inputs=train_inputs,
                                               train=True,
                                               **model_kwargs)
@@ -757,7 +758,7 @@ def get_valid_targets_dict(validation_params,
     for vtarg in validation_params:
         if 'targets' not in validation_params[vtarg]:
             validation_params[vtarg]['targets'] = default_loss_params()
-        if 'func' not in validatfion_params[vtarg]['targets']:
+        if 'func' not in validation_params[vtarg]['targets']:
             validation_params[vtarg]['targets']['func'] = utils.get_loss            
         if 'agg_func' not in validation_params[vtarg]:
             validation_params[vtarg]['agg_func'] = None
