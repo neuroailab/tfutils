@@ -62,44 +62,65 @@ class DBInterface(object):
                  *tfsaver_args,
                  **tfsaver_kwargs):
         """
-        :Args:
-            - sess (tesorflow.Session)
-                Object in which to run calculations
-            - global_step (tensorflow.Variable)
-                Global step variable, the one that is updated by apply_gradients
+        :Kwargs:
             - params (dict)
                 Describing all parameters of experiment
-            - host (str)
-                Hostname where database connection lives
-            - port (int)
-                Port where database connection lives
-            - dbname (str)
-                Name of database for storage
-            - collname (str)
-                Name of collection for storage
-            - exp_id (str)
-                Experiment id descriptor
+            - save_params (dict)
+            	Describing the parameters need to construct the save database, and
+            	control saving.  These include:
+					- host (str)
+						Hostname where database connection lives
+					- port (int)
+						Port where database connection lives
+					- dbname (str)
+						Name of database for storage
+					- collname (str)
+						Name of collection for storage
+					- exp_id (str)
+						Experiment id descriptor    
 
-        :Kwargs:
-            - restore (bool, default: True)
-                Whether to restore from saved model
-            - save (bool, default: True)
-                Whether to save to database
-            - save_initial (bool, default: True)
-                Whether to save initial model state at step = 0,
-            - save_metrics_freq (int, default: 5)
-                How often to store train results to database
-            - save_valid_freq (int, default: 3000)
-                How often to calculate and store validation results to database
-            - save_filters_freq (int, default: 30000)
-                How often to save filter values to database
-            - cache_filters_freq (int, default: 3000)
-                How often to cache filter values locally and save to ___RECENT database
+					- do_save (bool, default: True)
+						Whether to save to database
+					- save_initial (bool, default: True)
+						Whether to save initial model state at step = 0,
+					- save_metrics_freq (int, default: 5)
+						How often to store train results to database
+					- save_valid_freq (int, default: 3000)
+						How often to calculate and store validation results to database
+					- save_filters_freq (int, default: 30000)
+						How often to save filter values to database
+					- cache_filters_freq (int, default: 3000)
+						How often to cache filter values locally and save 
+						to ___RECENT database
+			- load_params (dict)
+				Similar to save_params, if you want loading to happen from a different 
+				location than where saving occurs.   Parameters include:
+					- host (str)
+						Hostname where database connection lives
+					- port (int)
+						Port where database connection lives
+					- dbname (str)
+						Name of database for storage
+					- collname (str)
+						Name of collection for storage
+					- exp_id (str)
+						Experiment id descriptor    
+					- do_restore (bool, default: True)
+						Whether to restore from saved model					
+					- load_query (dict) 
+						mongodb query describing how to load from loading database			    
+            - sess (tesorflow.Session)
+                Object in which to run calculations.  This is required if actual loading/
+                saving is going to be done (as opposed to just e.g. getting elements from 
+                the MongoDB). 
+            - global_step (tensorflow.Variable)
+                Global step variable, the one that is updated by apply_gradients.  This 
+                is required if being using in a training context.  
             - cache_dir (str, default: None)
                 Path where caches will be saved locally. If None, will default to
                 ~/.tfutils/<host:post>/<dbname>/<collname>/<exp_id>.
-            - *args, **kwargs
-                Additional arguments are passed onto base Saver class constructor
+            - *tfsaver_args, **tsaver_kwargs
+                Additional arguments to be passed onto base Saver class constructor
         """
 
         self.params = params
@@ -382,6 +403,9 @@ def predict(step, results):
     
 
 def get_valid_results(sess, valid_targets):
+    """
+    Helper function for actually computing validation results. 
+    """
     valid_results = {}
     for targname in valid_targets:
         num_steps = valid_targets[targname]['num_steps']
@@ -399,6 +423,8 @@ def get_valid_results(sess, valid_targets):
     
 
 def start_queues(sess, queues):
+    """Helper function for starting queues before running processes.
+    """
     tf.train.start_queue_runners(sess=sess)
     # start our custom queue runner's threads
     if not hasattr(queues, '__iter__'):
@@ -411,6 +437,20 @@ def test(sess,
         queues,
         dbinterface,
         valid_targets):
+        
+    """
+    Actually runs the testing evaluation loop.
+
+    :Args:
+        - sess: (tesorflow.Session)
+            Object in which to run calculations
+        - queues (list of CustomQueue)
+            Objects containing asynchronously queued data iterators
+        - dbinterface (DBInterface object)
+            Saver through which to save results
+        - valid_targets (dict of tensorflow objects)
+            Objects on which validation will be computed
+    """
     start_queues(sess, queues)
     dbinterface.start_time_step = time.time()
     valid_results = get_valid_results(sess, valid_targets)
@@ -424,6 +464,15 @@ def test_from_params(load_params,
               validation_params,
               log_device_placement=False,
               save_params=None):
+              
+    """
+    Main testing interface function.  
+    
+    Same as train_from_parameters; but just performs testing without training. 
+
+    For documentation, see argument descriptions in train_from_params. 
+    """
+
  
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
     
@@ -469,15 +518,15 @@ def train(sess,
         valid_targets=None,
         thres_loss=100):
     """
-    Actually runs the evaluation loop.
+    Actually runs the training evaluation loop.
 
     :Args:
         - sess: (tesorflow.Session)
             Object in which to run calculations
         - queues (list of CustomQueue)
             Objects containing asynchronously queued data iterators
-        - saver (Saver object)
-            Saver throughwhich to save results
+        - dbinterface (DBInterface object)
+            Saver through which to save results
         - train_targets (dict of tensorflow nodes)
             Targets to train. One item in this dict must be "optimizer" or similar
             to make anything happen
@@ -534,12 +583,12 @@ def train_from_params(save_params,
                load_params=None
              ):
     """
-    Main interface function.
+    Main training interface function.
 
     :Args:
         - saver_params (dict)
             Dictionary of arguments for creating saver object (see Saver class)
-
+            
         - model_params (dict)
             Containing function that produces model and arguments to that function.
                 - model_params['func'] is the function producing the model.
@@ -640,6 +689,10 @@ def train_from_params(save_params,
 
         - num_steps (int, default: 1000000)
             How many total steps of the optimization are run
+
+      - load_params (dict)
+            Dictionary of arguments for loading model, if different from saver 
+            (see Saver class)
 
         - log_device_placement (bool, default: False)
             Whether to log device placement in tensorflow session
@@ -752,7 +805,8 @@ def get_valid_targets_dict(validation_params,
                            default_queue_params,
                            cfg_final,
                            original_seed):
-    """NB: this function may modify validation_params"""
+    """Helper function for creating validation target operations.
+       NB: this function may modify validation_params"""
     valid_targets_dict = OrderedDict()
     queues = []
     for vtarg in validation_params:
