@@ -102,7 +102,7 @@ def make_mongo_safe(_d):
             _d[_k.replace('.', '___')] = _d.pop(_k)
 
 
-def SONify(arg, memo=None):
+def sonify(arg, memo=None):
     """when possible, returns version of argument that can be
        serialized trivally to json format
     """
@@ -118,20 +118,20 @@ def SONify(arg, memo=None):
     elif isinstance(arg, np.integer):
         rval = int(arg)
     elif isinstance(arg, (list, tuple)):
-        rval = type(arg)([SONify(ai, memo) for ai in arg])
+        rval = type(arg)([sonify(ai, memo) for ai in arg])
     elif isinstance(arg, collections.OrderedDict):
-        rval = collections.OrderedDict([(SONify(k, memo), SONify(v, memo))
+        rval = collections.OrderedDict([(sonify(k, memo), sonify(v, memo))
             for k, v in arg.items()])
     elif isinstance(arg, dict):
-        rval = dict([(SONify(k, memo), SONify(v, memo))
+        rval = dict([(sonify(k, memo), sonify(v, memo))
             for k, v in arg.items()])
     elif isinstance(arg, (basestring, float, int, type(None))):
         rval = arg
     elif isinstance(arg, np.ndarray):
         if arg.ndim == 0:
-            rval = SONify(arg.sum())
+            rval = sonify(arg.sum())
         else:
-            rval = map(SONify, arg)  # N.B. memo None
+            rval = map(sonify, arg)  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
     elif arg in (True, False):
         rval = int(arg)
@@ -142,9 +142,9 @@ def SONify(arg, memo=None):
         rval = version_check_and_info(mod)
         rval.update({'objname': objname,
                         'modname': modname})
-        rval = SONify(rval)
+        rval = sonify(rval)
     else:
-        raise TypeError('SONify', arg)
+        raise TypeError('sonify', arg)
 
     memo[id(rval)] = rval
     return rval
@@ -156,7 +156,7 @@ def jsonize(x):
     try:
         json.dumps(x)
     except TypeError:
-        return SONify(x)
+        return sonify(x)
     else:
         return x
 
