@@ -8,7 +8,7 @@ import gridfs
 import tensorflow as tf
 
 from tfutils.error import HiLossError
-from tfutils.data import CustomQueue
+from tfutils.data import Queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
 from tfutils.utils import make_mongo_safe, SONify
@@ -322,7 +322,7 @@ def run(sess,
     :Args:
         - sess: (tesorflow.Session)
             Object in which to run calculations
-        - queues (list of CustomQueue)
+        - queues (list of Queue)
             Objects containing asynchronously queued data iterators
         - saver (Saver object)
             Saver throughwhich to save results
@@ -413,9 +413,9 @@ def run_base(saver_params,
                     - train_params['targets']['func'] is a function that produces
                       tensorflow nodes as training targets
                     - remainder of train_parms['targets'] are arguments to func
-				- train_params['queue_params'] is an optional dict of 
-                      params used to specify creation for the queue, passed to the 
-                      CustomQueue.__init__ method.   Default is {}. 
+                - train_params['queue_params'] is an optional dict of
+                      params used to specify creation for the queue, passed to the
+                      Queue.__init__ method.   Default is {}.
     :Kwargs:
         - loss_params (dict):
             Parameters for specifying loss function
@@ -467,10 +467,10 @@ def run_base(saver_params,
                             <kwarg1>: <value1> for 'func',
                             ...
                             }
-						'queue_params': (optional, dict) params for creating queue for
-                                this validation. NB: if this is NOT specified, queue params 
+                        'queue_params': (optional, dict) params for creating queue for
+                                this validation. NB: if this is NOT specified, queue params
                                 for this validation default to those used in constructing
-                                the training data queue.                             
+                                the training data queue.
                     },
                     <validation_target_name_2>: ...
                 }
@@ -481,8 +481,8 @@ def run_base(saver_params,
             valid_save_freq specific in the saver_params.
 
         - queue_params (dict, defualt: None)
-            Dictionary of arguments to CustomQueue object (see
-            tfutils.data.CustomQueue documentation)
+            Dictionary of arguments to Queue object (see
+            tfutils.data.Queue documentation)
 
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
@@ -501,11 +501,11 @@ def run_base(saver_params,
                                       trainable=False)
         #  train_data_func returns dictionary of iterators, with one key per input to model
         train_data_kwargs = copy.deepcopy(train_params['data'])
-        train_data_func = train_data_kwargs.pop('func')    
+        train_data_func = train_data_kwargs.pop('func')
         train_inputs = train_data_func(**train_data_kwargs)
 
-    	train_queue_params = train_params.get('queue_params', {})
-        queue = CustomQueue(train_inputs.node, train_inputs, **train_queue_params)
+        train_queue_params = train_params.get('queue_params', {})
+        queue = Queue(train_inputs.node, train_inputs, **train_queue_params)
         queues = [queue]
         train_inputs = queue.batch
 
@@ -558,10 +558,10 @@ def run_base(saver_params,
                 vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
                 vtargs_func = vtargs_kwargs.pop('func')
                 vinputs = vdata_func(**vdata_kwargs)
-                
+
                 vqueue_params = validation_params[vtarg].get('queue_params', None)
                 if vqueue_params is None:
-                	vqueue_params = train_queue_params
+                    vqueue_params = train_queue_params
                 queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
                 queues.append(queue)
                 vinputs = queue.batch

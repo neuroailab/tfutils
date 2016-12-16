@@ -192,14 +192,16 @@ def isin(X,Y):
         return np.zeros((len(X),),bool)
 
 
-class CustomQueue(object):
+class Queue(object):
     """ A generic queue for reading data
         Based on https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
 
-    def __init__(self, node, data_iter,
+    def __init__(self,
+                 node,
+                 data_iter,
                  queue_type='fifo',
-                 batch_size=128,
+                 batch_size=256,
                  n_threads=4,
                  seed=0):
         self.node = node
@@ -209,30 +211,41 @@ class CustomQueue(object):
         self._continue = True
 
         dtypes = [d.dtype for d in node.values()]
-        shapes = [d.get_shape() for d in node.values()]
+        if self.data_iter.batch_size > 1:
+            shapes = [d.get_shape()[1:] for d in node.values()]
+        else:
+            shapes = [d.get_shape() for d in node.values()]
+
         if queue_type == 'random':
             self.queue = tf.RandomShuffleQueue(capacity=n_threads * batch_size * 2,
                                                min_after_dequeue=n_threads * batch_size,
                                                dtypes=dtypes,
                                                shapes=shapes,
+                                               names=node.keys(),
                                                seed=seed)
         elif queue_type == 'fifo':
             self.queue = tf.FIFOQueue(capacity=n_threads * batch_size * 2,
                                       dtypes=dtypes,
-                                      shapes=shapes)
+                                      shapes=shapes,
+                                      names=node.keys())
         elif queue_type == 'padding_fifo':
             self.queue = tf.PaddingFIFOQueue(capacity=n_threads * batch_size * 2,
                                              dtypes=dtypes,
-                                             shapes=shapes)
+                                             shapes=shapes,
+                                             names=node.keys())
         elif queue_type == 'priority':
             self.queue = tf.PriorityQueue(capacity=n_threads * batch_size * 2,
                                           types=dtypes,
-                                          shapes=shapes)
+                                          shapes=shapes,
+                                          names=node.keys())
         else:
             Exception('Queue type %s not recognized' % queue_type)
-        self.enqueue_op = self.queue.enqueue(node.values())
-        data_batch = self.queue.dequeue_many(batch_size)
-        self.batch = {k:v for k,v in zip(node.keys(), data_batch)}
+
+        if self.data_iter.batch_size > 1:
+            self.enqueue_op = self.queue.enqueue_many(node)
+        else:
+            self.enqueue_op = self.queue.enqueue(node)
+        self.batch = self.queue.dequeue_many(batch_size)
 
     def thread_main(self, sess):
         """
@@ -257,11 +270,12 @@ class ImageNet(HDF5DataProvider):
 
     N_TRAIN = 1281167
     N_VAL = 50000
-    N_TEST = 100000
+    N_TRAIN_VAL = 50000
 
     def __init__(self,
                  data_path,
                  group='train',
+                 batch_size=1,
                  crop_size=None,
                  *args,
                  **kwargs):
@@ -269,12 +283,22 @@ class ImageNet(HDF5DataProvider):
         A specific reader for ImageNet stored as a HDF5 file
 
         Args:
-            - data_path: path to imagenet data
-            - subslice: np array for training or eval slice
-            - crop_size: for center crop (crop_size x crop_size)
-            - *args: extra arguments for HDF5DataProvider
+            - data_path
+                path to imagenet data
         Kwargs:
-            - **kwargs: extra keyword arguments for HDF5DataProvider
+            - group (str, default: 'train')
+                Which subset of the ImageNet set you want: train, val, train_val.
+                The latter contains 50k images from the train set (50 per category),
+                so that you can directly compare performance on the validation set
+                to the performance on the train set to track overfitting.
+            - batch_size (int, default: 1)
+                Number of images to return when `next` is called. By default set
+                to 1 since it is expected to be used with queues where reading one
+                image at a time is ok.
+            - crop_size (int or None, default: None)
+                For center crop (crop_size x crop_size). If None, no cropping will occur.
+            - *args, **kwargs
+                Extra arguments for HDF5DataProvider
         """
         self.group = group
         images = group + '/images'
@@ -282,36 +306,44 @@ class ImageNet(HDF5DataProvider):
         HDF5DataProvider.__init__(self,
             data_path,
             [images, labels],
-            batch_size=1,  # fill up the queue one image at a time
-            postprocess={images: self.postproc_img, labels: self.postproc_labels},
+            batch_size=batch_size,
+            postprocess={images: self.postproc_img},
             pad=True,
             *args, **kwargs)
         if crop_size is None:
             self.crop_size = 256
         else:
             self.crop_size = crop_size
-        self.node = {'images': tf.placeholder(tf.float32,
-                                              shape=(self.crop_size, self.crop_size, 3),
-                                              name='images'),
-                     'labels': tf.placeholder(tf.int64,
-                                              shape=[],
-                                              name='labels')}
+
+        if self.batch_size == 1:
+            self.node = {'images': tf.placeholder(tf.float32,
+                                    shape=(self.crop_size, self.crop_size, 3),
+                                    name='images'),
+                        'labels': tf.placeholder(tf.int64,
+                                                shape=[],
+                                                name='labels')}
+        else:
+            self.node = {'images': tf.placeholder(tf.float32,
+                                    shape=(self.batch_size, self.crop_size, self.crop_size, 3),
+                                    name='images'),
+                        'labels': tf.placeholder(tf.int64,
+                                                 shape=(self.batch_size, ),
+                                                 name='labels')}
 
     def postproc_img(self, ims, f):
         norm = ims.astype(np.float32) / 255
-        # resh = norm.reshape((3, 256, 256))
-        # sw = resh.swapaxes(0, 1).swapaxes(1, 2)
         off = np.random.randint(0, 256 - self.crop_size, size=2)
-        images_batch = norm[:,
-                            off[0]: off[0] + self.crop_size,
-                            off[1]: off[1] + self.crop_size]
-        return images_batch[0]  # because batch is size 1
-
-    def postproc_labels(self, labels, f):
-        return labels[0]  # because batch is size 1
+        if self.batch_size == 1:
+            images_batch = norm[off[0]: off[0] + self.crop_size,
+                                off[1]: off[1] + self.crop_size]
+        else:
+            images_batch = norm[:,
+                                off[0]: off[0] + self.crop_size,
+                                off[1]: off[1] + self.crop_size]
+        return images_batch
 
     def next(self):
         batch = super(ImageNet, self).next()
-        feed_dict = {self.node['images']: batch[self.group + '/images'],
-                     self.node['labels']: batch[self.group + '/labels']}
+        feed_dict = {self.node['images']: np.squeeze(batch[self.group + '/images']),
+                     self.node['labels']: np.squeeze(batch[self.group + '/labels'])}
         return feed_dict
