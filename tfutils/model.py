@@ -199,12 +199,48 @@ def alexnet(inputs, train=True, **kwargs):
                                         stddev=.01, bias=.1, activation='relu'):
         with tf.variable_scope('conv1', reuse=reuse):
             m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
-            # m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
             m.pool(3, 2)
 
         with tf.variable_scope('conv2', reuse=reuse):
             m.conv(256, 5, 1)
-            # m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.pool(3, 2)
+
+        with tf.variable_scope('conv3', reuse=reuse):
+            m.conv(384, 3, 1)
+
+        with tf.variable_scope('conv4', reuse=reuse):
+            m.conv(256, 3, 1)
+
+        with tf.variable_scope('conv5', reuse=reuse):
+            m.conv(256, 3, 1)
+            m.pool(3, 2)
+
+        with tf.variable_scope('fc6', reuse=reuse):
+            m.fc(4096, init='trunc_norm', dropout=.5)
+
+        with tf.variable_scope('fc7', reuse=reuse):
+            m.fc(4096, init='trunc_norm', dropout=.5)
+
+        with tf.variable_scope('fc8', reuse=reuse):
+            m.fc(1000, init='trunc_norm', activation=None, dropout=None)
+
+    return m
+
+
+def alexnet_nonorm(inputs, train=True, **kwargs):
+    m = ConvNet(**kwargs)
+    reuse = None if train else True
+
+    with tf.contrib.framework.arg_scope([m.conv], init='xavier',
+                                        stddev=.01, bias=.1, activation='relu'):
+        with tf.variable_scope('conv1', reuse=reuse):
+            m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
+            m.pool(3, 2)
+
+        with tf.variable_scope('conv2', reuse=reuse):
+            m.conv(256, 5, 1)
             m.pool(3, 2)
 
         with tf.variable_scope('conv3', reuse=reuse):
