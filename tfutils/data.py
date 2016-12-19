@@ -254,6 +254,8 @@ class Queue(object):
         for batch in self.data_iter:
             if self._continue:
                 sess.run(self.enqueue_op, feed_dict=batch)
+            else:
+                break
 
     def start_threads(self, sess):
         """ Start background threads to feed queue """
@@ -264,6 +266,11 @@ class Queue(object):
             t.start()
             threads.append(t)
         return threads
+
+    def stop_threads(self, sess):
+        self._continue = False
+        close_op = self.queue.close(cancel_pending_enqueues=True)
+        sess.run(close_op)
 
 
 class ImageNet(HDF5DataProvider):
@@ -303,7 +310,7 @@ class ImageNet(HDF5DataProvider):
         self.group = group
         images = group + '/images'
         labels = group + '/labels'
-        HDF5DataProvider.__init__(self,
+        super(ImageNet, self).__init__(
             data_path,
             [images, labels],
             batch_size=batch_size,
