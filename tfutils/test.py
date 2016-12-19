@@ -1,3 +1,6 @@
+"""
+The is the basic illustration of training.
+"""
 from __future__ import division, print_function, absolute_import
 import os, sys, math, time
 from datetime import datetime
