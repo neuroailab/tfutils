@@ -90,6 +90,7 @@ class ConvNet(object):
                        'seed': self.seed}
         return self.output
 
+    @tf.contrib.framework.add_arg_scope
     def fc(self,
            out_shape,
            init='xavier',
@@ -130,6 +131,7 @@ class ConvNet(object):
                        'seed': self.seed}
         return self.output
 
+    @tf.contrib.framework.add_arg_scope
     def norm(self,
              depth_radius=2,
              bias=1,
@@ -151,6 +153,7 @@ class ConvNet(object):
                        'beta': beta}
         return self.output
 
+    @tf.contrib.framework.add_arg_scope
     def pool(self,
              ksize=3,
              stride=2,
@@ -189,6 +192,24 @@ class ConvNet(object):
         if in_layer is None: in_layer = self.output
         self.output = tf.nn.dropout(in_layer, dropout, seed=self.seed, name='dropout')
         return self.output
+
+
+def mnist(inputs, train=True, **kwargs):
+    m = ConvNet(**kwargs)
+    reuse = None if train else True
+
+    with tf.contrib.framework.arg_scope([m.fc], init='trunc_norm', stddev=.01,
+                                        bias=0, activation='relu', dropout=None):
+        with tf.variable_scope('hidden1', reuse=reuse):
+            m.fc(128, in_layer=inputs)
+
+        with tf.variable_scope('hidden2', reuse=reuse):
+            m.fc(32)
+
+        with tf.variable_scope('softmax_linear', reuse=reuse):
+            m.fc(10, activation=None)
+
+    return m
 
 
 def alexnet(inputs, train=True, **kwargs):
@@ -263,6 +284,11 @@ def alexnet_nonorm(inputs, train=True, **kwargs):
             m.fc(1000, init='trunc_norm', activation=None, dropout=None)
 
     return m
+
+
+def mnist_tfutils(inputs, train=True, **kwargs):
+    m = mnist(inputs['images'], train=train, **kwargs)
+    return m.output, m.params
 
 
 def alexnet_tfutils(inputs, train=True, **kwargs):
