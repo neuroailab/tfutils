@@ -1,3 +1,6 @@
+"""
+This is a basic illustration of loading a network and testing it on new data.
+"""
 from __future__ import division, print_function, absolute_import
 import os, sys, math, time
 from datetime import datetime

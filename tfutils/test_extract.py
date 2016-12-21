@@ -1,3 +1,7 @@
+"""
+This is a basic illustration of loading network and extracting features on new data.  
+Actually it stores the mean of features over a set of input images.
+"""
 from __future__ import division, print_function, absolute_import
 import os, sys, math, time
 from datetime import datetime
