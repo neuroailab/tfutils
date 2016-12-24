@@ -110,7 +110,7 @@ class MNIST(object):
 
 class TestRun(unittest.TestCase):
 
-    def basic_setup(self, num_steps=20):
+    def basic_setup(self, num_steps=100):
         params = {'model_params': {'func': model.mnist_tfutils},
                   'train_params': {'data': {'func': MNIST,
                                             'batch_size': 100,
@@ -130,7 +130,7 @@ class TestRun(unittest.TestCase):
                                   'save_valid_freq': num_steps // 10,
                                   'save_filters_freq': num_steps // 2,
                                   'cache_filters_freq': num_steps // 4},
-                  'load_params': {'do_restore': False},
+                  'load_params': {'do_restore': True},
                   'num_steps': num_steps}
         return params
 

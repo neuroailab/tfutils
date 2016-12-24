@@ -196,7 +196,7 @@ class ConvNet(object):
 
 def mnist(inputs, train=True, **kwargs):
     m = ConvNet(**kwargs)
-    reuse = None if train else True
+    reuse = None #if train else True
 
     with tf.contrib.framework.arg_scope([m.fc], init='trunc_norm', stddev=.01,
                                         bias=0, activation='relu', dropout=None):

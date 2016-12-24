@@ -4,6 +4,9 @@ import json
 import datetime
 import inspect
 import pkg_resources
+import os
+import re
+import copy
 
 import numpy as np
 from bson.objectid import ObjectId
@@ -176,3 +179,83 @@ def get_loss(inputs,
             agg_func_kwargs = {}
         loss = agg_func(loss, **agg_func_kwargs)
     return loss
+
+
+def get_loss_dict(*args, **kwargs):
+    kwargs = copy.copy(kwargs)
+    name = kwargs.pop('name', 'loss')
+    return {name: get_loss(*args, **kwargs)}
+
+
+def get_saver_pb2_v2_files(prefix):
+    dirn, pref = os.path.split(prefix)
+    files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
+                   os.listdir(dirn))
+    indexf = pref + '.index'
+    assert indexf in files, (prefix, indexf, files)
+    notindexfiles = [_f for _f in files if _f != indexf]
+    p = re.compile(pref + '.data-([\d]+)-of-([\d]+)$')
+    total0 = None
+    fns = []
+    for f in notindexfiles:
+        match = p.match(f)
+        assert match, (f, prefix)
+        thisf, total = map(int, match.groups())
+        if total0 is None:
+            total0 = total
+        else:
+            assert total == total0, (f, total, total0)
+        fns.append(thisf)
+    fns = list(set(fns))
+    fns.sort()
+    assert fns == range(total0), (fns, total0)
+    files = [os.path.join(dirn, f) for f in files]
+    file_data = {'files': files, 'num_data_files': total0}
+    return file_data
+
+
+def identity_func(x):
+    return x
+
+
+def append_and_return(x, y, step):
+    if x is None:
+        x = []
+    x.append(y)
+    return x
+
+
+def reduce_mean(x, y, step):
+    if x is None:
+        x = y
+    else:
+        f = step / (step + 1.)
+        x = f * x + (1 - f) * y
+    return x
+
+
+def reduce_mean_dict(x, y, step):
+    if x is None:
+        x = {}
+    for k in y:
+        #ka = k + '_agg'
+        ka = k
+        if k != 'validation_step':
+            x[ka] = reduce_mean(x.get(ka), y[k], step)
+        else:
+            x[ka] = [min(min(x[ka]), y[k]), max(max(x[ka]), y[k])]
+    return x
+
+
+def mean_dict(y):
+    x = {}
+    keys = y[0].keys()
+    for k in keys:
+        #ka = k + '_agg'
+        ka = k
+        pluck = [_y[k] for _y in y]
+        if k != 'validation_step':
+            x[ka] = np.mean(pluck)
+        else:
+            x[ka] = [min(pluck), max(pluck)]
+    return x
