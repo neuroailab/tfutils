@@ -469,7 +469,7 @@ def predict(step, results):
     return preds
 
 
-def get_valid_results(sess, valid_targets, save_intermediate=False, dbinterface=None):
+def get_valid_results(sess, valid_targets, save_intermediate_freq=None, dbinterface=None):
     """
     Helper function for actually computing validation results.
     """
@@ -480,17 +480,18 @@ def get_valid_results(sess, valid_targets, save_intermediate=False, dbinterface=
         agg_func = valid_targets[targname]['agg_func']
         online_agg_func = valid_targets[targname]['online_agg_func']
         agg_res = None
-        n0 = len(dbinterface.outrecs)
+        if save_intermediate_freq:
+            n0 = len(dbinterface.outrecs)
         for _step in range(num_steps):
             res = sess.run(targ)
             assert hasattr(res, 'keys'), 'result of validation must be a dictionary'
-            if save_intermediate:
+            if save_intermediate_freq and (_step % save_intermediate_freq == 0):
                 dbinterface.save({}, {targname: res}, step=_step)
             agg_res = online_agg_func(agg_res, res, _step)
         valid_results[targname] = agg_func(agg_res)
         dbinterface.sync_with_host()
-        n1 = len(dbinterface.outrecs)
-        if save_intermediate:
+        if save_intermediate_freq:
+            n1 = len(dbinterface.outrecs)    
             valid_results[targname]['intermediate_steps'] = dbinterface.outrecs[n0: n1]
     return valid_results
 
@@ -519,7 +520,7 @@ def test(sess,
          queues,
          dbinterface,
          valid_targets,
-         save_intermediate=True):
+         save_intermediate_freq=None):
 
     """
     Actually runs the testing evaluation loop.
@@ -536,8 +537,9 @@ def test(sess,
     """
     start_queues(sess, queues)
     dbinterface.start_time_step = time.time()
-    valid_results_summary = get_valid_results(sess, valid_targets,
-                                              save_intermediate=save_intermediate, 
+    valid_results_summary = get_valid_results(sess, 
+                                              valid_targets,
+                                              save_intermediate_freq=save_intermediate_freq, 
                                               dbinterface=dbinterface)
     dbinterface.save({}, valid_results_summary)
     dbinterface.sync_with_host()
@@ -571,11 +573,12 @@ def test_from_params(load_params,
         model_func = model_kwargs.pop('func')
         dbinterface = DBInterface(load_params=load_params)
         dbinterface.load_rec()
-        assert dbinterface.load_data is not None, "No load data found for query, aborting"
-        cfg_final = dbinterface.load_data[0]['params']['model_params']['cfg_final']
-        original_seed = dbinterface.load_data[0]['params']['model_params']['seed']
-        train_queue_params = dbinterface.load_data[0]['params']['train_params'].get('queue_params',
-                                                                                    {})
+        ld = dbinterface.load_data
+        assert ld is not None, "No load data found for query, aborting"
+        ld = ld[0]
+        cfg_final = ld['params']['model_params']['cfg_final']
+        original_seed = ld['params']['model_params']['seed']
+        train_queue_params = ld['params']['train_params'].get('queue_params', {})
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
                                                             model_func, model_kwargs,
                                                             train_queue_params,
@@ -588,13 +591,19 @@ def test_from_params(load_params,
                   'model_params': model_params,
                   'validation_params': validation_params,
                   'log_device_placement': log_device_placement}
-        dbinterface = DBInterface(sess=sess, params=params,
-                                  load_params=load_params, save_params=save_params)
+
+        dbinterface = DBInterface(sess=sess,
+                                  params=params,
+                                  load_params=load_params,
+                                  save_params=save_params)
         dbinterface.initialize()
+
+        save_intermediate_freq = save_params.get('save_intermediate_freq')
         return test(sess,
                     queues,
                     dbinterface,
-                    valid_targets=valid_targets_dict)
+                    valid_targets_dict, 
+                    save_intermediate_freq=save_intermediate_freq)
 
 
 def train(sess,

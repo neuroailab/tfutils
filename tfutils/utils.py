@@ -190,12 +190,13 @@ def get_loss_dict(*args, **kwargs):
 
 def get_saver_pb2_v2_files(prefix):
     dirn, pref = os.path.split(prefix)
+    pref = pref + '.'
     files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
                    os.listdir(dirn))
-    indexf = pref + '.index'
+    indexf = pref + 'index'
     assert indexf in files, (prefix, indexf, files)
     notindexfiles = [_f for _f in files if _f != indexf]
-    p = re.compile(pref + '.data-([\d]+)-of-([\d]+)$')
+    p = re.compile(pref + 'data-([\d]+)-of-([\d]+)$')
     total0 = None
     fns = []
     for f in notindexfiles:
