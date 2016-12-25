@@ -233,7 +233,7 @@ class DBInterface(object):
                 tf_saver.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
         if not self.do_restore or self.load_data is None:
-            init = tf.initialize_all_variables()
+            init = tf.global_variables_initializer()
             self.sess.run(init)
             log.info('Model variables initialized from scratch.')
 
@@ -399,7 +399,6 @@ class DBInterface(object):
             save_rec = sonify(rec)
             make_mongo_safe(save_rec)
 
-            # save filters to db
             if save_filters_permanent or save_filters_tmp:
                 save_rec['saved_filters'] = True
                 save_path = os.path.join(self.cache_dir, 'checkpoint')
@@ -526,6 +525,7 @@ def test(sess,
                                               save_intermediate=save_intermediate, 
                                               dbinterface=dbinterface)
     dbinterface.save({}, valid_results_summary)
+    stop_queues(sess, queues)
     sess.close()
     return valid_results_summary
 
