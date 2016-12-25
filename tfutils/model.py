@@ -214,7 +214,7 @@ def mnist(inputs, train=True, **kwargs):
 
 def alexnet(inputs, train=True, **kwargs):
     m = ConvNet(**kwargs)
-    reuse = None if train else True
+    reuse = None #if train else True
 
     with tf.contrib.framework.arg_scope([m.conv], init='xavier',
                                         stddev=.01, bias=.1, activation='relu'):
