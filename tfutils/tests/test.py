@@ -61,6 +61,20 @@ testdbname = 'tfutils-test'
 testcol = 'testcol'
 
 def test_training():
+    """Tests the training mechanism
+       This is the first in a sequence of tests. It creates a database of results that is used
+       by the next few tests. 
+    """
+    #delete old database if it exists
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    conn.drop_database(testdbname)
+    nm = testdbname + '_' + testcol + '_training0'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    nm = testdbname + '_' + testcol + '_training1'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+
+    #set up the parameters
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
     params['save_params'] = {'host': testhost,
@@ -83,34 +97,27 @@ def test_training():
                                       'staircase': True}
     params['num_steps'] = 500
 
-    conn = pm.MongoClient(host=testhost,
-                          port=testport)
-    conn.drop_database(testdbname)
-    nm = testdbname + '_' + testcol + '_training0'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    nm = testdbname + '_' + testcol + '_training1'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-
+    #actually run the training
     base.train_from_params(**params)
-
+    #test if results are as expected
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 26
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 
             'saved_filters': True}).distinct('step') == [0, 200, 400]
 
+    #run another 500 steps
     params['num_steps'] = 1000
     base.train_from_params(**params)
-
+    #test if results are as expected
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 51
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 
          'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
-
     assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
 
+    #run 500 more steps but save to a new exp_id
     params['num_steps'] = 1500
     params['load_params'] = {'exp_id': 'training0'}
     params['save_params']['exp_id'] = 'training1'
     base.train_from_params(**params)
-    
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training1', 
                             'saved_filters': True}).distinct('step') == [1200, 1400]
 
@@ -196,7 +203,4 @@ def test_feature_extraction():
     q1 = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': False}}
     ids = coll.find(q1).distinct('_id')
     assert r['validation_results']['valid1']['intermediate_steps'] == ids
-
-    
-
 
