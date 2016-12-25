@@ -534,6 +534,9 @@ def test(sess,
             Saver through which to save results
         - valid_targets (dict of tensorflow objects)
             Objects on which validation will be computed
+        - save_intermediate_freq (None or int)
+            How frequently to save intermediate results captured during test 
+            None means no intermediate saving will be saved
     """
     start_queues(sess, queues)
     dbinterface.start_time_step = time.time()
@@ -771,6 +774,19 @@ def train_from_params(save_params,
                                 this validation. NB: if this is NOT specified, queue params
                                 for this validation default to those used in constructing
                                 the training data queue.
+                        'num_steps': (int) number of batches of validation source to compute
+                        'agg_func': (optional, callable) how to aggregate validation results 
+                                across batches after computation. Signature is:
+                                    - one input argument: the list of validation batch results
+                                    - one output: aggregated version
+                                Default is utils.identity_func 
+                        'online_agg_func': (optional, callable) how to aggregate validation results
+                                on a per-batch basis. Siganture is:
+                                    - three input arguments: (current aggregate, new result, step)
+                                    - one output: new aggregated result
+                                One first step, current aggregate passed in is None.
+                                The final result is passed to the "agg_func".
+                                Default is utils.append_and_return
                     },
                     <validation_target_name_2>: ...
                 }

@@ -136,13 +136,23 @@ def test_validation():
 
     base.test_from_params(**params)
 
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'}).count() == 1
+    r = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]
+    assert r['validation_only'] == True
+    f = r['validation_results']['valid0']['loss']
+    idval = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'})[50]['_id']
+    v = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]['validates']
+    assert idval == v
+
 
 def get_extraction_target(inputs, outputs, **params):
     """here's how to figure out what names to use:
     names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
     print("NAMES", names)
     """
-    f = tf.get_default_graph().get_tensor_by_name('validation/test/hidden1/fc:0')
+    f = tf.get_default_graph().get_tensor_by_name('validation/valid1/hidden1/fc:0')
     targets = {'loss': utils.get_loss(inputs, outputs, **params),
                'features': f}
     return targets
@@ -157,11 +167,12 @@ def test_feature_extraction():
                              'collname': testcol,
                              'exp_id': 'training0'}
     params['save_params'] = {'exp_id': 'validation1',
-                             'save_intermediate_freq': 1}
+                             'save_intermediate_freq': 1,
+                             'save_to_gfs': ['features']}
 
     targdict = {'func': get_extraction_target}
     targdict.update(base.default_loss_params())
-    params['validation_params'] = {'test': {'data': {'func': MNIST,
+    params['validation_params'] = {'valid1': {'data': {'func': MNIST,
                                                      'batch_size': 100,
                                                      'group': 'train'
                                                  },
@@ -170,9 +181,22 @@ def test_feature_extraction():
                                                              'batch_size': 100,
                                                              'n_threads': 4},
                                             'num_steps': 10,
-                                            'online_agg_func': utils.reduce_mean_dict,
-                                            'save_to_gfs': 'features'
+                                            'online_agg_func': utils.reduce_mean_dict
                                             }
                                    }
     base.test_from_params(**params)
+
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    coll = conn[testdbname][testcol+'.files']
+    assert coll.find({'exp_id': 'validation1'}).count() == 11
+    q = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': True}}
+    assert coll.find(q).count() == 1
+    r = coll.find(q)[0]
+    q1 = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': False}}
+    ids = coll.find(q1).distinct('_id')
+    assert r['validation_results']['valid1']['intermediate_steps'] == ids
+
+    
+
 
