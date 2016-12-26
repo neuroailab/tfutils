@@ -61,7 +61,7 @@ testdbname = 'tfutils-test'
 testcol = 'testcol'
 
 def test_training():
-    """Tests the training mechanism
+    """This test illustrates how basic training is performed.
        This is the first in a sequence of tests. It creates a database of results that is used
        by the next few tests. 
     """
@@ -123,6 +123,10 @@ def test_training():
 
 
 def test_validation():
+    """
+    This is a test illustrating how to run validation without training.
+    This test assumes that test_train has run first (to provide a model to validate).
+    """
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
     params['load_params'] = {'host': testhost,
@@ -154,18 +158,21 @@ def test_validation():
     assert idval == v
 
 
-def get_extraction_target(inputs, outputs, **params):
+def get_extraction_target(inputs, outputs, to_extract, **loss_params):
     """here's how to figure out what names to use:
     names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
     print("NAMES", names)
     """
-    f = tf.get_default_graph().get_tensor_by_name('validation/valid1/hidden1/fc:0')
-    targets = {'loss': utils.get_loss(inputs, outputs, **params),
-               'features': f}
+    targets = {k: tf.get_default_graph().get_tensor_by_name(v) for k, v in to_extract.items()}
+    targets['loss'] = utils.get_loss(inputs, outputs, **loss_params)
     return targets
 
 
 def test_feature_extraction():
+    """
+    This is a test illustrating how to perform feature extraction.  
+    This test assumes that test_train has run first. 
+    """
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
     params['load_params'] = {'host': testhost,
@@ -177,7 +184,8 @@ def test_feature_extraction():
                              'save_intermediate_freq': 1,
                              'save_to_gfs': ['features']}
 
-    targdict = {'func': get_extraction_target}
+    targdict = {'func': get_extraction_target,
+                'to_extract': {'features': 'validation/valid1/hidden1/fc:0'}}
     targdict.update(base.default_loss_params())
     params['validation_params'] = {'valid1': {'data': {'func': MNIST,
                                                      'batch_size': 100,
