@@ -208,7 +208,6 @@ class Queue(object):
         self.data_iter = data_iter
         self.batch_size = batch_size
         self.n_threads = n_threads
-        self._continue = True
 
         dtypes = [d.dtype for d in node.values()]
         if self.data_iter.batch_size > 1:
@@ -252,9 +251,9 @@ class Queue(object):
         Function run on alternate thread. Basically, keep adding data to the queue.
         """
         for batch in self.data_iter:
-            if self._continue:
+            try:
                 sess.run(self.enqueue_op, feed_dict=batch)
-            else:
+            except tf.errors.CancelledError:
                 break
 
     def start_threads(self, sess):
@@ -268,7 +267,6 @@ class Queue(object):
         return threads
 
     def stop_threads(self, sess):
-        self._continue = False
         close_op = self.queue.close(cancel_pending_enqueues=True)
         sess.run(close_op)
 

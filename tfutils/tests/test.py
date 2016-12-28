@@ -1,77 +1,23 @@
+"""
+The is the basic illustration of training.
+"""
 from __future__ import division, print_function, absolute_import
-import tempfile
-import unittest
-
-import h5py
+import os, sys, math, time
+from datetime import datetime
+import pymongo as pm
 import numpy as np
 
 import tensorflow as tf
+#tf.logging.set_verbosity(tf.logging.ERROR)
+
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
-from tfutils import base, model, data
-
-
-def create_hdf5(n_img, path=None, shape=(224, 224, 3)):
-    if path is None:
-        path = '/tmp'
-    tempf = tempfile.NamedTemporaryFile(suffix='.hdf5', dir=path, delete=False)
-    tempf.close()
-    with h5py.File(tempf.name, 'w') as f:
-        f.create_dataset('images', ((n_img, ) + shape), dtype=np.float32)
-        f.create_dataset('labels', (n_img, ), dtype=np.int64)
-        img = np.random.randn(*shape)
-        label = np.random.randint(1000)
-        for i in range(n_img):
-            f['images'][i] = img
-            f['labels'][i] = label
-    return tempf.name
-
-
-class DataHDF5(data.HDF5DataProvider):
-
-    def __init__(self,
-                 data_path=None,
-                 crop_size=None,
-                 *args,
-                 **kwargs):
-        """
-        A specific reader for IamgeNet stored as a HDF5 file
-
-        Args:
-            - data_path: path to imagenet data
-            - crop_size: for center crop (crop_size x crop_size)
-            - *args: extra arguments for HDF5DataProvider
-        Kwargs:
-            - **kwargs: extra keyword arguments for HDF5DataProvider
-        """
-        super(DataHDF5, self).__init__(
-            data_path,
-            ['images', 'labels'],
-            batch_size=1,  # fill up the queue one image at a time
-            pad=True,
-            *args, **kwargs)
-        if crop_size is None:
-            self.crop_size = 256
-        else:
-            self.crop_size = crop_size
-        self.node = {'images': tf.placeholder(tf.float32,
-                                            shape=(self.crop_size, self.crop_size, 3),
-                                            name='images'),
-                     'labels': tf.placeholder(tf.int64,
-                                              shape=[],
-                                              name='labels')}
-
-    def next(self):
-        batch = super(DataHDF5, self).next()
-        feed_dict = {self.node['images']: batch['images'][0],
-                     self.node['labels']: batch['labels'][0]}
-        return feed_dict
-
+from tfutils import base, model, utils
 
 class MNIST(object):
     def __init__(self, batch_size=100, group='train'):
         """
-        A specific reader for IamgeNet stored as a HDF5 file
+        A specific reader for MNIST stored as a HDF5 file
 
         Args:
             - data_path: path to imagenet data
@@ -108,37 +54,161 @@ class MNIST(object):
         return feed_dict
 
 
-class TestRun(unittest.TestCase):
+num_batches_per_epoch = 10000//256
+testhost = 'localhost'
+testport = 31001
+testdbname = 'tfutils-test'
+testcol = 'testcol'
 
-    def basic_setup(self, num_steps=20):
-        params = {'model_params': {'func': model.mnist_tfutils},
-                  'train_params': {'data': {'func': MNIST,
-                                            'batch_size': 100,
-                                            'group': 'train'},
-                                   'queue_params': {'queue_type': 'fifo',
-                                                    'batch_size': 100,
-                                                    'n_threads': 4}},
-                  'learning_rate_params': {'learning_rate': 0.01,
-                                           'decay_steps': 1,
-                                           'decay_rate': 0.95,
-                                           'staircase': True},
-                  'save_params': {'host': 'localhost',
-                                  'port': 31001,
-                                  'dbname': 'tfutils-test',
-                                  'collname': 'test',
-                                  'exp_id': 'tfutils-test-7',
-                                  'save_valid_freq': num_steps // 10,
-                                  'save_filters_freq': num_steps // 2,
-                                  'cache_filters_freq': num_steps // 4},
-                  'load_params': {'do_restore': False},
-                  'num_steps': num_steps}
-        return params
+def test_training():
+    """This test illustrates how basic training is performed.
+       This is the first in a sequence of tests. It creates a database of results that is used
+       by the next few tests. 
+    """
+    #delete old database if it exists
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    conn.drop_database(testdbname)
+    nm = testdbname + '_' + testcol + '_training0'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    nm = testdbname + '_' + testcol + '_training1'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
-    def test_basic(self):
-        params = self.basic_setup()
-        return base.train_from_params(**params)
+    #set up the parameters
+    params = {}
+    params['model_params'] = {'func': model.mnist_tfutils}
+    params['save_params'] = {'host': testhost,
+                             'port': testport,
+                             'dbname': testdbname,
+                             'collname': testcol,
+                             'exp_id': 'training0',
+                             'save_valid_freq': 20,
+                             'save_filters_freq': 200,
+                             'cache_filters_freq': 100}
+    params['train_params'] = {'data': {'func': MNIST,
+                                       'batch_size': 100,
+                                       'group': 'train'},
+                              'queue_params': {'queue_type': 'fifo',
+                                               'batch_size': 100,
+                                               'n_threads': 4}}
+    params['learning_rate_params'] = {'learning_rate': 0.05,
+                                      'decay_steps': num_batches_per_epoch,
+                                      'decay_rate': 0.95,
+                                      'staircase': True}
+    params['num_steps'] = 500
 
-    def test_nosave(self):
-        params = self.basic_setup()
-        params['save_params']['do_save'] = False
-        return base.train_from_params(**params)
+    #actually run the training
+    base.train_from_params(**params)
+    #test if results are as expected
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 26
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 
+            'saved_filters': True}).distinct('step') == [0, 200, 400]
+
+    #run another 500 steps
+    params['num_steps'] = 1000
+    base.train_from_params(**params)
+    #test if results are as expected
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 51
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 
+         'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
+    assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
+
+    #run 500 more steps but save to a new exp_id
+    params['num_steps'] = 1500
+    params['load_params'] = {'exp_id': 'training0'}
+    params['save_params']['exp_id'] = 'training1'
+    base.train_from_params(**params)
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training1', 
+                            'saved_filters': True}).distinct('step') == [1200, 1400]
+
+
+def test_validation():
+    """
+    This is a test illustrating how to run validation without training.
+    This test assumes that test_train has run first (to provide a model to validate).
+    """
+    params = {}
+    params['model_params'] = {'func': model.mnist_tfutils}
+    params['load_params'] = {'host': testhost,
+                             'port': testport,
+                             'dbname': testdbname,
+                             'collname': testcol,
+                             'exp_id': 'training0'}
+    params['save_params'] = {'exp_id': 'validation0'}
+    params['validation_params'] = {'valid0': {'data': {'func': MNIST,
+                                                       'batch_size': 100,
+                                                       'group': 'train'
+                                                   },
+                                              'queue_params': {'queue_type': 'fifo',
+                                                               'batch_size': 100,
+                                                               'n_threads': 4},
+                                              'num_steps': 10,
+                                              'agg_func': utils.mean_dict}}
+
+    base.test_from_params(**params)
+
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'}).count() == 1
+    r = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]
+    assert r['validation_only'] == True
+    f = r['validation_results']['valid0']['loss']
+    idval = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'})[50]['_id']
+    v = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]['validates']
+    assert idval == v
+
+
+def get_extraction_target(inputs, outputs, to_extract, **loss_params):
+    """here's how to figure out what names to use:
+    names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
+    print("NAMES", names)
+    """
+    targets = {k: tf.get_default_graph().get_tensor_by_name(v) for k, v in to_extract.items()}
+    targets['loss'] = utils.get_loss(inputs, outputs, **loss_params)
+    return targets
+
+
+def test_feature_extraction():
+    """
+    This is a test illustrating how to perform feature extraction.  
+    This test assumes that test_train has run first. 
+    """
+    params = {}
+    params['model_params'] = {'func': model.mnist_tfutils}
+    params['load_params'] = {'host': testhost,
+                             'port': testport,
+                             'dbname': testdbname,
+                             'collname': testcol,
+                             'exp_id': 'training0'}
+    params['save_params'] = {'exp_id': 'validation1',
+                             'save_intermediate_freq': 1,
+                             'save_to_gfs': ['features']}
+
+    targdict = {'func': get_extraction_target,
+                'to_extract': {'features': 'validation/valid1/hidden1/fc:0'}}
+    targdict.update(base.default_loss_params())
+    params['validation_params'] = {'valid1': {'data': {'func': MNIST,
+                                                     'batch_size': 100,
+                                                     'group': 'train'
+                                                 },
+                                            'targets': targdict,
+                                            'queue_params': {'queue_type': 'fifo',
+                                                             'batch_size': 100,
+                                                             'n_threads': 4},
+                                            'num_steps': 10,
+                                            'online_agg_func': utils.reduce_mean_dict
+                                            }
+                                   }
+    base.test_from_params(**params)
+
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    coll = conn[testdbname][testcol+'.files']
+    assert coll.find({'exp_id': 'validation1'}).count() == 11
+    q = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': True}}
+    assert coll.find(q).count() == 1
+    r = coll.find(q)[0]
+    q1 = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': False}}
+    ids = coll.find(q1).distinct('_id')
+    assert r['validation_results']['valid1']['intermediate_steps'] == ids
+

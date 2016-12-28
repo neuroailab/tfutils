@@ -2,16 +2,21 @@ from __future__ import absolute_import, division, print_function
 
 import os, sys, time, importlib, argparse, json, copy, logging
 from collections import OrderedDict
+import tarfile
+import cPickle
+import threading
 
 import pymongo
+from bson.objectid import ObjectId
 import gridfs
 import tensorflow as tf
+from tensorflow.core.protobuf import saver_pb2
 
 from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import Queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from tfutils.utils import make_mongo_safe, sonify
+from tfutils.utils import make_mongo_safe, sonify, get_saver_pb2_v2_files
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -42,7 +47,7 @@ DEFAULT_SAVE_PARAMS = {'save_metrics_freq': 100,
                        'save_valid_freq': 3000,
                        'cache_filters_freq': 3000,
                        'save_filters_freq': 30000,
-                       'save_initial': True,
+                       'save_initial_filters': True,
                        'save_to_gfs': (),
                        'do_save': True}
 
@@ -81,8 +86,8 @@ class DBInterface(object):
 
 					- do_save (bool, default: True)
 						Whether to save to database
-					- save_initial (bool, default: True)
-						Whether to save initial model state at step = 0,
+					- save_initial_filters (bool, default: True)
+						Whether to save initial model filters at step = 0,
 					- save_metrics_freq (int, default: 5)
 						How often to store train results to database
 					- save_valid_freq (int, default: 3000)
@@ -151,11 +156,15 @@ class DBInterface(object):
         self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables] )
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
-                   'save_filters_freq', 'save_initial', 'save_to_gfs']:
+                   'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
         for _k in ['do_restore']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
+
+        self.rec_to_save = None
+        self.checkpoint_thread = None
+        self.outrecs = []
 
         self.conn = pymongo.MongoClient(host=self.host, port=self.port)
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
@@ -228,7 +237,7 @@ class DBInterface(object):
                 tf_saver.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
         if not self.do_restore or self.load_data is None:
-            init = tf.initialize_all_variables()
+            init = tf.global_variables_initializer()
             self.sess.run(init)
             log.info('Model variables initialized from scratch.')
 
@@ -286,7 +295,6 @@ class DBInterface(object):
         log.info('Loading checkpoint from %s' % loading_from.full_name)
 
         if cache_filters:
-            # should be of form *-1000 (step)
             filename = os.path.basename(ckpt_record['filename'])
             cache_filename = os.path.join(self.cache_dir, filename)
 
@@ -300,26 +308,43 @@ class DBInterface(object):
                 fsbucket = gridfs.GridFSBucket(database,
                                         bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
+                if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
+                    assert cache_filename.endswith('.tar')
+                    tar = tarfile.open(cache_filename)
+                    tar.extractall(path=self.cache_dir)
+                    tar.close()
+                    cache_filename = os.path.splitext(cache_filename)[0]
+                    verify_pb2_v2_files(cache_filename, ckpt_record)
             else:
+                if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
+                    cache_filename = os.path.splitext(cache_filename)[0]
+                    verify_pb2_v2_files(cache_filename, ckpt_record)
                 log.info('Cache file found at %s, using that to load' % cache_filename)
         else:
             cache_filename = None
         return ckpt_record, cache_filename
 
-    def save(self, train_res, valid_res):
+    def save(self, train_res, valid_res, step=None):
         """
         Actually saves record into DB and makes local filter caches
         """
+        train_res = copy.copy(train_res)
+        valid_res = {_k: copy.copy(_v) for _k, _v in valid_res.items()}
         elapsed_time_step = time.time() - self.start_time_step
         duration = 1000 * elapsed_time_step
         just_saved = False  # for saving filters
 
-        rec = {'exp_id': self.exp_id,
-               'params': self.sonified_params,
-               'saved_filters': False,
-               'duration': duration}
+        if self.rec_to_save is None:
+            rec = {'exp_id': self.exp_id,
+                   'params': self.sonified_params,
+                   'saved_filters': False,
+                   'duration': duration}
+            self.rec_to_save = rec
+        else:
+            rec = self.rec_to_save
 
         if train_res:
+            assert step is None, step
             if not hasattr(self.global_step, 'eval'):
                 raise NoGlobalStepError('When training, you must pass global_step'
                                         ' tensorflow operation to the saver.')
@@ -332,8 +357,8 @@ class DBInterface(object):
             message += ', '.join(msg2)
             log.info(message)
 
-            save_filters_permanent = step % self.save_filters_freq == 0
-            save_filters_tmp = step % self.cache_filters_freq == 0
+            save_filters_permanent = step % self.save_filters_freq == 0 and (step > 0 or (self.save_initial_filters and not self.load_data))
+            save_filters_tmp = step % self.cache_filters_freq == 0 and (step > 0 or (self.save_initial_filters and not self.load_data))
             save_metrics_now = step % self.save_metrics_freq == 0
             save_valid_now = step % self.save_valid_freq == 0
             need_to_save = self.do_save and (save_filters_permanent or
@@ -341,8 +366,11 @@ class DBInterface(object):
 
             if 'optimizer' in train_res:
                 del train_res['optimizer']
-            rec['train_results'] = train_res
+            if 'train_results' not in rec:
+                rec['train_results'] = []
+            rec['train_results'].append(train_res)
         else:
+            rec['step'] = step
             save_filters_permanent = save_filters_tmp = False
             need_to_save = True
             rec['validation_only'] = True
@@ -352,43 +380,82 @@ class DBInterface(object):
         if valid_res:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
-            message += ', '.join('{}: {}'.format(k,v) for k,v in valid_res.items() if not k in self.save_to_gfs)
+            message += ', '.join('{}: {}'.format(k, {_k:_v for _k, _v in v.items() if _k not in self.save_to_gfs}) for k,v in valid_res.items())
             log.info(message)
 
         if need_to_save:
-            save_rec = sonify(rec)
+            self.rec_to_save = None
+            self.sync_with_host()
             save_to_gfs = {}
             for _k in self.save_to_gfs:
-                save_to_gfs[_k] = save_rec.pop(_k)
+                if train_res:
+                    save_to_gfs['train_results'] = {}
+                    if _k in train_res:
+                        save_to_gfs['train_results'][_k] = train_res.pop(_k)
+                if valid_res:
+                    save_to_gfs['validation_results'] = {}
+                    for _vk in valid_res:
+                        save_to_gfs['validation_results'][_vk] = {}
+                        if _k in valid_res[_vk]:
+                            save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
+
+            save_rec = sonify(rec)
             make_mongo_safe(save_rec)
 
-            # save filters to db
-            if save_filters_permanent or save_filters_tmp:
-                save_rec['saved_filters'] = True
-                save_path = os.path.join(self.cache_dir, 'checkpoint')
-                log.info('Saving model to %s ... ' % save_path)
-                saved_path = self.tf_saver.save(self.sess,
-                                                save_path=save_path,
-                                                global_step=step,
-                                                write_meta_graph=False)
-                log.info('... done saving.')
-                putfs = self.collfs if save_filters_permanent else self.collfs_recent
-                log.info('Putting filters into %s database' % repr(putfs))
+            thread = threading.Thread(target=self.save_thread, 
+                                 args=(save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs))
+            thread.daemon = True
+            thread.start()
+            self.checkpoint_thread = thread
+
+    def sync_with_host(self):
+        if self.checkpoint_thread is not None:
+            self.checkpoint_thread.join()
+            self.checkpoint_thread = None
+
+    def save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
+        if save_filters_permanent or save_filters_tmp:
+            save_rec['saved_filters'] = True
+            save_path = os.path.join(self.cache_dir, 'checkpoint')
+            log.info('Saving model with path prefix %s ... ' % save_path)
+            saved_path = self.tf_saver.save(self.sess,
+                                            save_path=save_path,
+                                            global_step=step,
+                                            write_meta_graph=False)
+            log.info('... done saving with path prefix %s' % saved_path)
+            putfs = self.collfs if save_filters_permanent else self.collfs_recent
+            log.info('Putting filters into %s database' % repr(putfs))
+            save_rec['_saver_write_version'] = self.tf_saver._write_version
+            if self.tf_saver._write_version == saver_pb2.SaverDef.V2:
+                file_data = get_saver_pb2_v2_files(saved_path)
+                save_rec['_saver_num_data_files'] = file_data['num_data_files']
+                tarfilepath = saved_path + '.tar'
+                tar = tarfile.open(tarfilepath, 'w')
+                for _f in file_data['files']:
+                    tar.add(_f, arcname=os.path.split(_f)[1])
+                tar.close()                    
+                with open(tarfilepath, 'rb') as _fp:
+                    outrec = putfs.put(_fp, filename=tarfilepath, **save_rec)
+            else:
                 with open(saved_path, 'rb') as _fp:
                     outrec = putfs.put(_fp, filename=saved_path, **save_rec)
-                log.info('... done putting filters into database.')
+            log.info('... done putting filters into database.')
 
-            if not save_filters_permanent:
-                save_rec['saved_filters'] = False
-                log.info('Inserting record into database.')
-                outrec = self.collfs._GridFS__files.insert_one(save_rec)
+        if not save_filters_permanent:
+            save_rec['saved_filters'] = False
+            log.info('Inserting record into database.')
+            outrec = self.collfs._GridFS__files.insert_one(save_rec)
 
-            if save_to_gfs:
-                idval = str(outrec['_id'])
-                save_to_gfs_path = idval + "_fileitems"
-                self.collfs.put(json.dumps(save_to_gfs), filename=save_to_gfs_path)
+        if not isinstance(outrec, ObjectId):
+            outrec = outrec.inserted_id
+            
+        if save_to_gfs:
+            idval = str(outrec)
+            save_to_gfs_path = idval + "_fileitems"
+            self.collfs.put(cPickle.dumps(save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
 
         sys.stdout.flush()  # flush the stdout buffer
+        self.outrecs.append(outrec)
 
 
 def predict(step, results):
@@ -402,7 +469,7 @@ def predict(step, results):
     return preds
 
 
-def get_valid_results(sess, valid_targets):
+def get_valid_results(sess, valid_targets, save_intermediate_freq=None, dbinterface=None):
     """
     Helper function for actually computing validation results.
     """
@@ -411,14 +478,21 @@ def get_valid_results(sess, valid_targets):
         num_steps = valid_targets[targname]['num_steps']
         targ = valid_targets[targname]['targets']
         agg_func = valid_targets[targname]['agg_func']
-        ress = []
+        online_agg_func = valid_targets[targname]['online_agg_func']
+        agg_res = None
+        if save_intermediate_freq:
+            n0 = len(dbinterface.outrecs)
         for _step in range(num_steps):
             res = sess.run(targ)
-            ress.append(res)
-        if agg_func:
-            valid_results[targname] = agg_func(ress)
-        else:
-            valid_results[targname] = ress
+            assert hasattr(res, 'keys'), 'result of validation must be a dictionary'
+            if save_intermediate_freq and (_step % save_intermediate_freq == 0):
+                dbinterface.save({}, {targname: res}, step=_step)
+            agg_res = online_agg_func(agg_res, res, _step)
+        valid_results[targname] = agg_func(agg_res)
+        dbinterface.sync_with_host()
+        if save_intermediate_freq:
+            n1 = len(dbinterface.outrecs)    
+            valid_results[targname]['intermediate_steps'] = dbinterface.outrecs[n0: n1]
     return valid_results
 
 
@@ -443,9 +517,10 @@ def stop_queues(sess, queues):
 
 
 def test(sess,
-        queues,
-        dbinterface,
-        valid_targets):
+         queues,
+         dbinterface,
+         valid_targets,
+         save_intermediate_freq=None):
 
     """
     Actually runs the testing evaluation loop.
@@ -459,13 +534,21 @@ def test(sess,
             Saver through which to save results
         - valid_targets (dict of tensorflow objects)
             Objects on which validation will be computed
+        - save_intermediate_freq (None or int)
+            How frequently to save intermediate results captured during test 
+            None means no intermediate saving will be saved
     """
     start_queues(sess, queues)
     dbinterface.start_time_step = time.time()
-    valid_results = get_valid_results(sess, valid_targets)
-    dbinterface.save({}, valid_results)
+    valid_results_summary = get_valid_results(sess, 
+                                              valid_targets,
+                                              save_intermediate_freq=save_intermediate_freq, 
+                                              dbinterface=dbinterface)
+    dbinterface.save({}, valid_results_summary)
+    dbinterface.sync_with_host()
+    stop_queues(sess, queues)
     sess.close()
-    return valid_results
+    return valid_results_summary, dbinterface.outrecs
 
 
 def test_from_params(load_params,
@@ -493,10 +576,12 @@ def test_from_params(load_params,
         model_func = model_kwargs.pop('func')
         dbinterface = DBInterface(load_params=load_params)
         dbinterface.load_rec()
-        cfg_final = dbinterface.load_data[0]['params']['model_params']['cfg_final']
-        original_seed = dbinterface.load_data[0]['params']['model_params']['seed']
-        train_queue_params = dbinterface.load_data[0]['params']['train_params'].get('queue_params',
-                                                                                    {})
+        ld = dbinterface.load_data
+        assert ld is not None, "No load data found for query, aborting"
+        ld = ld[0]
+        cfg_final = ld['params']['model_params']['cfg_final']
+        original_seed = ld['params']['model_params']['seed']
+        train_queue_params = ld['params']['train_params'].get('queue_params', {})
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
                                                             model_func, model_kwargs,
                                                             train_queue_params,
@@ -505,17 +590,23 @@ def test_from_params(load_params,
         model_params['cfg_final'] = cfg_final
         load_params['do_restore'] = True
         params = {'load_params': load_params,
-                  'sav_params': save_params,
+                  'save_params': save_params,
                   'model_params': model_params,
                   'validation_params': validation_params,
                   'log_device_placement': log_device_placement}
-        dbinterface = DBInterface(sess=sess, params=params,
-                                  load_params=load_params, save_params=save_params)
+
+        dbinterface = DBInterface(sess=sess,
+                                  params=params,
+                                  load_params=load_params,
+                                  save_params=save_params)
         dbinterface.initialize()
+
+        save_intermediate_freq = save_params.get('save_intermediate_freq')
         return test(sess,
                     queues,
                     dbinterface,
-                    valid_targets=valid_targets_dict)
+                    valid_targets_dict, 
+                    save_intermediate_freq=save_intermediate_freq)
 
 
 def train(sess,
@@ -549,8 +640,8 @@ def train(sess,
 
     start_queues(sess, queues)
     step = global_step.eval(session=sess)
-    if step == 0 and dbinterface.do_save and dbinterface.save_initial and not dbinterface.load_data:
-        log.info('Saving initial ...')
+    if step == 0:
+        log.info('Evaluating initial ...')
         pass_targets = {k:v for k,v in train_targets.items() if k != 'optimizer'}
         dbinterface.start_time_step = time.time()
         train_results = sess.run(pass_targets)
@@ -572,12 +663,14 @@ def train(sess,
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
         if step % dbinterface.save_valid_freq == 0 and valid_targets:
-            valid_results = get_valid_results(sess, valid_targets)
+            valid_results = get_valid_results(sess, valid_targets, save_intermediate=False)
         else:
             valid_results = {}
         dbinterface.save(train_results, valid_results)
     stop_queues(sess, queues)
+    dbinterface.sync_with_host()
     sess.close()
+    return dbinterface.outrecs
 
 
 def train_from_params(save_params,
@@ -681,6 +774,19 @@ def train_from_params(save_params,
                                 this validation. NB: if this is NOT specified, queue params
                                 for this validation default to those used in constructing
                                 the training data queue.
+                        'num_steps': (int) number of batches of validation source to compute
+                        'agg_func': (optional, callable) how to aggregate validation results 
+                                across batches after computation. Signature is:
+                                    - one input argument: the list of validation batch results
+                                    - one output: aggregated version
+                                Default is utils.identity_func 
+                        'online_agg_func': (optional, callable) how to aggregate validation results
+                                on a per-batch basis. Siganture is:
+                                    - three input arguments: (current aggregate, new result, step)
+                                    - one output: new aggregated result
+                                One first step, current aggregate passed in is None.
+                                The final result is passed to the "agg_func".
+                                Default is utils.append_and_return
                     },
                     <validation_target_name_2>: ...
                 }
@@ -823,9 +929,11 @@ def get_valid_targets_dict(validation_params,
         if 'targets' not in validation_params[vtarg]:
             validation_params[vtarg]['targets'] = default_loss_params()
         if 'func' not in validation_params[vtarg]['targets']:
-            validation_params[vtarg]['targets']['func'] = utils.get_loss
+            validation_params[vtarg]['targets']['func'] = utils.get_loss_dict
         if 'agg_func' not in validation_params[vtarg]:
-            validation_params[vtarg]['agg_func'] = None
+            validation_params[vtarg]['agg_func'] = utils.identity_func
+        if 'online_agg_func' not in validation_params[vtarg]:
+            validation_params[vtarg]['online_agg_func'] = utils.append_and_return
         if 'queue_params' not in validation_params[vtarg] and default_queue_params:
             validation_params[vtarg]['queue_params'] = default_queue_params
 
@@ -833,13 +941,12 @@ def get_valid_targets_dict(validation_params,
         vdata_func = vdata_kwargs.pop('func')
         vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
         vtargs_func = vtargs_kwargs.pop('func')
-        agg_func = validation_params[vtarg]['agg_func']
         vinputs = vdata_func(**vdata_kwargs)
         if 'num_steps' not in validation_params[vtarg]:
             validation_params[vtarg]['num_steps'] = vinputs.total_batches
         num_steps = validation_params[vtarg]['num_steps']
         vqueue_params = validation_params[vtarg].get('queue_params', {})
-        queue = CustomQueue(vinputs.node, vinputs, **vqueue_params)
+        queue = Queue(vinputs.node, vinputs, **vqueue_params)
         queues.append(queue)
         vinputs = queue.batch
         new_model_kwargs = copy.deepcopy(model_kwargs)
@@ -852,7 +959,8 @@ def get_valid_targets_dict(validation_params,
             tf.get_variable_scope().reuse_variables()
             vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
             valid_targets_dict[vtarg] = {'targets': vtargets,
-                                         'agg_func': agg_func,
+                                         'agg_func': validation_params[vtarg]['agg_func'],
+                                         'online_agg_func': validation_params[vtarg]['online_agg_func'],
                                          'num_steps': num_steps}
     return valid_targets_dict, queues
 
@@ -873,6 +981,13 @@ def get_params():
 def main():
     args = get_params()
     train_from_params(**args)
+
+
+def verify_pb2_v2_files(cache_prefix, ckpt_record):
+    file_data = get_saver_pb2_v2_files(cache_prefix)
+    ndf = file_data['num_data_files']
+    sndf = ckpt_record['_saver_num_data_files']
+    assert ndf == sndf, (ndf, sndf)
 
 
 """
