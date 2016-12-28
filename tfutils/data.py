@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import threading
+import copy, threading, time
 import numpy as np
 import h5py
 import tensorflow as tf
+from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
 
 class HDF5DataProvider(object):
@@ -30,9 +31,7 @@ class HDF5DataProvider(object):
         - mini_batch_size (int):  Used only if subslice is specifiied, this sets the size of minibatches used
           when constructing one full batch within the subslice to return
         - preprocess (dict of callables): functions for preprocessing data in the datasources.  keys of this are subset
-          of sourcelist. preprocessing is done on object instantiation
         - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.
-          Postprocessing is done when get_batch is called.
         - pad (bool): whether to pad data returned if amount of data left to return is less then full batch size
         """
         self.hdf5source = hdf5source
@@ -50,7 +49,6 @@ class HDF5DataProvider(object):
             if source in self.preprocess:
                 print('Preprocessing %s...' % source)
                 self.data[source] = self.preprocess[source](self.data[source])
-                print('...done')
 
         for source in sourcelist:
             if self.subslice is None:
@@ -194,68 +192,93 @@ def isin(X,Y):
 
 class Queue(object):
     """ A generic queue for reading data
-        Based on https://indico.io/blog/tensorflow-data-input-part2-extensions/
+        Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
 
     def __init__(self,
-                 node,
-                 data_iter,
+                 data,
+                 data_batch_size=None,
                  queue_type='fifo',
                  batch_size=256,
                  n_threads=4,
+                 capacity=None,
                  seed=0):
-        self.node = node
-        self.data_iter = data_iter
+        self.data_iter = iter(data)
         self.batch_size = batch_size
         self.n_threads = n_threads
         self._continue = True
-
-        dtypes = [d.dtype for d in node.values()]
-        if self.data_iter.batch_size > 1:
-            shapes = [d.get_shape()[1:] for d in node.values()]
+        if capacity is None:
+            self.capacity = self.n_threads * self.batch_size * 2
         else:
-            shapes = [d.get_shape() for d in node.values()]
+            self.capacity = capacity
+
+        if data_batch_size is None:
+            try:
+                data_batch_size = self.data_iter.batch_size
+            except KeyError:
+                raise KeyError('Need to define data batch size; either pass it '
+                               'to Queue constructor or have it defined in '
+                               'data_iter.batch_size.')
+
+        nodes = {}
+        dtypes = []
+        shapes = []
+        self._first_batch = self.data_iter.next()
+        for key, value in self._first_batch.items():
+            nodes[key] = tf.placeholder(value.dtype, shape=value.shape, name=key)
+            dtypes.append(value.dtype)
+            if data_batch_size > 1:
+                shapes.append(value.shape[1:])
+            else:
+                shapes.append(value.shape)
 
         if queue_type == 'random':
-            self.queue = tf.RandomShuffleQueue(capacity=n_threads * batch_size * 2,
-                                               min_after_dequeue=n_threads * batch_size,
+            self.queue = tf.RandomShuffleQueue(capacity=self.capacity,
+                                               min_after_dequeue=self.capacity // 2,
                                                dtypes=dtypes,
                                                shapes=shapes,
-                                               names=node.keys(),
+                                               names=nodes.keys(),
                                                seed=seed)
         elif queue_type == 'fifo':
-            self.queue = tf.FIFOQueue(capacity=n_threads * batch_size * 2,
+            self.queue = tf.FIFOQueue(capacity=self.capacity,
                                       dtypes=dtypes,
                                       shapes=shapes,
-                                      names=node.keys())
+                                      names=nodes.keys())
         elif queue_type == 'padding_fifo':
-            self.queue = tf.PaddingFIFOQueue(capacity=n_threads * batch_size * 2,
+            self.queue = tf.PaddingFIFOQueue(capacity=self.capacity,
                                              dtypes=dtypes,
                                              shapes=shapes,
-                                             names=node.keys())
+                                             names=nodes.keys())
         elif queue_type == 'priority':
-            self.queue = tf.PriorityQueue(capacity=n_threads * batch_size * 2,
+            self.queue = tf.PriorityQueue(capacity=self.capacity,
                                           types=dtypes,
                                           shapes=shapes,
-                                          names=node.keys())
+                                          names=nodes.keys())
         else:
             Exception('Queue type %s not recognized' % queue_type)
 
-        if self.data_iter.batch_size > 1:
-            self.enqueue_op = self.queue.enqueue_many(node)
+        if data_batch_size > 1:
+            self.enqueue_op = self.queue.enqueue_many(nodes)
         else:
-            self.enqueue_op = self.queue.enqueue(node)
+            self.enqueue_op = self.queue.enqueue(nodes)
         self.batch = self.queue.dequeue_many(batch_size)
 
     def thread_main(self, sess):
         """
         Function run on alternate thread. Basically, keep adding data to the queue.
         """
-        for batch in self.data_iter:
-            if self._continue:
-                sess.run(self.enqueue_op, feed_dict=batch)
-            else:
-                break
+        try:
+            feed_dict = {node: self._first_batch[name] for name, node in self.nodes.items()}
+            sess.run(self.enqueue_op, feed_dict=feed_dict)
+        except tf.errors.CancelledError:
+            pass
+        else:
+            for batch in self.data_iter:
+                try:
+                    feed_dict = {node: batch[name] for name, node in self.nodes.items()}
+                    sess.run(self.enqueue_op, feed_dict=feed_dict)
+                except tf.errors.CancelledError:
+                    break
 
     def start_threads(self, sess):
         """ Start background threads to feed queue """
@@ -265,12 +288,49 @@ class Queue(object):
             t.daemon = True  # thread will close when parent quits
             t.start()
             threads.append(t)
-        return threads
+        self.threads = threads
 
     def stop_threads(self, sess):
-        self._continue = False
         close_op = self.queue.close(cancel_pending_enqueues=True)
         sess.run(close_op)
+
+
+class MNIST(object):
+    def __init__(self,
+                 data_path=None,
+                 group='train',
+                 batch_size=100):
+        """
+        A specific reader for IamgeNet stored as a HDF5 file
+
+        Kwargs:
+            - data_path: path to imagenet data
+            - group: train, validation, test
+            - batch_size
+        """
+        self.batch_size = batch_size
+
+        if data_path is None:
+            data_path = '/tmp'
+        data = read_data_sets(data_path)
+
+        if group == 'train':
+            self.data = data.train
+        elif group == 'test':
+            self.data = data.test
+        elif group == 'validation':
+            self.data = data.validation
+            self.total_batches = data.validation.num_examples // self.batch_size
+        else:
+            raise ValueError('MNIST data input "{}" not known'.format(group))
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        batch = self.data.next_batch(self.batch_size)
+        feed_dict = {'images': batch[0], 'labels': batch[1]}
+        return feed_dict
 
 
 class ImageNet(HDF5DataProvider):
