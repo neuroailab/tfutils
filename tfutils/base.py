@@ -30,29 +30,32 @@ TODO:
     - epoch and batch_num should be added to what is saved.   But how to do that with Queues?
 """
 
-
-def default_loss_params():
+def get_default_loss_params():
     return {'target': 'labels',
             'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
             'agg_func': tf.reduce_mean}
 
 
-def default_optimizer_params():
+def get_default_optimizer_params():
     return {'func': ClipOptimizer,
             'optimizer_class': tf.train.MomentumOptimizer,
             'momentum': 0.9}
+    
+DEFAULT_TRAIN_NUM_STEPS = None
 
+DEFAULT_TRAIN_THRES_LOSS = 100
 
-DEFAULT_SAVE_PARAMS = {'save_metrics_freq': 100,
-                       'save_valid_freq': 3000,
-                       'cache_filters_freq': 3000,
-                       'save_filters_freq': 30000,
-                       'save_initial_filters': True,
-                       'save_to_gfs': (),
-                       'do_save': True}
-
-
-DEFAULT_LOAD_PARAMS = {'do_restore': True}
+def get_default_save_params():
+    return {'save_metrics_freq': 100,
+            'save_valid_freq': 3000,
+            'cache_filters_freq': 3000,
+            'save_filters_freq': 30000,
+            'save_initial_filters': True,
+            'save_to_gfs': (),
+            'do_save': True}
+    
+def get_default_load_params():
+    return {'do_restore': True}
 
 
 class DBInterface(object):
@@ -83,7 +86,24 @@ class DBInterface(object):
 						Name of collection for storage
 					- exp_id (str)
 						Experiment id descriptor
-
+                                          NOTE: the variables host/port/dbname/coll/exp_id control
+                                          the location of the saved data for the run, in order of 
+                                          increasing specificity.  When choosing these, note that: 
+                                             1.  If a given host/port/dbname/coll/exp_id already has saved checkpoints,
+                                                 then any new call to start training with these same location variables
+                                                 will start to train from the most recent saved checkpoint.  If you mistakenly
+                                                 try to start training a new model with different variable names, or structure,
+                                                 from that existing checkpoint, an error will be raised, as the model will be
+                                                 incompatiable with the saved variables.
+                                             2.  When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb
+                                                 queries only operate over a single collection.  So if you want to analyze
+                                                 results from a bunch of experiments together using mongod queries, you should
+                                                 put them all in the same collection, but with different exp_ids.  If, on the 
+                                                 other hand, you never expect to analyze data from two experiments together,
+                                                 you can put them in different collections or different databases.  Choosing
+                                                 between putting two experiments in two collections in the same database
+                                                 or in two totally different databases will depend on how you want to organize
+                                                 your results and is really a matter of preference.
 					- do_save (bool, default: True)
 						Whether to save to database
 					- save_initial_filters (bool, default: True)
@@ -91,7 +111,8 @@ class DBInterface(object):
 					- save_metrics_freq (int, default: 5)
 						How often to store train results to database
 					- save_valid_freq (int, default: 3000)
-						How often to calculate and store validation results to database
+						How often to calculate and store validation results
+                                                to database
 					- save_filters_freq (int, default: 30000)
 						How often to save filter values to database
 					- cache_filters_freq (int, default: 3000)
@@ -155,12 +176,14 @@ class DBInterface(object):
             setattr(self, 'load_' + _k, lv)
         self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables] )
 
+        default_save_params = get_default_save_params()
+        default_load_params = get_default_load_params()
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
-            setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
+            setattr(self, _k, save_params.get(_k, default_save_params[_k]))
 
         for _k in ['do_restore']:
-            setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
+            setattr(self, _k, load_params.get(_k, default_load_params[_k]))
 
         self.rec_to_save = None
         self.checkpoint_thread = None
@@ -583,10 +606,12 @@ def test_from_params(load_params,
         original_seed = ld['params']['model_params']['seed']
         train_queue_params = ld['params']['train_params'].get('queue_params', {})
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
-                                                            model_func, model_kwargs,
+                                                            model_func,
+                                                            model_kwargs,
                                                             train_queue_params,
                                                             cfg_final,
-                                                            original_seed)
+                                                            original_seed,
+                                                            None)
         model_params['cfg_final'] = cfg_final
         load_params['do_restore'] = True
         params = {'load_params': load_params,
@@ -610,13 +635,13 @@ def test_from_params(load_params,
 
 
 def train(sess,
-        queues,
-        dbinterface,
-        train_targets,
-        global_step,
-        num_steps,
-        valid_targets=None,
-        thres_loss=100):
+          queues,
+          dbinterface,
+          train_targets,
+          global_step,
+          num_steps,
+          thres_loss=DEFAULT_TRAIN_THRES_LOSS,
+          valid_targets=None):
     """
     Actually runs the training evaluation loop.
 
@@ -648,6 +673,9 @@ def train(sess,
         dbinterface.save(train_results, {})
         log.info('... done saving initial.')
 
+    if num_steps is None:
+        num_steps = np.inf
+
     if step < num_steps:
         log.info('Training beginning ...')
     else:
@@ -674,17 +702,15 @@ def train(sess,
 
 
 def train_from_params(save_params,
-               model_params,
-               train_params,
-               loss_params=None,
-               learning_rate_params=None,
-               optimizer_params=None,
-               validation_params=None,
-               thres_loss=100,
-               num_steps=1000000,
-               log_device_placement=False,
-               load_params=None
-             ):
+                      model_params,
+                      train_params,
+                      loss_params=None,
+                      learning_rate_params=None,
+                      optimizer_params=None,
+                      validation_params=None,
+                      log_device_placement=False,
+                      load_params=None
+                  ):
     """
     Main training interface function.
 
@@ -721,15 +747,7 @@ def train_from_params(save_params,
                       Queue.__init__ method.   Default is {}.
     :Kwargs:
         - loss_params (dict):
-            Parameters for specifying loss function
-                - loss_params['func'] is callable producing the tensorflow node
-                  used for training loss
-                    - Must accept:
-                        - 'inputs'
-                        - 'outputs'
-                    - Must return:
-                        - loss
-                - remainder of loss_params are then parameters to func
+            Parameters for to utils.get_loss function for specifying loss
 
         - learning_rate_params (dict)
             Parameters for specifying learning_rate:
@@ -803,8 +821,8 @@ def train_from_params(save_params,
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
 
-        - num_steps (int, default: 1000000)
-            How many total steps of the optimization are run
+        - num_steps (int or None, default: None)
+            How many total steps of the optimization are run.  If None, train is run until process is cancelled. 
 
       - load_params (dict)
             Dictionary of arguments for loading model, if different from saver
@@ -821,12 +839,16 @@ def train_from_params(save_params,
                                       trainable=False)
 
         #  train_data_func returns dictionary of iterators, with one key per input to model
+        if 'num_steps' not in train_params:
+            train_params['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
+        if 'thres_loss' not in train_params:
+            train_params['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
         train_data_kwargs = copy.deepcopy(train_params['data'])
         train_data_func = train_data_kwargs.pop('func')
         train_inputs = train_data_func(**train_data_kwargs)
 
         train_queue_params = train_params.get('queue_params', {})
-        queue = Queue(train_inputs.node, train_inputs, **train_queue_params)
+        queue = Queue(train_inputs, **train_queue_params)
         queues = [queue]
         train_inputs = queue.batch
 
@@ -841,12 +863,8 @@ def train_from_params(save_params,
                                               **model_kwargs)
 
         if loss_params is None:
-            loss_params = default_loss_params()
-        if 'func' not in loss_params:
-            loss_params['func'] = utils.get_loss
-        loss_kwargs = copy.deepcopy(loss_params)
-        loss_func = loss_kwargs.pop('func')
-        loss = loss_func(train_inputs, train_outputs, **loss_kwargs)
+            loss_params = get_default_loss_params()
+        loss = utils.get_loss(train_inputs, train_outputs, **loss_params)
 
         if learning_rate_params is None:
             learning_rate_params = {}
@@ -858,7 +876,7 @@ def train_from_params(save_params,
                                            **learning_rate_kwargs)
 
         if optimizer_params is None:
-            optimizer_params = default_optimizer_params()
+            optimizer_params = get_default_optimizer_params()
         if 'func' not in optimizer_params:
             optimizer_params['func'] = ClipOptimizer
         optimizer_kwargs = copy.deepcopy(optimizer_params)
@@ -881,10 +899,12 @@ def train_from_params(save_params,
         scope = tf.get_variable_scope()
         scope.reuse_variables()
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
-                                                             model_func, model_kwargs,
+                                                             model_func, 
+                                                             model_kwargs,
                                                              train_queue_params,
                                                              cfg_final,
-                                                             model_kwargs['seed'])
+                                                             model_kwargs['seed'],
+                                                             loss_params)
         queues.extend(vqueues)
 
         # create session
@@ -900,35 +920,37 @@ def train_from_params(save_params,
                   'learning_rate_params': learning_rate_params,
                   'optimizer_params': optimizer_params,
                   'validation_params': validation_params,
-                  'thres_loss': thres_loss,
-                  'num_steps': num_steps,
                   'log_device_placement': log_device_placement}
         dbinterface = DBInterface(sess=sess, global_step=global_step, params=params,
                                   save_params=save_params, load_params=load_params)
         dbinterface.initialize()
-        train(sess,
-              queues,
-              dbinterface,
-              train_targets=train_targets,
-              global_step=global_step,
-              num_steps=num_steps,
-              valid_targets=valid_targets_dict,
-              thres_loss=thres_loss)
+        return train(sess,
+                     queues,
+                     dbinterface,
+                     train_targets=train_targets,
+                     global_step=global_step,
+                     num_steps=train_params['num_steps'],
+                     thres_loss=train_params['thres_loss'],
+                     valid_targets=valid_targets_dict)
 
 
 def get_valid_targets_dict(validation_params,
-                           model_func, model_kwargs,
+                           model_func,
+                           model_kwargs,
                            default_queue_params,
                            cfg_final,
-                           original_seed):
+                           original_seed,
+                           default_loss_params):
     """Helper function for creating validation target operations.
        NB: this function may modify validation_params"""
     valid_targets_dict = OrderedDict()
     queues = []
     for vtarg in validation_params:
         if 'targets' not in validation_params[vtarg]:
-            validation_params[vtarg]['targets'] = default_loss_params()
-        if 'func' not in validation_params[vtarg]['targets']:
+            if default_loss_params:
+                validation_params[vtarg]['targets'] = copy.deepcopy(default_loss_params)
+            else:
+                validation_params[vtarg]['targets'] = get_default_loss_params()
             validation_params[vtarg]['targets']['func'] = utils.get_loss_dict
         if 'agg_func' not in validation_params[vtarg]:
             validation_params[vtarg]['agg_func'] = utils.identity_func
@@ -946,7 +968,7 @@ def get_valid_targets_dict(validation_params,
             validation_params[vtarg]['num_steps'] = vinputs.total_batches
         num_steps = validation_params[vtarg]['num_steps']
         vqueue_params = validation_params[vtarg].get('queue_params', {})
-        queue = Queue(vinputs.node, vinputs, **vqueue_params)
+        queue = Queue(vinputs, **vqueue_params)
         queues.append(queue)
         vinputs = queue.batch
         new_model_kwargs = copy.deepcopy(model_kwargs)

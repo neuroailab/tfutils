@@ -37,21 +37,14 @@ class MNIST(object):
         else:
             raise ValueError('MNIST data input "{}" not known'.format(group))
 
-        self.node = {'images': tf.placeholder(tf.float32,
-                                              shape=(self.batch_size, 784),
-                                              name='images'),
-                     'labels': tf.placeholder(tf.int32,
-                                              shape=[self.batch_size],
-                                              name='labels')}
-
     def __iter__(self):
         return self
 
     def next(self):
         batch = self.data.next_batch(self.batch_size)
-        feed_dict = {self.node['images']: batch[0],
-                     self.node['labels']: batch[1]}
-        return feed_dict
+        return {'images': batch[0],
+                'labels': batch[1].astype(np.int32)}
+
 
 
 num_batches_per_epoch = 10000//256
@@ -90,12 +83,12 @@ def test_training():
                                        'group': 'train'},
                               'queue_params': {'queue_type': 'fifo',
                                                'batch_size': 100,
-                                               'n_threads': 4}}
+                                               'n_threads': 4},
+                              'num_steps': 500}
     params['learning_rate_params'] = {'learning_rate': 0.05,
                                       'decay_steps': num_batches_per_epoch,
                                       'decay_rate': 0.95,
                                       'staircase': True}
-    params['num_steps'] = 500
 
     #actually run the training
     base.train_from_params(**params)
@@ -105,7 +98,7 @@ def test_training():
             'saved_filters': True}).distinct('step') == [0, 200, 400]
 
     #run another 500 steps
-    params['num_steps'] = 1000
+    params['train_params']['num_steps'] = 1000
     base.train_from_params(**params)
     #test if results are as expected
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 51
@@ -114,7 +107,7 @@ def test_training():
     assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
 
     #run 500 more steps but save to a new exp_id
-    params['num_steps'] = 1500
+    params['train_params']['num_steps'] = 1500
     params['load_params'] = {'exp_id': 'training0'}
     params['save_params']['exp_id'] = 'training1'
     base.train_from_params(**params)
@@ -186,7 +179,7 @@ def test_feature_extraction():
 
     targdict = {'func': get_extraction_target,
                 'to_extract': {'features': 'validation/valid1/hidden1/fc:0'}}
-    targdict.update(base.default_loss_params())
+    targdict.update(base.get_default_loss_params())
     params['validation_params'] = {'valid1': {'data': {'func': MNIST,
                                                      'batch_size': 100,
                                                      'group': 'train'

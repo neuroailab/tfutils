@@ -219,12 +219,12 @@ class Queue(object):
                                'to Queue constructor or have it defined in '
                                'data_iter.batch_size.')
 
-        nodes = {}
+        self.nodes = {}
         dtypes = []
         shapes = []
         self._first_batch = self.data_iter.next()
         for key, value in self._first_batch.items():
-            nodes[key] = tf.placeholder(value.dtype, shape=value.shape, name=key)
+            self.nodes[key] = tf.placeholder(value.dtype, shape=value.shape, name=key)
             dtypes.append(value.dtype)
             if data_batch_size > 1:
                 shapes.append(value.shape[1:])
@@ -236,30 +236,30 @@ class Queue(object):
                                                min_after_dequeue=self.capacity // 2,
                                                dtypes=dtypes,
                                                shapes=shapes,
-                                               names=nodes.keys(),
+                                               names=self.nodes.keys(),
                                                seed=seed)
         elif queue_type == 'fifo':
             self.queue = tf.FIFOQueue(capacity=self.capacity,
                                       dtypes=dtypes,
                                       shapes=shapes,
-                                      names=nodes.keys())
+                                      names=self.nodes.keys())
         elif queue_type == 'padding_fifo':
             self.queue = tf.PaddingFIFOQueue(capacity=self.capacity,
                                              dtypes=dtypes,
                                              shapes=shapes,
-                                             names=nodes.keys())
+                                             names=self.nodes.keys())
         elif queue_type == 'priority':
             self.queue = tf.PriorityQueue(capacity=self.capacity,
                                           types=dtypes,
                                           shapes=shapes,
-                                          names=nodes.keys())
+                                          names=self.nodes.keys())
         else:
             Exception('Queue type %s not recognized' % queue_type)
 
         if data_batch_size > 1:
-            self.enqueue_op = self.queue.enqueue_many(nodes)
+            self.enqueue_op = self.queue.enqueue_many(self.nodes)
         else:
-            self.enqueue_op = self.queue.enqueue(nodes)
+            self.enqueue_op = self.queue.enqueue(self.nodes)
         self.batch = self.queue.dequeue_many(batch_size)
 
     def thread_main(self, sess):
