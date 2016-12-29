@@ -347,10 +347,18 @@ class DBInterface(object):
             cache_filename = None
         return ckpt_record, cache_filename
 
-    def save(self, train_res, valid_res, step=None):
+    def save(self, train_res, valid_res, step=None, validation_only=False):
         """
         Actually saves record into DB and makes local filter caches
+
         """
+
+        if (not validation_only) and (step is None):
+            if not hasattr(self.global_step, 'eval'):
+                raise NoGlobalStepError('If step is none, you must pass global_step'
+                                        ' tensorflow operation to the saver.')
+            step = self.global_step.eval(session=self.sess)
+
         train_res = copy.copy(train_res)
         valid_res = {_k: copy.copy(_v) for _k, _v in valid_res.items()}
         elapsed_time_step = time.time() - self.start_time_step
@@ -365,14 +373,9 @@ class DBInterface(object):
             self.rec_to_save = rec
         else:
             rec = self.rec_to_save
+        rec['step'] = step
 
         if train_res:
-            assert step is None, step
-            if not hasattr(self.global_step, 'eval'):
-                raise NoGlobalStepError('When training, you must pass global_step'
-                                        ' tensorflow operation to the saver.')
-            step = self.global_step.eval(session=self.sess)
-            rec['step'] = step
             # TODO: also include error rate of the train set to monitor overfitting
             # DY: I don't understand this TODO -- isn't this already here?
             message = 'Step {} ({:.0f} ms) -- '.format(step, duration)
@@ -380,31 +383,36 @@ class DBInterface(object):
             message += ', '.join(msg2)
             log.info(message)
 
-            save_filters_permanent = step % self.save_filters_freq == 0 and (step > 0 or (self.save_initial_filters and not self.load_data))
-            save_filters_tmp = step % self.cache_filters_freq == 0 and (step > 0 or (self.save_initial_filters and not self.load_data))
-            save_metrics_now = step % self.save_metrics_freq == 0
-            save_valid_now = step % self.save_valid_freq == 0
-            need_to_save = self.do_save and (save_filters_permanent or
-                            save_filters_tmp or save_metrics_now or save_valid_now)
-
             if 'optimizer' in train_res:
                 del train_res['optimizer']
             if 'train_results' not in rec:
                 rec['train_results'] = []
             rec['train_results'].append(train_res)
-        else:
-            rec['step'] = step
-            save_filters_permanent = save_filters_tmp = False
-            need_to_save = True
-            rec['validation_only'] = True
-            rec['validates'] = self.load_data[0]['_id']
 
         # print validation set performance
         if valid_res:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
-            message += ', '.join('{}: {}'.format(k, {_k:_v for _k, _v in v.items() if _k not in self.save_to_gfs}) for k,v in valid_res.items())
+            message += ', '.join('{}: {}'.format(k,
+                        {_k:_v for _k, _v in v.items() if _k not in self.save_to_gfs}
+                        ) for k,v in valid_res.items())
             log.info(message)
+
+        if validation_only:
+            rec['validates'] = self.load_data[0]['_id']
+            save_filters_permanent = save_filters_tmp = False
+            need_to_save = True
+        else:
+            save_filters_permanent = (step % self.save_filters_freq == 0) and \
+                                       (step > 0 or (self.save_initial_filters and not self.load_data))
+            save_filters_tmp = (step % self.cache_filters_freq == 0) and \
+                                       (step > 0 or (self.save_initial_filters and not self.load_data))
+            save_metrics_now = step % self.save_metrics_freq == 0
+            save_valid_now = step % self.save_valid_freq == 0
+            need_to_save = self.do_save and (save_filters_permanent or
+                                             save_filters_tmp or 
+                                             save_metrics_now or 
+                                             save_valid_now)
 
         if need_to_save:
             self.rec_to_save = None
@@ -509,7 +517,7 @@ def get_valid_results(sess, valid_targets, save_intermediate_freq=None, dbinterf
             res = sess.run(targ)
             assert hasattr(res, 'keys'), 'result of validation must be a dictionary'
             if save_intermediate_freq and (_step % save_intermediate_freq == 0):
-                dbinterface.save({}, {targname: res}, step=_step)
+                dbinterface.save({}, {targname: res}, step=_step, validation_only=True)
             agg_res = online_agg_func(agg_res, res, _step)
         valid_results[targname] = agg_func(agg_res)
         dbinterface.sync_with_host()
@@ -567,7 +575,7 @@ def test(sess,
                                               valid_targets,
                                               save_intermediate_freq=save_intermediate_freq, 
                                               dbinterface=dbinterface)
-    dbinterface.save({}, valid_results_summary)
+    dbinterface.save({}, valid_results_summary, validation_only=True)
     dbinterface.sync_with_host()
     stop_queues(sess, queues)
     sess.close()
@@ -663,24 +671,26 @@ def train(sess,
             If loss exceeds this during training, HiLossError is thrown
     """
 
-    start_queues(sess, queues)
     step = global_step.eval(session=sess)
-    if step == 0:
-        log.info('Evaluating initial ...')
-        pass_targets = {k:v for k,v in train_targets.items() if k != 'optimizer'}
-        dbinterface.start_time_step = time.time()
-        train_results = sess.run(pass_targets)
-        dbinterface.save(train_results, {})
-        log.info('... done saving initial.')
 
     if num_steps is None:
         num_steps = np.inf
 
-    if step < num_steps:
-        log.info('Training beginning ...')
-    else:
+    if step >= num_steps:
         log.info('Training cancelled since step (%d) is >= num_steps (%d)' % (step, num_steps))
+        return 
+
+    log.info('Training beginning ...')
+    start_queues(sess, queues)
+    train_results = {}
+    dbinterface.start_time_step = time.time()
     while step < num_steps:
+        if step % dbinterface.save_valid_freq == 0 and valid_targets:
+            valid_results = get_valid_results(sess, valid_targets, save_intermediate=False)
+        else:
+            valid_results = {}
+        if train_results or step == 0:
+            dbinterface.save(train_results, valid_results, validation_only=False)
         old_step = step
         dbinterface.start_time_step = time.time()
         train_results = sess.run(train_targets)
@@ -690,11 +700,12 @@ def train(sess,
                                 ' but did not: old_step=%d, new_step=%d' % (old_step, step))
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
-        if step % dbinterface.save_valid_freq == 0 and valid_targets:
-            valid_results = get_valid_results(sess, valid_targets, save_intermediate=False)
-        else:
-            valid_results = {}
-        dbinterface.save(train_results, valid_results)
+
+    if step % dbinterface.save_valid_freq == 0 and valid_targets:
+        valid_results = get_valid_results(sess, valid_targets, save_intermediate=False)
+    else:
+        valid_results = {}
+    dbinterface.save(train_results, valid_results, validation_only=False)
     stop_queues(sess, queues)
     dbinterface.sync_with_host()
     sess.close()

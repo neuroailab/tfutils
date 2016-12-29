@@ -144,7 +144,7 @@ def test_validation():
                           port=testport)
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'}).count() == 1
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]
-    assert r['validation_only'] == True
+    assert r['validates']
     f = r['validation_results']['valid0']['loss']
     idval = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'})[50]['_id']
     v = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]['validates']
