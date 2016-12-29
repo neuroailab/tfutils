@@ -50,25 +50,25 @@ class DataNoRead(object):
     def __init__(self, batch_size=256, *args, **kwargs):
         self.kind = 'in ram (feed_dict)'
         self.batch_size = batch_size
-        if self.batch_size == 1:
-            self.node = {'data': tf.placeholder(tf.float32,
-                                                 shape=(IMSIZE, IMSIZE, 3)),
-                         'labels': tf.placeholder(tf.int64, shape=[])}
-        else:
-            self.node = {'data': tf.placeholder(tf.float32,
-                                                 shape=(self.batch_size, IMSIZE, IMSIZE, 3)),
-                         'labels': tf.placeholder(tf.int64, shape=[self.batch_size])}
+        # if self.batch_size == 1:
+        #     self.node = {'data': tf.placeholder(tf.float32,
+        #                                          shape=(IMSIZE, IMSIZE, 3)),
+        #                  'labels': tf.placeholder(tf.int64, shape=[])}
+        # else:
+        #     self.node = {'data': tf.placeholder(tf.float32,
+        #                                          shape=(self.batch_size, IMSIZE, IMSIZE, 3)),
+        #                  'labels': tf.placeholder(tf.int64, shape=[self.batch_size])}
 
         self._data = np.random.uniform(-.5, .5, size=[self.batch_size, IMSIZE, IMSIZE, 3])
         self._labels = np.random.randint(0, 1000, size=[self.batch_size])
-        self.batch = self.node
+        # self.batch = self.node
 
     def __iter__(self):
         return self
 
     def next(self):
-        feed_dict = {self.node['data']: np.squeeze(self._data.astype(np.float32)),
-                     self.node['labels']: np.squeeze(self._labels.astype(np.int64))}
+        feed_dict = {'data': np.squeeze(self._data.astype(np.float32)),
+                     'labels': np.squeeze(self._labels.astype(np.int64))}
         return feed_dict
 
 
@@ -177,7 +177,11 @@ def standard_tests():
     df.append(durs)
 
     tf.reset_default_graph()
-    durs = time_tf(DataNoRead())
+    d = DataNoRead()
+    d.batch = {}
+    d.batch['data'] = tf.placeholder(np.float32, shape=(BATCH_SIZE, IMSIZE, IMSIZE, 3), name='data')
+    d.batch['labels'] = tf.placeholder(np.int64, shape=[BATCH_SIZE], name='labels')
+    durs = time_tf(d)
     df.append(durs)
 
     tf.reset_default_graph()
