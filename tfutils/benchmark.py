@@ -1,135 +1,263 @@
 from __future__ import division, print_function, absolute_import
-import os, time
+import os, copy, time, tempfile
 
+import h5py
+import tqdm
 import numpy as np
+import pandas
 import tensorflow as tf
 
+import sys
+sys.path.insert(0, '..')
 from tfutils import base, data, model
 
-host = os.uname()[1]
-if host.startswith('node') or host == 'openmind7':  # OpenMind
-    # DATA_PATH = '/mindhive/dicarlolab/common/imagenet/data.raw'
-    DATA_PATH = '/om/user/qbilius/imagenet/data.raw'
-else:  # agents
-    DATA_PATH = '/data/imagenet_dataset/hdf5_cached_from_om7/data.raw'
+
+BATCH_SIZE = 256
+NSTEPS = 20
+IMSIZE = 224
+
+
+def create_hdf5(n_img, path=None, shape=(IMSIZE, IMSIZE, 3), im_dtype=np.float32):
+    if path is None:
+        path = '/tmp'
+    # os.makedirs(path)
+    tempf = tempfile.NamedTemporaryFile(suffix='.hdf5', dir=path, delete=False)
+    tempf.close()
+    with h5py.File(tempf.name, 'w') as f:
+        f.create_dataset('data', ((n_img, ) + shape), dtype=im_dtype)
+        f.create_dataset('labels', (n_img, ), dtype=np.int64)
+        img = np.random.randn(*shape)
+        label = np.random.randint(1000)
+        for i in tqdm.trange(n_img, desc='creating hdf5 file'):
+            f['data'][i] = img
+            f['labels'][i] = label
+    return tempf.name
 
 
 class DataInMem(object):
 
     def __init__(self, batch_size=256, *args, **kwargs):
+        self.kind = 'in gpu memory'
         self.batch_size = batch_size
-        self.batch = {'data': tf.Variable(tf.random_normal([self.batch_size, 224, 224, 3],
-                                            dtype=tf.float32, stddev=1e-1)),
-                    'labels': tf.Variable(tf.ones([self.batch_size], dtype=tf.int32))}
+        self.node = {'data': tf.Variable(tf.random_normal([self.batch_size, IMSIZE, IMSIZE, 3],
+                                          dtype=tf.float32, stddev=1e-1)),
+                     'labels': tf.Variable(tf.zeros([self.batch_size], dtype=tf.int32))}
+        self.batch = self.node
 
 
-class Data(object):
+class DataNoRead(object):
 
     def __init__(self, batch_size=256, *args, **kwargs):
+        self.kind = 'in ram (feed_dict)'
         self.batch_size = batch_size
-        self.node = {'data': tf.placeholder(tf.float32,
-                                          shape=(self.batch_size, 224, 224, 3)),
-                     'labels': tf.placeholder(tf.int64, shape=[self.batch_size])}
-        self._data = np.random.uniform(-.5, .5, size=[self.batch_size, 224, 224, 3])
-        self._labels = np.random.randint(0, 1000, size=self.batch_size)
+        # if self.batch_size == 1:
+        #     self.node = {'data': tf.placeholder(tf.float32,
+        #                                          shape=(IMSIZE, IMSIZE, 3)),
+        #                  'labels': tf.placeholder(tf.int64, shape=[])}
+        # else:
+        #     self.node = {'data': tf.placeholder(tf.float32,
+        #                                          shape=(self.batch_size, IMSIZE, IMSIZE, 3)),
+        #                  'labels': tf.placeholder(tf.int64, shape=[self.batch_size])}
+
+        self._data = np.random.uniform(-.5, .5, size=[self.batch_size, IMSIZE, IMSIZE, 3])
+        self._labels = np.random.randint(0, 1000, size=[self.batch_size])
+        # self.batch = self.node
 
     def __iter__(self):
         return self
 
     def next(self):
-        feed_dict = {self.node['data']: self._data.astype(np.float32),
-                     self.node['labels']: self._labels.astype(np.int64)}
+        feed_dict = {'data': np.squeeze(self._data.astype(np.float32)),
+                     'labels': np.squeeze(self._labels.astype(np.int64))}
         return feed_dict
 
 
-class DataQueue(data.CustomQueue):
+class DataHDF5(data.HDF5DataProvider):
 
-    def __init__(self, batch_size=256, n_threads=4, *args, **kwargs):
-        node = {'data': tf.placeholder(tf.float32,
-                                          shape=(224, 224, 3)),
-                     'labels': tf.placeholder(tf.int64, shape=[])}
-        super(DataQueue, self).__init__(node, self, queue_batch_size=batch_size,
-                             n_threads=n_threads)
-        self._data = np.random.uniform(-.5, .5, size=[224, 224, 3])
-        self._labels = np.random.randint(0, 1000)
+    def __init__(self, path=None, batch_size=256, queue_batch_size=256,
+                 dtype=np.float32, postproc='identity'):
+        self.kind = 'hdf5 read (feed_dict)'
+        self.batch_size = batch_size
+        self.queue_batch_size = queue_batch_size
+        self.data_path = create_hdf5(self.queue_batch_size * NSTEPS,
+                                     path=path,
+                                     shape=(IMSIZE, IMSIZE, 3),
+                                     im_dtype=dtype)
+        postproc_func = getattr(self, postproc)
 
-    def __iter__(self):
-        return self
+        super(DataHDF5, self).__init__(self.data_path,
+                                       ['data', 'labels'],
+                                       batch_size=self.batch_size,
+                                       postprocess={'data': postproc_func},
+                                       pad=True)
+
+    def identity(self, ims, f):
+        return ims
+
+    def convert_dtype(self, ims, f):
+        return ims.astype(np.float32)
+
+    def copy(self, ims, f):
+        return np.copy(ims)
 
     def next(self):
-        feed_dict = {self.node['data']: self._data.astype(np.float32),
-                     self.node['labels']: self._labels}
+        batch = super(DataHDF5, self).next()
+        feed_dict = {'data': np.squeeze(batch['data']),
+                     'labels': np.squeeze(batch['labels'])}
         return feed_dict
 
+    def cleanup(self):
+        os.remove(self.data_path)
 
-def timeit(sess, data, train_targets, nsteps=100, burn_in=10):
-    """
-    Args:
-        - queues (~ data)
-        - saver
-        - targets
-    """
-    # initialize and/or restore variables for graph
-    init = tf.initialize_all_variables()
+
+def time_hdf5():
+    data_path = create_hdf5(BATCH_SIZE * NSTEPS)
+
+    f = h5py.File(data_path)
+    durs = []
+    for step in tqdm.trange(NSTEPS, desc='running hdf5'):
+        start_time = time.time()
+        arr = f['data'][BATCH_SIZE * step: BATCH_SIZE * (step+1)]
+        read_time = time.time()
+        arr = copy.deepcopy(arr)
+        copy_time = time.time()
+        durs.append(['hdf5 read', step, read_time - start_time])
+        durs.append(['hdf5 copy', step, copy_time - read_time])
+    f.close()
+    os.remove(data_path)
+    durs = pandas.DataFrame(durs, columns=['kind', 'stepno', 'dur'])
+    return durs
+
+
+def time_tf(data):
+    m = model.alexnet_nonorm(data.batch['data'])
+    targets = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(m.output, data.batch['labels']))
+
+    init = tf.global_variables_initializer()
+    sess = tf.Session()
     sess.run(init)
 
-    tf.train.start_queue_runners(sess=sess)
     # start our custom queue runner's threads
     if hasattr(data, 'start_threads'):
         data.start_threads(sess)
-        batch_size = data.queue_batch_size
-    else:
-        batch_size = data.batch_size
 
-    dur = []
-    for step in xrange(0, burn_in + nsteps):
+    durs = []
+    for step in tqdm.trange(NSTEPS, desc='running ' + data.kind):
         start_time = time.time()
         if hasattr(data, 'start_threads') or not hasattr(data, 'next'):
-            sess.run(train_targets)
+            sess.run(targets)
         else:
-            sess.run(train_targets, feed_dict=data.next())
+            batch = data.next()
+            feed_dict = {node: batch[name] for name, node in data.batch.items()}
+            sess.run(targets, feed_dict=feed_dict)
         end_time = time.time()
-        d = end_time - start_time
-        if step > burn_in:
-            dur.append(1000 * d)
-            print('{}: {:.0f} ms'.format(step, 1000 * d))
+        durs.append([data.kind, step, end_time - start_time])
 
-    print('Forward-backward across {} steps (batch size = {}): {:.0f} +/- {:.0f} msec / batch'.format(nsteps, batch_size, np.mean(dur), np.std(dur)))
+    if hasattr(data, 'stop_threads'):
+        data.stop_threads(sess)
+
     sess.close()
-    return dur
+
+    durs = pandas.DataFrame(durs, columns=['kind', 'stepno', 'dur'])
+    return durs
 
 
-def main(data):
-    if not hasattr(data, 'batch'):
-        batch = data.node
-    else:
-        batch = data.batch
-    outputs, _ = model.alexnet_nonorm(batch['data'])
-    targets = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(outputs, batch['labels']))
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                            log_device_placement=False))
-    dur = timeit(sess, data, targets, nsteps=20)
-    return dur
+def hdf5_tests():
+    df = time_hdf5()
+    df.kind = df.kind.astype('category', ordered=True, categories=df.kind.unique())
+    gr = df.groupby('kind').dur.agg([np.mean, np.median, np.std])
+    print(gr)
+
+
+def standard_tests():
+    df = []
+
+    tf.reset_default_graph()
+    durs = time_tf(DataInMem())
+    df.append(durs)
+
+    tf.reset_default_graph()
+    d = DataNoRead()
+    d.batch = {}
+    d.batch['data'] = tf.placeholder(np.float32, shape=(BATCH_SIZE, IMSIZE, IMSIZE, 3), name='data')
+    d.batch['labels'] = tf.placeholder(np.int64, shape=[BATCH_SIZE], name='labels')
+    durs = time_tf(d)
+    df.append(durs)
+
+    tf.reset_default_graph()
+    d = DataHDF5()
+    d.batch = {}
+    d.batch['data'] = tf.placeholder(np.float32, shape=(BATCH_SIZE, IMSIZE, IMSIZE, 3), name='data')
+    d.batch['labels'] = tf.placeholder(np.int64, shape=[BATCH_SIZE], name='labels')
+    durs = time_tf(d)
+    df.append(durs)
+
+    tf.reset_default_graph()
+    d = DataHDF5(batch_size=1)
+    queue = data.Queue(d, queue_type='fifo', batch_size=BATCH_SIZE)
+    queue.kind = 'hdf5 read (queue)'
+    durs = time_tf(queue)
+    d.cleanup()
+    df.append(durs)
+
+    tf.reset_default_graph()
+    d = DataHDF5(batch_size=1, postproc='copy')
+    queue = data.Queue(d, queue_type='fifo', batch_size=BATCH_SIZE)
+    queue.kind = 'hdf5 read+copy (queue)'
+    durs = time_tf(queue)
+    d.cleanup()
+    df.append(durs)
+
+    tf.reset_default_graph()
+    d = DataHDF5(batch_size=1, dtype=np.uint8, postproc='convert_dtype')
+    queue = data.Queue(d, queue_type='fifo', batch_size=BATCH_SIZE)
+    queue.kind = 'hdf5 convert dtype (queue)'
+    durs = time_tf(queue)
+    d.cleanup()
+    df.append(durs)
+
+    # Print results
+    df = pandas.concat(df, ignore_index=True)
+    df.kind = df.kind.astype('category', ordered=True, categories=df.kind.unique())
+    gr = df.groupby('kind').dur.agg([np.mean, np.median, np.std])
+    print(gr)
+
+
+def search_queue_params():
+    df = []
+
+    data_batch_sizes = np.logspace(0, 8, num=9, base=2, dtype=int)
+    capacities = np.logspace(0, 12, num=13, base=2, dtype=int)
+    nthreads = np.logspace(0, 5, num=6, base=2, dtype=int)
+
+    for nth in nthreads:
+        for data_batch_size in data_batch_sizes:
+            for capacity in capacities:
+                cap = nth * capacity
+
+                tf.reset_default_graph()
+                d = DataHDF5(batch_size=data_batch_size)
+                queue = data.Queue(d.node, d,
+                                   queue_type='fifo',
+                                   batch_size=BATCH_SIZE,
+                                   capacity=cap,
+                                   n_threads=nth)
+                queue.kind = '{} / {} / {}'.format(nth, data_batch_size, capacity)
+                durs = time_tf(queue)
+                durs['data batch size'] = data_batch_size
+                durs['queue capacity'] = cap
+                durs['nthreads'] = nth
+                df.append(durs)
+                d.cleanup()
+
+    df = pandas.concat(df, ignore_index=True)
+    df.kind = df.kind.astype('category', ordered=True, categories=df.kind.unique())
+    df.to_pickle('/home/qbilius/mh17/computed/search_queue_params.pkl')
+    print(df.groupby(['nthreads', 'data batch size', 'queue capacity']).dur.mean())
 
 
 if __name__ == '__main__':
     base.get_params()
-
-    durs = []
-    print('test 0...')
-    durs.append(['Data input using feed_dict', main(DataInMem())])
-    print('test 1...')
-    durs.append(['Numpy data input using feed_dict', main(Data())])
-    print('test 2...')
-    queue = DataQueue()
-    durs.append(['Numpy data input using queues', main(queue)])
-    queue._continue = False  # TODO: cleaning close threads
-    print('test 3....')
-    imagenet = data.ImageNet(DATA_PATH, crop_size=224)
-    imagenet = data.CustomQueue(imagenet.node, imagenet)
-    durs.append(['HDF5 data input using queues', main(imagenet)])
-    time.sleep(2)  # clear queue outputs
-    print()
-    print('{:-^80}'.format('Benchmarking results'))
-    for message, dur in durs:
-        print('-', message + ': {:.0f} +/- {:.0f} msec / batch'.format(np.mean(dur), np.std(dur)))
+    # hdf5_tests()
+    standard_tests()
+    # search_queue_params()

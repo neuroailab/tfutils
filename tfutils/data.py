@@ -219,10 +219,12 @@ class Queue(object):
                                'to Queue constructor or have it defined in '
                                'data_iter.batch_size.')
 
+        self.coord = tf.train.Coordinator()
+        self._first_call = True
+        self._first_batch = self.data_iter.next()
         self.nodes = {}
         dtypes = []
         shapes = []
-        self._first_batch = self.data_iter.next()
         for key, value in self._first_batch.items():
             self.nodes[key] = tf.placeholder(value.dtype, shape=value.shape, name=key)
             dtypes.append(value.dtype)
@@ -262,22 +264,29 @@ class Queue(object):
             self.enqueue_op = self.queue.enqueue(self.nodes)
         self.batch = self.queue.dequeue_many(batch_size)
 
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self._first_call:
+            self._first_call = False
+            return self._first_batch
+        else:
+            return self.data_iter.next()
+
     def thread_main(self, sess):
         """
         Function run on alternate thread. Basically, keep adding data to the queue.
         """
-        try:
-            feed_dict = {node: self._first_batch[name] for name, node in self.nodes.items()}
-            sess.run(self.enqueue_op, feed_dict=feed_dict)
-        except tf.errors.CancelledError:
-            pass
-        else:
-            for batch in self.data_iter:
+        for batch in self:
+            if not self.coord.should_stop():
                 try:
                     feed_dict = {node: batch[name] for name, node in self.nodes.items()}
                     sess.run(self.enqueue_op, feed_dict=feed_dict)
                 except tf.errors.CancelledError:
                     break
+            else:
+                break
 
     def start_threads(self, sess):
         """ Start background threads to feed queue """
@@ -290,6 +299,7 @@ class Queue(object):
         self.threads = threads
 
     def stop_threads(self, sess):
+        self.coord.request_stop()
         close_op = self.queue.close(cancel_pending_enqueues=True)
         sess.run(close_op)
 
