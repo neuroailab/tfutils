@@ -95,10 +95,10 @@ class DataHDF5(data.HDF5DataProvider):
         return ims
 
     def convert_dtype(self, ims, f):
-        return np.copy(ims)
+        return ims.astype(np.float32)
 
     def copy(self, ims, f):
-        return ims.astype(np.float32)
+        return np.copy(ims)
 
     def next(self):
         batch = super(DataHDF5, self).next()
@@ -147,7 +147,9 @@ def time_tf(data):
         if hasattr(data, 'start_threads') or not hasattr(data, 'next'):
             sess.run(targets)
         else:
-            sess.run(targets, feed_dict=data.next())
+            batch = data.next()
+            feed_dict = {node: batch[name] for name, node in data.batch.items()}
+            sess.run(targets, feed_dict=feed_dict)
         end_time = time.time()
         durs.append([data.kind, step, end_time - start_time])
 
@@ -179,7 +181,11 @@ def standard_tests():
     df.append(durs)
 
     tf.reset_default_graph()
-    durs = time_tf(DataHDF5())
+    d = DataHDF5()
+    d.batch = {}
+    d.batch['data'] = tf.placeholder(np.float32, shape=(BATCH_SIZE, IMSIZE, IMSIZE, 3), name='data')
+    d.batch['labels'] = tf.placeholder(np.int64, shape=[BATCH_SIZE], name='labels')
+    durs = time_tf(d)
     df.append(durs)
 
     tf.reset_default_graph()
@@ -192,7 +198,7 @@ def standard_tests():
 
     tf.reset_default_graph()
     d = DataHDF5(batch_size=1, postproc='copy')
-    queue = data.Queue(d.node, d, queue_type='fifo', batch_size=BATCH_SIZE)
+    queue = data.Queue(d, queue_type='fifo', batch_size=BATCH_SIZE)
     queue.kind = 'hdf5 read+copy (queue)'
     durs = time_tf(queue)
     d.cleanup()
@@ -200,7 +206,7 @@ def standard_tests():
 
     tf.reset_default_graph()
     d = DataHDF5(batch_size=1, dtype=np.uint8, postproc='convert_dtype')
-    queue = data.Queue(d.node, d, queue_type='fifo', batch_size=BATCH_SIZE)
+    queue = data.Queue(d, queue_type='fifo', batch_size=BATCH_SIZE)
     queue.kind = 'hdf5 convert dtype (queue)'
     durs = time_tf(queue)
     d.cleanup()
