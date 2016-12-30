@@ -870,12 +870,11 @@ def train_from_params(save_params,
         learning_rate_params, learning_rate = call_learning_rate(global_step, 
                                                                  **learning_rate_params)
 
-        if optimizer_params is None:
-            optimizer_params = get_default_optimizer_params()
+
         optimizer_params, optimizer = call_optimizer(learning_rate, 
                                                      loss, 
                                                      global_step, 
-                                                     **optimizer_params)
+                                                     optimizer_params)
 
         train_targets = {'loss': loss,
                          'learning_rate': learning_rate,
@@ -1026,8 +1025,10 @@ def call_learning_rate(global_step, func=tf.train.exponential_decay, **learning_
 def call_optimizer(learning_rate, 
                    loss,
                    global_step,                   
-                   func=ClipOptimizer,
-                   **optimizer_params):
+                   optimizer_params):
+    if optimizer_params is None:
+        optimizer_params = get_default_optimizer_params()
+    func = optimizer_params.pop('func', ClipOptimizer)
     optimizer_base = func(learning_rate=learning_rate,
                           **optimizer_params)
     optimizer = optimizer_base.minimize(loss, global_step)
