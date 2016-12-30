@@ -167,14 +167,15 @@ def jsonize(x):
 
 def get_loss(inputs,
              outputs,
-             target,
+             targets,
              loss_per_case_func,
              agg_func=None,
              loss_func_kwargs=None,
              agg_func_kwargs=None):
     if loss_func_kwargs is None:
         loss_func_kwargs = {}
-    loss = loss_per_case_func(outputs, inputs[target], **loss_func_kwargs)
+    args = tuple([inputs[t] for t in targets])
+    loss = loss_per_case_func(outputs, *args, **loss_func_kwargs)
     if agg_func is not None:
         if agg_func_kwargs is None:
             agg_func_kwargs = {}

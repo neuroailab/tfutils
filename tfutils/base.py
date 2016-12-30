@@ -31,19 +31,20 @@ TODO:
 """
 
 def get_default_loss_params():
-    return {'target': 'labels',
+    return {'targets': ['labels'],
             'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
             'agg_func': tf.reduce_mean}
 
 
 def get_default_optimizer_params():
-    return {'func': ClipOptimizer,
-            'optimizer_class': tf.train.MomentumOptimizer,
+    return {'optimizer_class': tf.train.MomentumOptimizer,
             'momentum': 0.9}
     
+
 DEFAULT_TRAIN_NUM_STEPS = None
 
 DEFAULT_TRAIN_THRES_LOSS = 100
+
 
 def get_default_save_params():
     return {'save_metrics_freq': 100,
@@ -603,24 +604,19 @@ def test_from_params(load_params,
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                         log_device_placement=log_device_placement))
 
-        model_kwargs = copy.deepcopy(model_params)
-        model_func = model_kwargs.pop('func')
         dbinterface = DBInterface(load_params=load_params)
         dbinterface.load_rec()
         ld = dbinterface.load_data
         assert ld is not None, "No load data found for query, aborting"
         ld = ld[0]
-        cfg_final = ld['params']['model_params']['cfg_final']
-        original_seed = ld['params']['model_params']['seed']
+        #BASICALLY LOAD FROM MODEL PARAMS DIRECTLY? IMPORT?
+        model_params['cfg_initial'] = ld['params']['model_params']['cfg_initial']
+        model_params['seed'] = ld['params']['model_params']['seed']
         train_queue_params = ld['params']['train_params'].get('queue_params', {})
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
-                                                            model_func,
-                                                            model_kwargs,
+                                                            model_params,
                                                             train_queue_params,
-                                                            cfg_final,
-                                                            original_seed,
                                                             None)
-        model_params['cfg_final'] = cfg_final
         load_params['do_restore'] = True
         params = {'load_params': load_params,
                   'save_params': save_params,
@@ -848,53 +844,38 @@ def train_from_params(save_params,
                                       initializer=tf.constant_initializer(0),
                                       dtype=tf.int64,
                                       trainable=False)
+        
 
-        #  train_data_func returns dictionary of iterators, with one key per input to model
+
         if 'num_steps' not in train_params:
             train_params['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
         if 'thres_loss' not in train_params:
             train_params['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
-        train_data_kwargs = copy.deepcopy(train_params['data'])
+        train_data_kwargs = copy.deepcopy(train_params['data_params'])
         train_data_func = train_data_kwargs.pop('func')
         train_inputs = train_data_func(**train_data_kwargs)
-
         train_queue_params = train_params.get('queue_params', {})
         queue = Queue(train_inputs, **train_queue_params)
         queues = [queue]
         train_inputs = queue.batch
 
-        if 'cfg_initial' not in model_params:
-            model_params['cfg_initial'] = None
-        if 'seed' not in model_params:
-            model_params['seed'] = 0
-        model_kwargs = copy.deepcopy(model_params)
-        model_func = model_kwargs.pop('func')
-        train_outputs, cfg_final = model_func(inputs=train_inputs,
-                                              train=True,
-                                              **model_kwargs)
-
+        model_params, train_outputs = call_model(train_inputs, train=True, **model_params)
+    
         if loss_params is None:
-            loss_params = get_default_loss_params()
-        loss = utils.get_loss(train_inputs, train_outputs, **loss_params)
+            loss_params = {}
+        loss_params, loss = call_loss(train_inputs, train_outputs, **loss_params)
 
         if learning_rate_params is None:
             learning_rate_params = {}
-        if 'func' not in learning_rate_params:
-            learning_rate_params['func'] = tf.train.exponential_decay
-        learning_rate_kwargs = copy.deepcopy(learning_rate_params)
-        learning_rate_func = learning_rate_kwargs.pop('func')
-        learning_rate = learning_rate_func(global_step=global_step,
-                                           **learning_rate_kwargs)
+        learning_rate_params, learning_rate = call_learning_rate(global_step, 
+                                                                 **learning_rate_params)
 
         if optimizer_params is None:
             optimizer_params = get_default_optimizer_params()
-        if 'func' not in optimizer_params:
-            optimizer_params['func'] = ClipOptimizer
-        optimizer_kwargs = copy.deepcopy(optimizer_params)
-        optimizer_func = optimizer_kwargs.pop('func')
-        optimizer_base = optimizer_func(learning_rate=learning_rate,
-                                        **optimizer_kwargs)
-        optimizer = optimizer_base.minimize(loss, global_step)
+        optimizer_params, optimizer = call_optimizer(learning_rate, 
+                                                     loss, 
+                                                     global_step, 
+                                                     **optimizer_params)
 
         train_targets = {'loss': loss,
                          'learning_rate': learning_rate,
@@ -910,11 +891,8 @@ def train_from_params(save_params,
         scope = tf.get_variable_scope()
         scope.reuse_variables()
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
-                                                             model_func, 
-                                                             model_kwargs,
+                                                             model_params,
                                                              train_queue_params,
-                                                             cfg_final,
-                                                             model_kwargs['seed'],
                                                              loss_params)
         queues.extend(vqueues)
 
@@ -922,7 +900,6 @@ def train_from_params(save_params,
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                         log_device_placement=log_device_placement))
 
-        model_params['cfg_final'] = cfg_final
         params = {'save_params': save_params,
                   'load_params': load_params,
                   'train_params': train_params,
@@ -946,11 +923,8 @@ def train_from_params(save_params,
 
 
 def get_valid_targets_dict(validation_params,
-                           model_func,
-                           model_kwargs,
+                           model_params,
                            default_queue_params,
-                           cfg_final,
-                           original_seed,
                            default_loss_params):
     """Helper function for creating validation target operations.
        NB: this function may modify validation_params"""
@@ -970,25 +944,24 @@ def get_valid_targets_dict(validation_params,
         if 'queue_params' not in validation_params[vtarg] and default_queue_params:
             validation_params[vtarg]['queue_params'] = default_queue_params
 
-        vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data'])
+
+        vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data_params'])
         vdata_func = vdata_kwargs.pop('func')
-        vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
-        vtargs_func = vtargs_kwargs.pop('func')
         vinputs = vdata_func(**vdata_kwargs)
-        if 'num_steps' not in validation_params[vtarg]:
-            validation_params[vtarg]['num_steps'] = vinputs.total_batches
-        num_steps = validation_params[vtarg]['num_steps']
-        vqueue_params = validation_params[vtarg].get('queue_params', {})
-        queue = Queue(vinputs, **vqueue_params)
+        queue = Queue(vinputs, **validation_params[vtarg]['queue_params'])
         queues.append(queue)
         vinputs = queue.batch
-        new_model_kwargs = copy.deepcopy(model_kwargs)
-        new_model_kwargs['seed'] = original_seed
-        new_model_kwargs['cfg_initial'] = cfg_final
+
+        vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
+        vtargs_func = vtargs_kwargs.pop('func')
+        if 'num_steps' not in validation_params[vtarg]:
+            assert hasattr(vinputs, 'total_batches'), 'If "num_batches" not specified in validation params, data object must have "total_batches" attribute to be used as default.'
+            validation_params[vtarg]['num_steps'] = vinputs.total_batches
+        num_steps = validation_params[vtarg]['num_steps']
+
         with tf.name_scope('validation/%s' % vtarg):
-            voutputs, _cfg = model_func(inputs=vinputs,
-                                    train=False,
-                                    **new_model_kwargs)
+            _, voutputs = call_model(vinputs, train=False, **model_params) 
+            #check something about _cfg relative to original cfg_final?
             tf.get_variable_scope().reuse_variables()
             vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
             valid_targets_dict[vtarg] = {'targets': vtargets,
@@ -1021,6 +994,46 @@ def verify_pb2_v2_files(cache_prefix, ckpt_record):
     ndf = file_data['num_data_files']
     sndf = ckpt_record['_saver_num_data_files']
     assert ndf == sndf, (ndf, sndf)
+
+
+def call_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **model_params):
+    model_params['cfg_initial'] = cfg_initial
+    model_params['seed'] = seed
+    model_params['train'] = train
+    outputs, cfg_final = func(inputs=train_inputs,
+                              **model_params)
+    model_params['func'] = func
+    model_params['cfg_final'] = cfg_final
+    return model_params, outputs
+
+
+def call_loss(train_inputs,
+              train_outputs,
+              **loss_params):
+    lparams = get_default_loss_params()
+    lparams.update(loss_params)
+    loss = utils.get_loss(train_inputs, train_outputs, **lparams)
+    return lparams, loss
+
+
+def call_learning_rate(global_step, func=tf.train.exponential_decay, **learning_rate_params):
+    learning_rate = func(global_step=global_step,
+                         **learning_rate_params)
+    learning_rate_params['func'] = func
+    return learning_rate_params, learning_rate
+
+
+def call_optimizer(learning_rate, 
+                   loss,
+                   global_step,                   
+                   func=ClipOptimizer,
+                   **optimizer_params):
+    optimizer_base = func(learning_rate=learning_rate,
+                          **optimizer_params)
+    optimizer = optimizer_base.minimize(loss, global_step)
+    optimizer_params['func'] = func
+    return optimizer_params, optimizer
+
 
 
 """

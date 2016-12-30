@@ -78,9 +78,9 @@ def test_training():
                              'save_valid_freq': 20,
                              'save_filters_freq': 200,
                              'cache_filters_freq': 100}
-    params['train_params'] = {'data': {'func': MNIST,
-                                       'batch_size': 100,
-                                       'group': 'train'},
+    params['train_params'] = {'data_params': {'func': MNIST,
+                                              'batch_size': 100,
+                                              'group': 'train'},
                               'queue_params': {'queue_type': 'fifo',
                                                'batch_size': 100,
                                                'n_threads': 4},
@@ -128,10 +128,9 @@ def test_validation():
                              'collname': testcol,
                              'exp_id': 'training0'}
     params['save_params'] = {'exp_id': 'validation0'}
-    params['validation_params'] = {'valid0': {'data': {'func': MNIST,
-                                                       'batch_size': 100,
-                                                       'group': 'train'
-                                                   },
+    params['validation_params'] = {'valid0': {'data_params': {'func': MNIST,
+                                                              'batch_size': 100,
+                                                              'group': 'train'},
                                               'queue_params': {'queue_type': 'fifo',
                                                                'batch_size': 100,
                                                                'n_threads': 4},
@@ -180,16 +179,15 @@ def test_feature_extraction():
     targdict = {'func': get_extraction_target,
                 'to_extract': {'features': 'validation/valid1/hidden1/fc:0'}}
     targdict.update(base.get_default_loss_params())
-    params['validation_params'] = {'valid1': {'data': {'func': MNIST,
-                                                     'batch_size': 100,
-                                                     'group': 'train'
-                                                 },
-                                            'targets': targdict,
-                                            'queue_params': {'queue_type': 'fifo',
-                                                             'batch_size': 100,
-                                                             'n_threads': 4},
-                                            'num_steps': 10,
-                                            'online_agg_func': utils.reduce_mean_dict
+    params['validation_params'] = {'valid1': {'data_params': {'func': MNIST,
+                                                              'batch_size': 100,
+                                                              'group': 'train'},
+                                              'queue_params': {'queue_type': 'fifo',
+                                                               'batch_size': 100,
+                                                               'n_threads': 4},
+                                              'targets': targdict,
+                                              'num_steps': 10,
+                                              'online_agg_func': utils.reduce_mean_dict
                                             }
                                    }
     base.test_from_params(**params)
