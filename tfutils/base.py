@@ -684,17 +684,16 @@ def train(sess,
         log.info('Training cancelled since step (%d) is >= num_steps (%d)' % (step, num_steps))
         return 
 
-    def _validate_and_save():    
-        vres = run_targets_dict(sess,
-                                {} if step % dbinterface.save_valid_freq else validation_targets)
-        dbinterface.save(train_results, vres, validation_only=False)
+    def _validate_and_save(tres, step):
+        vres = run_targets_dict(sess, {} if step % dbinterface.save_valid_freq else validation_targets)
+        dbinterface.save(tres, vres, validation_only=False)
         
     log.info('Training beginning ...')
     start_queues(sess, queues)
     train_results = {}
     dbinterface.start_time_step = time.time()
     while step < num_steps:
-        if train_results or step == 0: _validate_and_save()
+        if train_results or step == 0: _validate_and_save(train_results, step)
         old_step = step
         dbinterface.start_time_step = time.time()
         train_results = sess.run(train_targets)
@@ -704,7 +703,7 @@ def train(sess,
                                 ' but did not: old_step=%d, new_step=%d' % (old_step, step))
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
-    _validate_and_save()
+    _validate_and_save(train_results, step)
     stop_queues(sess, queues)
     dbinterface.sync_with_host()
     sess.close()
