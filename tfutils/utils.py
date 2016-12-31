@@ -190,6 +190,13 @@ def get_loss_dict(*args, **kwargs):
     return {name: get_loss(*args, **kwargs)}
 
 
+def verify_pb2_v2_files(cache_prefix, ckpt_record):
+    file_data = get_saver_pb2_v2_files(cache_prefix)
+    ndf = file_data['num_data_files']
+    sndf = ckpt_record['_saver_num_data_files']
+    assert ndf == sndf, (ndf, sndf)
+
+
 def get_saver_pb2_v2_files(prefix):
     dirn, pref = os.path.split(prefix)
     pref = pref + '.'

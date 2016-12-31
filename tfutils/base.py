@@ -16,7 +16,11 @@ from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import Queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from tfutils.utils import make_mongo_safe, sonify, get_saver_pb2_v2_files, frozendict
+from tfutils.utils import (make_mongo_safe,
+                           sonify,
+                           get_saver_pb2_v2_files,
+                           verify_pb2_v2_files, 
+                           frozendict)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -847,8 +851,8 @@ def train_from_params(save_params,
                                       dtype=tf.int64,
                                       trainable=False)
         
-        train_params['data'], queue = call_data(queue_params=train_params.get('queue_params'), 
-                                                **train_params['data_params'])
+        train_params['data'], queue = get_data(queue_params=train_params.get('queue_params'), 
+                                               **train_params['data_params'])
         queues = [queue]
         train_inputs = queue.batch
         if 'num_steps' not in train_params:
@@ -856,23 +860,23 @@ def train_from_params(save_params,
         if 'thres_loss' not in train_params:
             train_params['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
 
-        model_params, train_outputs = call_model(train_inputs, train=True, **model_params)
+        model_params, train_outputs = get_model(train_inputs, train=True, **model_params)
     
         if loss_params is None:
             loss_params = {}
-        loss_params, loss = call_loss(train_inputs, train_outputs, **loss_params)
+        loss_params, loss = get_loss(train_inputs, train_outputs, **loss_params)
 
         if learning_rate_params is None:
             learning_rate_params = {}
-        learning_rate_params, learning_rate = call_learning_rate(global_step, 
-                                                                 **learning_rate_params)
+        learning_rate_params, learning_rate = get_learning_rate(global_step, 
+                                                                **learning_rate_params)
+        
 
-
-        optimizer_params, optimizer = call_optimizer(learning_rate, 
-                                                     loss, 
-                                                     global_step, 
-                                                     optimizer_params)
-
+        optimizer_params, optimizer = get_optimizer(learning_rate, 
+                                                    loss, 
+                                                    global_step, 
+                                                    optimizer_params)
+        
         train_targets = {'loss': loss,
                          'learning_rate': learning_rate,
                          'optimizer': optimizer}
@@ -928,75 +932,53 @@ def get_valid_targets_dict(validation_params,
     queues = []
     for vtarg in validation_params:
 
-        _, queue = call_data(queue_params=validation_params[vtarg].get('queue_params', 
-                                                                       default_queue_params),
-                             **validation_params[vtarg]['data_params'])
+        _, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
+                            **validation_params[vtarg]['data_params'])
         queues.append(queue)
         vinputs = queue.batch
 
         with tf.name_scope('validation/%s' % vtarg):
-            _, voutputs = call_model(vinputs, train=False, **model_params) 
+            _, voutputs = get_model(vinputs, train=False, **model_params) 
             #check something about _cfg relative to original cfg_final?
             tf.get_variable_scope().reuse_variables()
-
-        if 'targets' not in validation_params[vtarg]:
-            if default_loss_params:
-                validation_params[vtarg]['targets'] = copy.deepcopy(default_loss_params)
-            else:
-                validation_params[vtarg]['targets'] = dict(DEFAULT_LOSS_PARAMS)
-            validation_params[vtarg]['targets']['func'] = utils.get_loss_dict
-        if 'agg_func' not in validation_params[vtarg]:
-            validation_params[vtarg]['agg_func'] = utils.identity_func
-        if 'online_agg_func' not in validation_params[vtarg]:
-            validation_params[vtarg]['online_agg_func'] = utils.append_and_return
-        if 'num_steps' not in validation_params[vtarg]:
-            assert hasattr(vinputs, 'total_batches'), 'If "num_batches" not specified in validation params, data object must have "total_batches" attribute to be used as default.'
-            validation_params[vtarg]['num_steps'] = vinputs.total_batches
-
-        vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
-        vtargs_func = vtargs_kwargs.pop('func')
-        vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
-        valid_targets_dict[vtarg] = {'targets': vtargets,
-                                     'agg_func': validation_params[vtarg]['agg_func'],
-                                     'online_agg_func': validation_params[vtarg]['online_agg_func'],
-                                     'num_steps': validation_params[vtarg]['num_steps']}
+        validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
+                                                                           **validation_params[vtarg])
 
     return valid_targets_dict, queues
 
 
-def get_params():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--params', type=json.loads, default=None)
-    parser.add_argument('-g', '--gpu', default='0', type=str)
-    args = vars(parser.parse_args())
-    os.environ['CUDA_VISIBLE_DEVICES'] = args['gpu']
-    for p in filter(lambda x: x.endswith('_func'), args):
-        modname, objname = args[p].rsplit('.', 1)
-        mod = importlib.import_module(modname)
-        args[p] = getattr(mod, objname)
-    return args
+def get_validation_target(vinputs, voutputs,
+                          default_target_func=utils.get_loss_dict,
+                          default_target_params=DEFAULT_LOSS_PARAMS,
+                          agg_func=utils.identity_func, 
+                          online_agg_func=utils.append_and_return,
+                          **validation_params):
+    target_params = validation_params.get('targets', dict(default_target_params))
+    func = target_params.pop('func', default_target_func)
+    vtargets = func(vinputs, voutputs, **target_params)
+    target_params['func'] = func
+    validation_params['targets'] = target_params
+    if 'num_steps' not in validation_params:
+        assert hasattr(vinputs, 'total_batches'), '"num_batches" not specified in validation params, '\
+                                 'data object must have "total_batches" attribute to be used as default.'
+        validation_params['num_steps'] = vinputs.total_batches  
+    validation_params['agg_func'] = agg_func
+    validation_params['online_agg_func'] = online_agg_func
+    valid_targets = {'targets': vtargets,
+                     'agg_func': validation_params['agg_func'],
+                     'online_agg_func': validation_params['online_agg_func'],
+                     'num_steps': validation_params['num_steps']}
+    return validation_params, valid_targets
+    
 
-
-def main():
-    args = get_params()
-    train_from_params(**args)
-
-
-def verify_pb2_v2_files(cache_prefix, ckpt_record):
-    file_data = get_saver_pb2_v2_files(cache_prefix)
-    ndf = file_data['num_data_files']
-    sndf = ckpt_record['_saver_num_data_files']
-    assert ndf == sndf, (ndf, sndf)
-
-
-def call_data(func, queue_params=None, **data_params):        
+def get_data(func, queue_params=None, **data_params):        
     inputs = func(**data_params)
     queue = Queue(inputs, **queue_params)
     data_params['func'] = func
     return data_params, queue
 
 
-def call_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **model_params):
+def get_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **model_params):
     model_params['cfg_initial'] = cfg_initial
     model_params['seed'] = seed
     model_params['train'] = train
@@ -1007,7 +989,7 @@ def call_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **mode
     return model_params, outputs
 
 
-def call_loss(train_inputs,
+def get_loss(train_inputs,
               train_outputs,
               targets=DEFAULT_LOSS_PARAMS['targets'],
               agg_func=DEFAULT_LOSS_PARAMS['agg_func'],
@@ -1020,14 +1002,14 @@ def call_loss(train_inputs,
     return loss_params, loss
 
 
-def call_learning_rate(global_step, func=tf.train.exponential_decay, **learning_rate_params):
+def get_learning_rate(global_step, func=tf.train.exponential_decay, **learning_rate_params):
     learning_rate = func(global_step=global_step,
                          **learning_rate_params)
     learning_rate_params['func'] = func
     return learning_rate_params, learning_rate
 
 
-def call_optimizer(learning_rate, 
+def get_optimizer(learning_rate, 
                    loss,
                    global_step,                   
                    optimizer_params,
@@ -1043,6 +1025,17 @@ def call_optimizer(learning_rate,
     return optimizer_params, optimizer
 
 
+def get_params():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--params', type=json.loads, default=None)
+    parser.add_argument('-g', '--gpu', default='0', type=str)
+    args = vars(parser.parse_args())
+    os.environ['CUDA_VISIBLE_DEVICES'] = args['gpu']
+    for p in filter(lambda x: x.endswith('_func'), args):
+        modname, objname = args[p].rsplit('.', 1)
+        mod = importlib.import_module(modname)
+        args[p] = getattr(mod, objname)
+    return args
 
 """
 Something like this could be used to create and save variables
