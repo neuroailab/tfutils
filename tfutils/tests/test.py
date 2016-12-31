@@ -178,7 +178,7 @@ def test_feature_extraction():
 
     targdict = {'func': get_extraction_target,
                 'to_extract': {'features': 'validation/valid1/hidden1/fc:0'}}
-    targdict.update(base.get_default_loss_params())
+    targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': MNIST,
                                                               'batch_size': 100,
                                                               'group': 'train'},

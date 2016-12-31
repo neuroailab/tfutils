@@ -16,7 +16,7 @@ from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import Queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from tfutils.utils import make_mongo_safe, sonify, get_saver_pb2_v2_files
+from tfutils.utils import make_mongo_safe, sonify, get_saver_pb2_v2_files, frozendict
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -30,33 +30,27 @@ TODO:
     - epoch and batch_num should be added to what is saved.   But how to do that with Queues?
 """
 
-def get_default_loss_params():
-    return {'targets': ['labels'],
-            'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
-            'agg_func': tf.reduce_mean}
-
-
-def get_default_optimizer_params():
-    return {'optimizer_class': tf.train.MomentumOptimizer,
-            'momentum': 0.9}
-    
+DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
+                                  'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+                                  'agg_func': tf.reduce_mean})
+                                 
+DEFAULT_OPTIMIZER_PARAMS = frozendict({'optimizer_class': tf.train.MomentumOptimizer,
+                                     'momentum': 0.9})
 
 DEFAULT_TRAIN_NUM_STEPS = None
 
 DEFAULT_TRAIN_THRES_LOSS = 100
 
+DEFAULT_SAVE_PARAMS = frozendict({'save_metrics_freq': 100,
+                                  'save_valid_freq': 3000,
+                                  'cache_filters_freq': 3000,
+                                  'save_filters_freq': 30000,
+                                  'save_initial_filters': True,
+                                  'save_to_gfs': (),
+                                  'do_save': True})
 
-def get_default_save_params():
-    return {'save_metrics_freq': 100,
-            'save_valid_freq': 3000,
-            'cache_filters_freq': 3000,
-            'save_filters_freq': 30000,
-            'save_initial_filters': True,
-            'save_to_gfs': (),
-            'do_save': True}
-    
-def get_default_load_params():
-    return {'do_restore': True}
+
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True})
 
 
 class DBInterface(object):
@@ -177,14 +171,12 @@ class DBInterface(object):
             setattr(self, 'load_' + _k, lv)
         self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables] )
 
-        default_save_params = get_default_save_params()
-        default_load_params = get_default_load_params()
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
-            setattr(self, _k, save_params.get(_k, default_save_params[_k]))
+            setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
         for _k in ['do_restore']:
-            setattr(self, _k, load_params.get(_k, default_load_params[_k]))
+            setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
         self.checkpoint_thread = None
@@ -501,31 +493,47 @@ def predict(step, results):
     return preds
 
 
-def get_valid_results(sess, valid_targets, save_intermediate_freq=None, dbinterface=None):
+def run_targets(sess, dbinterface, target_name, target, num_steps, 
+                online_agg_func, agg_func, save_intermediate_freq, validation_only):
+    agg_res = None
+    if save_intermediate_freq:
+        n0 = len(dbinterface.outrecs)
+    for _step in range(num_steps):
+        res = sess.run(target)
+        assert hasattr(res, 'keys'), 'result must be a dictionary'
+        if save_intermediate_freq and (_step % save_intermediate_freq == 0):
+            dbinterface.save({}, {target_name: res}, step=_step, validation_only=validation_only)
+        agg_res = online_agg_func(agg_res, res, _step)
+    result = agg_func(agg_res)
+    if save_intermediate_freq:
+        dbinterface.sync_with_host()
+        n1 = len(dbinterface.outrecs)    
+        result['intermediate_steps'] = dbinterface.outrecs[n0: n1]
+    return result
+
+
+def run_targets_dict(sess, targets, save_intermediate_freq=None, dbinterface=None, validation_only=False):
     """
     Helper function for actually computing validation results.
     """
-    valid_results = {}
-    for targname in valid_targets:
-        num_steps = valid_targets[targname]['num_steps']
-        targ = valid_targets[targname]['targets']
-        agg_func = valid_targets[targname]['agg_func']
-        online_agg_func = valid_targets[targname]['online_agg_func']
-        agg_res = None
-        if save_intermediate_freq:
-            n0 = len(dbinterface.outrecs)
-        for _step in range(num_steps):
-            res = sess.run(targ)
-            assert hasattr(res, 'keys'), 'result of validation must be a dictionary'
-            if save_intermediate_freq and (_step % save_intermediate_freq == 0):
-                dbinterface.save({}, {targname: res}, step=_step, validation_only=True)
-            agg_res = online_agg_func(agg_res, res, _step)
-        valid_results[targname] = agg_func(agg_res)
-        dbinterface.sync_with_host()
-        if save_intermediate_freq:
-            n1 = len(dbinterface.outrecs)    
-            valid_results[targname]['intermediate_steps'] = dbinterface.outrecs[n0: n1]
-    return valid_results
+    results = {}
+    for target_name in targets:
+        num_steps = targets[target_name]['num_steps']
+        target = targets[target_name]['targets']
+        agg_func = targets[target_name]['agg_func']
+        online_agg_func = targets[target_name]['online_agg_func']
+        results[target_name] = run_targets(sess, 
+                                        dbinterface,
+                                        target_name,
+                                        target,
+                                        num_steps, 
+                                        online_agg_func,
+                                        agg_func,
+                                        save_intermediate_freq,
+                                        validation_only)
+    if dbinterface:
+        dbinterface.save({}, results, validation_only=validation_only)
+    return results
 
 
 def start_queues(sess, queues):
@@ -572,11 +580,11 @@ def test(sess,
     """
     start_queues(sess, queues)
     dbinterface.start_time_step = time.time()
-    valid_results_summary = get_valid_results(sess, 
-                                              valid_targets,
-                                              save_intermediate_freq=save_intermediate_freq, 
-                                              dbinterface=dbinterface)
-    dbinterface.save({}, valid_results_summary, validation_only=True)
+    valid_results_summary = run_targets_dict(sess, 
+                                             valid_targets,
+                                             save_intermediate_freq=save_intermediate_freq, 
+                                             dbinterface=dbinterface,
+                                             validation_only=True)
     dbinterface.sync_with_host()
     stop_queues(sess, queues)
     sess.close()
@@ -609,7 +617,7 @@ def test_from_params(load_params,
         ld = dbinterface.load_data
         assert ld is not None, "No load data found for query, aborting"
         ld = ld[0]
-        #BASICALLY LOAD FROM MODEL PARAMS DIRECTLY? IMPORT?
+        #LOAD MODEL ENTIRELY PARAMS DIRECTLY? IMPORT?
         model_params['cfg_initial'] = ld['params']['model_params']['cfg_initial']
         model_params['seed'] = ld['params']['model_params']['seed']
         train_queue_params = ld['params']['train_params'].get('queue_params', {})
@@ -645,7 +653,7 @@ def train(sess,
           global_step,
           num_steps,
           thres_loss=DEFAULT_TRAIN_THRES_LOSS,
-          valid_targets=None):
+          validation_targets=None):
     """
     Actually runs the training evaluation loop.
 
@@ -676,17 +684,17 @@ def train(sess,
         log.info('Training cancelled since step (%d) is >= num_steps (%d)' % (step, num_steps))
         return 
 
+    def _validate_and_save():    
+        vres = run_targets_dict(sess,
+                                {} if step % dbinterface.save_valid_freq else validation_targets)
+        dbinterface.save(train_results, vres, validation_only=False)
+        
     log.info('Training beginning ...')
     start_queues(sess, queues)
     train_results = {}
     dbinterface.start_time_step = time.time()
     while step < num_steps:
-        if step % dbinterface.save_valid_freq == 0 and valid_targets:
-            valid_results = get_valid_results(sess, valid_targets, save_intermediate=False)
-        else:
-            valid_results = {}
-        if train_results or step == 0:
-            dbinterface.save(train_results, valid_results, validation_only=False)
+        if train_results or step == 0: _validate_and_save()
         old_step = step
         dbinterface.start_time_step = time.time()
         train_results = sess.run(train_targets)
@@ -696,12 +704,7 @@ def train(sess,
                                 ' but did not: old_step=%d, new_step=%d' % (old_step, step))
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
-
-    if step % dbinterface.save_valid_freq == 0 and valid_targets:
-        valid_results = get_valid_results(sess, valid_targets, save_intermediate=False)
-    else:
-        valid_results = {}
-    dbinterface.save(train_results, valid_results, validation_only=False)
+    _validate_and_save()
     stop_queues(sess, queues)
     dbinterface.sync_with_host()
     sess.close()
@@ -845,19 +848,14 @@ def train_from_params(save_params,
                                       dtype=tf.int64,
                                       trainable=False)
         
-
-
+        train_params['data'], queue = call_data(queue_params=train_params.get('queue_params'), 
+                                                **train_params['data_params'])
+        queues = [queue]
+        train_inputs = queue.batch
         if 'num_steps' not in train_params:
             train_params['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
         if 'thres_loss' not in train_params:
             train_params['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
-        train_data_kwargs = copy.deepcopy(train_params['data_params'])
-        train_data_func = train_data_kwargs.pop('func')
-        train_inputs = train_data_func(**train_data_kwargs)
-        train_queue_params = train_params.get('queue_params', {})
-        queue = Queue(train_inputs, **train_queue_params)
-        queues = [queue]
-        train_inputs = queue.batch
 
         model_params, train_outputs = call_model(train_inputs, train=True, **model_params)
     
@@ -885,13 +883,13 @@ def train_from_params(save_params,
             ttarg = ttargs_func(train_inputs, train_outputs, **ttargs_kwargs)
             train_targets.update(ttarg)
 
-        if validation_params is None:
-            validation_params = {}
         scope = tf.get_variable_scope()
         scope.reuse_variables()
+        if validation_params is None:
+            validation_params = {}
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
                                                              model_params,
-                                                             train_queue_params,
+                                                             train_params.get('queue_params'),
                                                              loss_params)
         queues.extend(vqueues)
 
@@ -918,7 +916,7 @@ def train_from_params(save_params,
                      global_step=global_step,
                      num_steps=train_params['num_steps'],
                      thres_loss=train_params['thres_loss'],
-                     valid_targets=valid_targets_dict)
+                     validation_targets=valid_targets_dict)
 
 
 def get_valid_targets_dict(validation_params,
@@ -930,43 +928,40 @@ def get_valid_targets_dict(validation_params,
     valid_targets_dict = OrderedDict()
     queues = []
     for vtarg in validation_params:
-        if 'targets' not in validation_params[vtarg]:
-            if default_loss_params:
-                validation_params[vtarg]['targets'] = copy.deepcopy(default_loss_params)
-            else:
-                validation_params[vtarg]['targets'] = get_default_loss_params()
-            validation_params[vtarg]['targets']['func'] = utils.get_loss_dict
-        if 'agg_func' not in validation_params[vtarg]:
-            validation_params[vtarg]['agg_func'] = utils.identity_func
-        if 'online_agg_func' not in validation_params[vtarg]:
-            validation_params[vtarg]['online_agg_func'] = utils.append_and_return
-        if 'queue_params' not in validation_params[vtarg] and default_queue_params:
-            validation_params[vtarg]['queue_params'] = default_queue_params
 
-
-        vdata_kwargs = copy.deepcopy(validation_params[vtarg]['data_params'])
-        vdata_func = vdata_kwargs.pop('func')
-        vinputs = vdata_func(**vdata_kwargs)
-        queue = Queue(vinputs, **validation_params[vtarg]['queue_params'])
+        _, queue = call_data(queue_params=validation_params[vtarg].get('queue_params', 
+                                                                       default_queue_params),
+                             **validation_params[vtarg]['data_params'])
         queues.append(queue)
         vinputs = queue.batch
-
-        vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
-        vtargs_func = vtargs_kwargs.pop('func')
-        if 'num_steps' not in validation_params[vtarg]:
-            assert hasattr(vinputs, 'total_batches'), 'If "num_batches" not specified in validation params, data object must have "total_batches" attribute to be used as default.'
-            validation_params[vtarg]['num_steps'] = vinputs.total_batches
-        num_steps = validation_params[vtarg]['num_steps']
 
         with tf.name_scope('validation/%s' % vtarg):
             _, voutputs = call_model(vinputs, train=False, **model_params) 
             #check something about _cfg relative to original cfg_final?
             tf.get_variable_scope().reuse_variables()
-            vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
-            valid_targets_dict[vtarg] = {'targets': vtargets,
-                                         'agg_func': validation_params[vtarg]['agg_func'],
-                                         'online_agg_func': validation_params[vtarg]['online_agg_func'],
-                                         'num_steps': num_steps}
+
+        if 'targets' not in validation_params[vtarg]:
+            if default_loss_params:
+                validation_params[vtarg]['targets'] = copy.deepcopy(default_loss_params)
+            else:
+                validation_params[vtarg]['targets'] = dict(DEFAULT_LOSS_PARAMS)
+            validation_params[vtarg]['targets']['func'] = utils.get_loss_dict
+        if 'agg_func' not in validation_params[vtarg]:
+            validation_params[vtarg]['agg_func'] = utils.identity_func
+        if 'online_agg_func' not in validation_params[vtarg]:
+            validation_params[vtarg]['online_agg_func'] = utils.append_and_return
+        if 'num_steps' not in validation_params[vtarg]:
+            assert hasattr(vinputs, 'total_batches'), 'If "num_batches" not specified in validation params, data object must have "total_batches" attribute to be used as default.'
+            validation_params[vtarg]['num_steps'] = vinputs.total_batches
+
+        vtargs_kwargs = copy.deepcopy(validation_params[vtarg]['targets'])
+        vtargs_func = vtargs_kwargs.pop('func')
+        vtargets = vtargs_func(vinputs, voutputs, **vtargs_kwargs)
+        valid_targets_dict[vtarg] = {'targets': vtargets,
+                                     'agg_func': validation_params[vtarg]['agg_func'],
+                                     'online_agg_func': validation_params[vtarg]['online_agg_func'],
+                                     'num_steps': validation_params[vtarg]['num_steps']}
+
     return valid_targets_dict, queues
 
 
@@ -995,6 +990,13 @@ def verify_pb2_v2_files(cache_prefix, ckpt_record):
     assert ndf == sndf, (ndf, sndf)
 
 
+def call_data(func, queue_params=None, **data_params):        
+    inputs = func(**data_params)
+    queue = Queue(inputs, **queue_params)
+    data_params['func'] = func
+    return data_params, queue
+
+
 def call_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **model_params):
     model_params['cfg_initial'] = cfg_initial
     model_params['seed'] = seed
@@ -1008,11 +1010,15 @@ def call_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **mode
 
 def call_loss(train_inputs,
               train_outputs,
+              targets=DEFAULT_LOSS_PARAMS['targets'],
+              agg_func=DEFAULT_LOSS_PARAMS['agg_func'],
+              loss_per_case_func=DEFAULT_LOSS_PARAMS['loss_per_case_func'],
               **loss_params):
-    lparams = get_default_loss_params()
-    lparams.update(loss_params)
-    loss = utils.get_loss(train_inputs, train_outputs, **lparams)
-    return lparams, loss
+    loss_params['targets'] = targets
+    loss_params['agg_func'] = agg_func
+    loss_params['loss_per_case_func'] = loss_per_case_func
+    loss = utils.get_loss(train_inputs, train_outputs, **loss_params)
+    return loss_params, loss
 
 
 def call_learning_rate(global_step, func=tf.train.exponential_decay, **learning_rate_params):
@@ -1025,10 +1031,12 @@ def call_learning_rate(global_step, func=tf.train.exponential_decay, **learning_
 def call_optimizer(learning_rate, 
                    loss,
                    global_step,                   
-                   optimizer_params):
+                   optimizer_params,
+                   default_optimizer_params=DEFAULT_OPTIMIZER_PARAMS,
+                   default_optimizer_func=ClipOptimizer):
     if optimizer_params is None:
-        optimizer_params = get_default_optimizer_params()
-    func = optimizer_params.pop('func', ClipOptimizer)
+        optimizer_params = dict(default_optimizer_params)
+    func = optimizer_params.pop('func', default_optimizer_func)
     optimizer_base = func(learning_rate=learning_rate,
                           **optimizer_params)
     optimizer = optimizer_base.minimize(loss, global_step)
