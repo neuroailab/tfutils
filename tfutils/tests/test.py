@@ -89,6 +89,15 @@ def test_training():
                                       'decay_steps': num_batches_per_epoch,
                                       'decay_rate': 0.95,
                                       'staircase': True}
+    params['validation_params'] = {'valid0': {'data_params': {'func': MNIST,
+                                                              'batch_size': 100,
+                                                              'group': 'test'},
+                                              'queue_params': {'queue_type': 'fifo',
+                                                               'batch_size': 100,
+                                                               'n_threads': 4},
+                                              'num_steps': 10,
+                                              'agg_func': utils.mean_dict}}
+
 
     #actually run the training
     base.train_from_params(**params)
@@ -96,6 +105,12 @@ def test_training():
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 26
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 
             'saved_filters': True}).distinct('step') == [0, 200, 400]
+
+    r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 0})[0]
+    asserts_for_record(r, params, train=True)
+    r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 20})[0]
+    asserts_for_record(r, params, train=True)
+
 
     #run another 500 steps
     params['train_params']['num_steps'] = 1000
@@ -105,6 +120,8 @@ def test_training():
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 
          'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
     assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
+    r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 1000})[0]
+    asserts_for_record(r, params, train=True)
 
     #run 500 more steps but save to a new exp_id
     params['train_params']['num_steps'] = 1500
@@ -130,7 +147,7 @@ def test_validation():
     params['save_params'] = {'exp_id': 'validation0'}
     params['validation_params'] = {'valid0': {'data_params': {'func': MNIST,
                                                               'batch_size': 100,
-                                                              'group': 'train'},
+                                                              'group': 'test'},
                                               'queue_params': {'queue_type': 'fifo',
                                                                'batch_size': 100,
                                                                'n_threads': 4},
@@ -143,6 +160,7 @@ def test_validation():
                           port=testport)
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'}).count() == 1
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]
+    asserts_for_record(r, params, train=False)
     assert r['validates']
     f = r['validation_results']['valid0']['loss']
     idval = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'})[50]['_id']
@@ -181,7 +199,7 @@ def test_feature_extraction():
     targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': MNIST,
                                                               'batch_size': 100,
-                                                              'group': 'train'},
+                                                              'group': 'test'},
                                               'queue_params': {'queue_type': 'fifo',
                                                                'batch_size': 100,
                                                                'n_threads': 4},
@@ -199,7 +217,51 @@ def test_feature_extraction():
     q = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': True}}
     assert coll.find(q).count() == 1
     r = coll.find(q)[0]
+    asserts_for_record(r, params, train=False)
     q1 = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': False}}
     ids = coll.find(q1).distinct('_id')
     assert r['validation_results']['valid1']['intermediate_steps'] == ids
 
+
+def asserts_for_record(r, params, train=False):
+    if r.get('saved_filters'):
+        assert r['_saver_write_version'] == 2
+        assert r['_saver_num_data_files'] == 1
+    assert type(r['duration']) == float
+
+    should_contain = ['save_params', 'load_params', 'model_params', 'validation_params']
+    assert set(should_contain).difference(r['params'].keys()) == set()
+
+    vk = r['params']['validation_params'].keys()
+    vk1 = r['validation_results'].keys()
+    assert set(vk) == set(vk1)
+
+    assert r['params']['model_params']['cfg_initial'] == None
+    assert r['params']['model_params']['seed'] == 0
+    assert r['params']['model_params']['func']['modname'] == 'tfutils.model'
+    assert r['params']['model_params']['func']['objname'] == 'mnist_tfutils'
+    assert set(['hidden1', 'hidden2', u'softmax_linear']).difference(r['params']['model_params']['cfg_final'].keys()) == set()
+
+    _k = vk[0]
+    should_contain = ['agg_func', 'data_params', 'num_steps', 'online_agg_func', 'queue_params', 'targets']
+    assert set(should_contain).difference(r['params']['validation_params'][_k].keys()) == set()
+    
+    if train:
+        assert r['params']['model_params']['train'] == True
+        for k in ['num_steps', 'queue_params']:
+            assert r['params']['train_params'][k] == params['train_params'][k]
+
+        should_contain = ['loss_params', 'optimizer_params', 'train_params', 'learning_rate_params']
+        assert set(should_contain).difference(r['params'].keys()) == set()
+        assert r['params']['train_params']['thres_loss'] == 100
+        assert r['params']['train_params']['data_params']['func']['modname'] == 'tfutils.tests.test'
+        assert r['params']['train_params']['data_params']['func']['objname'] == 'MNIST'
+
+        assert r['params']['loss_params']['agg_func']['modname'] == 'tensorflow.python.ops.math_ops'
+        assert r['params']['loss_params']['agg_func']['objname'] == 'reduce_mean'
+        assert r['params']['loss_params']['loss_per_case_func']['modname'] == 'tensorflow.python.ops.nn_ops'
+        assert r['params']['loss_params']['loss_per_case_func']['objname'] == 'sparse_softmax_cross_entropy_with_logits'
+        assert r['params']['loss_params']['targets'] == ['labels']
+    else:
+        assert not 'train' in r['params']['model_params']
+        assert 'train_params' not in r['params']

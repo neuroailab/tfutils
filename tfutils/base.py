@@ -196,8 +196,7 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
-            if self.sameloc:
-                raise Exception('Loading pointlessly')
+            if self.sameloc: raise Exception('Loading pointlessly')
         load_query.update({'exp_id': self.load_exp_id})
         self.load_query = load_query
         if self.load_host != self.host or self.port != self.load_port:
@@ -358,8 +357,7 @@ class DBInterface(object):
 
         train_res = copy.copy(train_res)
         valid_res = {_k: copy.copy(_v) for _k, _v in valid_res.items()}
-        elapsed_time_step = time.time() - self.start_time_step
-        duration = 1000 * elapsed_time_step
+        duration = time.time() - self.start_time_step
         just_saved = False  # for saving filters
 
         if self.rec_to_save is None:
@@ -526,14 +524,8 @@ def run_targets_dict(sess, targets, save_intermediate_freq=None, dbinterface=Non
         target = targets[target_name]['targets']
         agg_func = targets[target_name]['agg_func']
         online_agg_func = targets[target_name]['online_agg_func']
-        results[target_name] = run_targets(sess, 
-                                        dbinterface,
-                                        target_name,
-                                        target,
-                                        num_steps, 
-                                        online_agg_func,
-                                        agg_func,
-                                        save_intermediate_freq,
+        results[target_name] = run_targets(sess, dbinterface, target_name, target,
+                                        num_steps, online_agg_func, agg_func, save_intermediate_freq,
                                         validation_only)
     if dbinterface:
         dbinterface.save({}, results, validation_only=validation_only)
@@ -570,7 +562,7 @@ def test(sess,
     Actually runs the testing evaluation loop.
 
     :Args:
-        - sess: (tesorflow.Session)
+        - sess: (tensorflow.Session)
             Object in which to run calculations
         - queues (list of CustomQueue)
             Objects containing asynchronously queued data iterators
@@ -621,14 +613,17 @@ def test_from_params(load_params,
         ld = dbinterface.load_data
         assert ld is not None, "No load data found for query, aborting"
         ld = ld[0]
-        #LOAD MODEL ENTIRELY PARAMS DIRECTLY? IMPORT?
+        ###TODO: reconstitute model_params entirely from saved object ("revivification")
         model_params['cfg_initial'] = ld['params']['model_params']['cfg_initial']
         model_params['seed'] = ld['params']['model_params']['seed']
-        train_queue_params = ld['params']['train_params'].get('queue_params', {})
+        cfg_final = ld['params']['model_params']['cfg_final']
+        train_queue_params = ld['params']['train_params']['queue_params']
         valid_targets_dict, queues = get_valid_targets_dict(validation_params,
                                                             model_params,
                                                             train_queue_params,
-                                                            None)
+                                                            None,
+                                                            cfg_final=cfg_final)
+        model_params['cfg_final'] = cfg_final
         load_params['do_restore'] = True
         params = {'load_params': load_params,
                   'save_params': save_params,
@@ -851,7 +846,7 @@ def train_from_params(save_params,
                                       dtype=tf.int64,
                                       trainable=False)
         
-        train_params['data'], queue = get_data(queue_params=train_params.get('queue_params'), 
+        train_params['data_params'], queue = get_data(queue_params=train_params.get('queue_params'), 
                                                **train_params['data_params'])
         queues = [queue]
         train_inputs = queue.batch
@@ -893,7 +888,8 @@ def train_from_params(save_params,
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
                                                              model_params,
                                                              train_params.get('queue_params'),
-                                                             loss_params)
+                                                             loss_params,
+                                                             cfg_final=model_params['cfg_final'])
         queues.extend(vqueues)
 
         # create session
@@ -925,21 +921,28 @@ def train_from_params(save_params,
 def get_valid_targets_dict(validation_params,
                            model_params,
                            default_queue_params,
-                           default_loss_params):
+                           default_loss_params,
+                           cfg_final=None):
     """Helper function for creating validation target operations.
        NB: this function may modify validation_params"""
     valid_targets_dict = OrderedDict()
     queues = []
+    model_params = copy.deepcopy(model_params)
+    model_params.pop('train', None) ##hackety-hack
+    if cfg_final is None:
+        assert 'cfg_final' in model_params
+        cfg_final = model_params['cfg_final']
+    assert 'seed' in model_params
+    assert 'cfg_initial' in model_params
     for vtarg in validation_params:
-
         _, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
                             **validation_params[vtarg]['data_params'])
         queues.append(queue)
         vinputs = queue.batch
-
-        with tf.name_scope('validation/%s' % vtarg):
-            _, voutputs = get_model(vinputs, train=False, **model_params) 
-            #check something about _cfg relative to original cfg_final?
+        scope_name = 'validation/%s' % vtarg
+        with tf.name_scope(scope_name):
+            _mp, voutputs = get_model(vinputs, train=False, **model_params) 
+            check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
                                                                            **validation_params[vtarg])
@@ -947,6 +950,10 @@ def get_valid_targets_dict(validation_params,
     return valid_targets_dict, queues
 
 
+def check_model_equivalence(m1, m2, name):
+    """TODO: fill this in"""
+    assert set(m1.keys()) == set(m2.keys()), (m1.keys(), m2.keys())
+    
 def get_validation_target(vinputs, voutputs,
                           default_target_func=utils.get_loss_dict,
                           default_target_params=DEFAULT_LOSS_PARAMS,
