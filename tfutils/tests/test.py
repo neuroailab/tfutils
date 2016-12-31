@@ -46,12 +46,12 @@ class MNIST(object):
                 'labels': batch[1].astype(np.int32)}
 
 
-
 num_batches_per_epoch = 10000//256
 testhost = 'localhost'
 testport = 31001
 testdbname = 'tfutils-test'
 testcol = 'testcol'
+
 
 def test_training():
     """This test illustrates how basic training is performed.

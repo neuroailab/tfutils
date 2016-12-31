@@ -497,6 +497,8 @@ def predict(step, results):
 
 def run_targets(sess, dbinterface, target_name, target, num_steps, 
                 online_agg_func, agg_func, save_intermediate_freq, validation_only):
+    """TODO:  this code resembles train() function, possible want to unify
+    """
     agg_res = None
     if save_intermediate_freq:
         n0 = len(dbinterface.outrecs)
@@ -613,7 +615,7 @@ def test_from_params(load_params,
         ld = dbinterface.load_data
         assert ld is not None, "No load data found for query, aborting"
         ld = ld[0]
-        ###TODO: reconstitute model_params entirely from saved object ("revivification")
+        ###TODO: have option to reconstitute model_params entirely from saved object ("revivification")
         model_params['cfg_initial'] = ld['params']['model_params']['cfg_initial']
         model_params['seed'] = ld['params']['model_params']['seed']
         cfg_final = ld['params']['model_params']['cfg_final']
@@ -841,6 +843,8 @@ def train_from_params(save_params,
     """
 
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
+        ####TODO:  option to try to load first and see if records exist
+        ####       and if so, construct entirely from record ("revivification").  
         global_step = tf.get_variable('global_step', [],
                                       initializer=tf.constant_initializer(0),
                                       dtype=tf.int64,
@@ -951,7 +955,7 @@ def get_valid_targets_dict(validation_params,
 
 
 def check_model_equivalence(m1, m2, name):
-    """TODO: fill this in"""
+    """TODO: fill this in to make it stronger"""
     assert set(m1.keys()) == set(m2.keys()), (m1.keys(), m2.keys())
     
 def get_validation_target(vinputs, voutputs,
