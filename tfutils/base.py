@@ -1,11 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import os, sys, time, importlib, argparse, json, copy, logging
+import tarfile, cPickle, threading
 from collections import OrderedDict
-import tarfile
-import cPickle
-import threading
 
+import tqdm
 import pymongo
 from bson.objectid import ObjectId
 import gridfs
@@ -19,7 +18,7 @@ import tfutils.utils as utils
 from tfutils.utils import (make_mongo_safe,
                            sonify,
                            get_saver_pb2_v2_files,
-                           verify_pb2_v2_files, 
+                           verify_pb2_v2_files,
                            frozendict)
 
 logging.basicConfig()
@@ -37,7 +36,7 @@ TODO:
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
                                   'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
                                   'agg_func': tf.reduce_mean})
-                                 
+
 DEFAULT_OPTIMIZER_PARAMS = frozendict({'optimizer_class': tf.train.MomentumOptimizer,
                                      'momentum': 0.9})
 
@@ -73,67 +72,67 @@ class DBInterface(object):
             - params (dict)
                 Describing all parameters of experiment
             - save_params (dict)
-            	Describing the parameters need to construct the save database, and
-            	control saving.  These include:
-					- host (str)
-						Hostname where database connection lives
-					- port (int)
-						Port where database connection lives
-					- dbname (str)
-						Name of database for storage
-					- collname (str)
-						Name of collection for storage
-					- exp_id (str)
-						Experiment id descriptor
-                                          NOTE: the variables host/port/dbname/coll/exp_id control
-                                          the location of the saved data for the run, in order of 
-                                          increasing specificity.  When choosing these, note that: 
-                                             1.  If a given host/port/dbname/coll/exp_id already has saved checkpoints,
-                                                 then any new call to start training with these same location variables
-                                                 will start to train from the most recent saved checkpoint.  If you mistakenly
-                                                 try to start training a new model with different variable names, or structure,
-                                                 from that existing checkpoint, an error will be raised, as the model will be
-                                                 incompatiable with the saved variables.
-                                             2.  When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb
-                                                 queries only operate over a single collection.  So if you want to analyze
-                                                 results from a bunch of experiments together using mongod queries, you should
-                                                 put them all in the same collection, but with different exp_ids.  If, on the 
-                                                 other hand, you never expect to analyze data from two experiments together,
-                                                 you can put them in different collections or different databases.  Choosing
-                                                 between putting two experiments in two collections in the same database
-                                                 or in two totally different databases will depend on how you want to organize
-                                                 your results and is really a matter of preference.
-					- do_save (bool, default: True)
-						Whether to save to database
-					- save_initial_filters (bool, default: True)
-						Whether to save initial model filters at step = 0,
-					- save_metrics_freq (int, default: 5)
-						How often to store train results to database
-					- save_valid_freq (int, default: 3000)
-						How often to calculate and store validation results
+                Describing the parameters need to construct the save database, and
+                control saving.  These include:
+                    - host (str)
+                        Hostname where database connection lives
+                    - port (int)
+                        Port where database connection lives
+                    - dbname (str)
+                        Name of database for storage
+                    - collname (str)
+                        Name of collection for storage
+                    - exp_id (str)
+                        Experiment id descriptor
+                        NOTE: the variables host/port/dbname/coll/exp_id control
+                        the location of the saved data for the run, in order of
+                        increasing specificity.  When choosing these, note that:
+                            1.  If a given host/port/dbname/coll/exp_id already has saved checkpoints,
+                                then any new call to start training with these same location variables
+                                will start to train from the most recent saved checkpoint.  If you mistakenly
+                                try to start training a new model with different variable names, or structure,
+                                from that existing checkpoint, an error will be raised, as the model will be
+                                incompatiable with the saved variables.
+                            2.  When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb
+                                queries only operate over a single collection.  So if you want to analyze
+                                results from a bunch of experiments together using mongod queries, you should
+                                put them all in the same collection, but with different exp_ids.  If, on the
+                                other hand, you never expect to analyze data from two experiments together,
+                                you can put them in different collections or different databases.  Choosing
+                                between putting two experiments in two collections in the same database
+                                or in two totally different databases will depend on how you want to organize
+                                your results and is really a matter of preference.
+                    - do_save (bool, default: True)
+                        Whether to save to database
+                    - save_initial_filters (bool, default: True)
+                        Whether to save initial model filters at step = 0,
+                    - save_metrics_freq (int, default: 5)
+                        How often to store train results to database
+                    - save_valid_freq (int, default: 3000)
+                        How often to calculate and store validation results
                                                 to database
-					- save_filters_freq (int, default: 30000)
-						How often to save filter values to database
-					- cache_filters_freq (int, default: 3000)
-						How often to cache filter values locally and save
-						to ___RECENT database
-			- load_params (dict)
-				Similar to save_params, if you want loading to happen from a different
-				location than where saving occurs.   Parameters include:
-					- host (str)
-						Hostname where database connection lives
-					- port (int)
-						Port where database connection lives
-					- dbname (str)
-						Name of database for storage
-					- collname (str)
-						Name of collection for storage
-					- exp_id (str)
-						Experiment id descriptor
-					- do_restore (bool, default: True)
-						Whether to restore from saved model
-					- load_query (dict)
-						mongodb query describing how to load from loading database
+                    - save_filters_freq (int, default: 30000)
+                        How often to save filter values to database
+                    - cache_filters_freq (int, default: 3000)
+                        How often to cache filter values locally and save
+                        to ___RECENT database
+            - load_params (dict)
+                Similar to save_params, if you want loading to happen from a different
+                location than where saving occurs.   Parameters include:
+                    - host (str)
+                        Hostname where database connection lives
+                    - port (int)
+                        Port where database connection lives
+                    - dbname (str)
+                        Name of database for storage
+                    - collname (str)
+                        Name of collection for storage
+                    - exp_id (str)
+                        Experiment id descriptor
+                    - do_restore (bool, default: True)
+                        Whether to restore from saved model
+                    - load_query (dict)
+                        mongodb query describing how to load from loading database
             - sess (tesorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
@@ -225,19 +224,19 @@ class DBInterface(object):
             os.makedirs(self.cache_dir)
 
     def load_rec(self):
-        #first try and see if anything with the save data exists, since obviously
-        #we dont' want to keep loading from the original load location if some work has
-        #already been done
+        # first try and see if anything with the save data exists, since obviously
+        # we dont' want to keep loading from the original load location if some work has
+        # already been done
         load = self.load_from_db({'exp_id': self.exp_id},
                                  cache_filters=True)
-        #if not, try loading from the loading location
+        # if not, try loading from the loading location
         if not load and not self.sameloc:
             load = self.load_from_db(self.load_query,
                                      cache_filters=True,
                                      collfs=self.load_collfs,
                                      collfs_recent=self.load_collfs_recent)
             if load is None:
-                raise Exeption('You specified load parameters but no record was found with the given spec.')
+                raise Exception('You specified load parameters but no record was found with the given spec.')
         self.load_data = load
 
     def initialize(self):
@@ -343,11 +342,15 @@ class DBInterface(object):
             cache_filename = None
         return ckpt_record, cache_filename
 
-    def save(self, train_res, valid_res, step=None, validation_only=False):
+    def save(self, train_res=None, valid_res=None, step=None, validation_only=False):
         """
         Actually saves record into DB and makes local filter caches
 
         """
+        if train_res is None:
+            train_res = {}
+        if valid_res is None:
+            valid_res = {}
 
         if (not validation_only) and (step is None):
             if not hasattr(self.global_step, 'eval'):
@@ -358,7 +361,6 @@ class DBInterface(object):
         train_res = copy.copy(train_res)
         valid_res = {_k: copy.copy(_v) for _k, _v in valid_res.items()}
         duration = time.time() - self.start_time_step
-        just_saved = False  # for saving filters
 
         if self.rec_to_save is None:
             rec = {'exp_id': self.exp_id,
@@ -370,10 +372,10 @@ class DBInterface(object):
             rec = self.rec_to_save
         rec['step'] = step
 
-        if train_res:
+        if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             # DY: I don't understand this TODO -- isn't this already here?
-            message = 'Step {} ({:.0f} ms) -- '.format(step, duration)
+            message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
             msg2 = ['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer']
             message += ', '.join(msg2)
             log.info(message)
@@ -385,7 +387,7 @@ class DBInterface(object):
             rec['train_results'].append(train_res)
 
         # print validation set performance
-        if valid_res:
+        if len(valid_res) > 0:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
             message += ', '.join('{}: {}'.format(k,
@@ -398,15 +400,17 @@ class DBInterface(object):
             save_filters_permanent = save_filters_tmp = False
             need_to_save = True
         else:
-            save_filters_permanent = (step % self.save_filters_freq == 0) and \
-                                       (step > 0 or (self.save_initial_filters and not self.load_data))
-            save_filters_tmp = (step % self.cache_filters_freq == 0) and \
-                                       (step > 0 or (self.save_initial_filters and not self.load_data))
+            save_filters_permanent = ((step % self.save_filters_freq == 0) and
+                                      (step > 0 or
+                                      (self.save_initial_filters and not self.load_data)))
+            save_filters_tmp = ((step % self.cache_filters_freq == 0) and
+                                (step > 0 or
+                                (self.save_initial_filters and not self.load_data)))
             save_metrics_now = step % self.save_metrics_freq == 0
             save_valid_now = step % self.save_valid_freq == 0
             need_to_save = self.do_save and (save_filters_permanent or
-                                             save_filters_tmp or 
-                                             save_metrics_now or 
+                                             save_filters_tmp or
+                                             save_metrics_now or
                                              save_valid_now)
 
         if need_to_save:
@@ -428,7 +432,7 @@ class DBInterface(object):
             save_rec = sonify(rec)
             make_mongo_safe(save_rec)
 
-            thread = threading.Thread(target=self._save_thread, 
+            thread = threading.Thread(target=self._save_thread,
                                  args=(save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs))
             thread.daemon = True
             thread.start()
@@ -459,7 +463,7 @@ class DBInterface(object):
                 tar = tarfile.open(tarfilepath, 'w')
                 for _f in file_data['files']:
                     tar.add(_f, arcname=os.path.split(_f)[1])
-                tar.close()                    
+                tar.close()
                 with open(tarfilepath, 'rb') as _fp:
                     outrec = putfs.put(_fp, filename=tarfilepath, **save_rec)
             else:
@@ -474,7 +478,7 @@ class DBInterface(object):
 
         if not isinstance(outrec, ObjectId):
             outrec = outrec.inserted_id
-            
+
         if save_to_gfs:
             idval = str(outrec)
             save_to_gfs_path = idval + "_fileitems"
@@ -495,28 +499,46 @@ def predict(step, results):
     return preds
 
 
-def run_targets(sess, dbinterface, target_name, target, num_steps, 
-                online_agg_func, agg_func, save_intermediate_freq, validation_only):
+def run_targets(sess,
+                dbinterface,
+                target_name,
+                target,
+                num_steps,
+                online_agg_func,
+                agg_func,
+                save_intermediate_freq=None,
+                validation_only=False):
     """TODO:  this code resembles train() function, possible want to unify
     """
     agg_res = None
-    if save_intermediate_freq:
+
+    if save_intermediate_freq is not None:
         n0 = len(dbinterface.outrecs)
-    for _step in range(num_steps):
+
+    for _step in tqdm.trange(num_steps, desc=target_name):
         res = sess.run(target)
         assert hasattr(res, 'keys'), 'result must be a dictionary'
-        if save_intermediate_freq and (_step % save_intermediate_freq == 0):
-            dbinterface.save({}, {target_name: res}, step=_step, validation_only=validation_only)
+        if save_intermediate_freq is not None and _step % save_intermediate_freq == 0:
+            dbinterface.save(valid_res={target_name: res},
+                             step=_step,
+                             validation_only=validation_only)
         agg_res = online_agg_func(agg_res, res, _step)
+
     result = agg_func(agg_res)
-    if save_intermediate_freq:
+
+    if save_intermediate_freq is not None:
         dbinterface.sync_with_host()
-        n1 = len(dbinterface.outrecs)    
+        n1 = len(dbinterface.outrecs)
         result['intermediate_steps'] = dbinterface.outrecs[n0: n1]
+
     return result
 
 
-def run_targets_dict(sess, targets, save_intermediate_freq=None, dbinterface=None, validation_only=False):
+def run_targets_dict(sess,
+                     targets,
+                     save_intermediate_freq=None,
+                     dbinterface=None,
+                     validation_only=False):
     """
     Helper function for actually computing validation results.
     """
@@ -526,11 +548,17 @@ def run_targets_dict(sess, targets, save_intermediate_freq=None, dbinterface=Non
         target = targets[target_name]['targets']
         agg_func = targets[target_name]['agg_func']
         online_agg_func = targets[target_name]['online_agg_func']
-        results[target_name] = run_targets(sess, dbinterface, target_name, target,
-                                        num_steps, online_agg_func, agg_func, save_intermediate_freq,
-                                        validation_only)
-    if dbinterface:
-        dbinterface.save({}, results, validation_only=validation_only)
+        results[target_name] = run_targets(sess,
+                                           dbinterface,
+                                           target_name,
+                                           target,
+                                           num_steps,
+                                           online_agg_func,
+                                           agg_func,
+                                           save_intermediate_freq,
+                                           validation_only)
+    if dbinterface is not None:
+        dbinterface.save(valid_res=results, validation_only=validation_only)
     return results
 
 
@@ -573,27 +601,26 @@ def test(sess,
         - valid_targets (dict of tensorflow objects)
             Objects on which validation will be computed
         - save_intermediate_freq (None or int)
-            How frequently to save intermediate results captured during test 
+            How frequently to save intermediate results captured during test
             None means no intermediate saving will be saved
     """
     start_queues(sess, queues)
     dbinterface.start_time_step = time.time()
-    valid_results_summary = run_targets_dict(sess, 
+    valid_results_summary = run_targets_dict(sess,
                                              valid_targets,
-                                             save_intermediate_freq=save_intermediate_freq, 
+                                             save_intermediate_freq=save_intermediate_freq,
                                              dbinterface=dbinterface,
                                              validation_only=True)
     dbinterface.sync_with_host()
     stop_queues(sess, queues)
-    sess.close()
     return valid_results_summary, dbinterface.outrecs
 
 
 def test_from_params(load_params,
-              model_params,
-              validation_params,
-              log_device_placement=False,
-              save_params=None):
+                     model_params,
+                     validation_params,
+                     log_device_placement=False,
+                     save_params=None):
 
     """
     Main testing interface function.
@@ -602,8 +629,6 @@ def test_from_params(load_params,
 
     For documentation, see argument descriptions in train_from_params.
     """
-
-
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
 
         # create session
@@ -615,7 +640,7 @@ def test_from_params(load_params,
         ld = dbinterface.load_data
         assert ld is not None, "No load data found for query, aborting"
         ld = ld[0]
-        ###TODO: have option to reconstitute model_params entirely from saved object ("revivification")
+        # TODO: have option to reconstitute model_params entirely from saved object ("revivification")
         model_params['cfg_initial'] = ld['params']['model_params']['cfg_initial']
         model_params['seed'] = ld['params']['model_params']['seed']
         cfg_final = ld['params']['model_params']['cfg_final']
@@ -640,11 +665,13 @@ def test_from_params(load_params,
         dbinterface.initialize()
 
         save_intermediate_freq = save_params.get('save_intermediate_freq')
-        return test(sess,
+        res = test(sess,
                     queues,
                     dbinterface,
-                    valid_targets_dict, 
+                    valid_targets_dict,
                     save_intermediate_freq=save_intermediate_freq)
+        sess.close()
+        return res
 
 
 def train(sess,
@@ -652,7 +679,7 @@ def train(sess,
           dbinterface,
           train_targets,
           global_step,
-          num_steps,
+          num_steps=float('inf'),
           thres_loss=DEFAULT_TRAIN_THRES_LOSS,
           validation_targets=None):
     """
@@ -678,23 +705,21 @@ def train(sess,
 
     step = global_step.eval(session=sess)
 
-    if num_steps is None:
-        num_steps = np.inf
-
     if step >= num_steps:
         log.info('Training cancelled since step (%d) is >= num_steps (%d)' % (step, num_steps))
-        return 
+        return
 
-    def _validate_and_save(tres, step):
-        vres = run_targets_dict(sess, {} if step % dbinterface.save_valid_freq else validation_targets)
-        dbinterface.save(tres, vres, validation_only=False)
-        
     log.info('Training beginning ...')
     start_queues(sess, queues)
+
+    if step == 0:
+        dbinterface.start_time_step = time.time()
+        validation_res = run_targets_dict(sess, validation_targets,
+                                          dbinterface=dbinterface,
+                                          validation_only=False)
+
     train_results = {}
-    dbinterface.start_time_step = time.time()
     while step < num_steps:
-        if (len(train_results) > 0) or step == 0: _validate_and_save(train_results, step)
         old_step = step
         dbinterface.start_time_step = time.time()
         train_results = sess.run(train_targets)
@@ -704,10 +729,15 @@ def train(sess,
                                 ' but did not: old_step=%d, new_step=%d' % (old_step, step))
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
-    _validate_and_save(train_results, step)
+
+        if step % dbinterface.save_valid_freq == 0:
+            validation_res = run_targets_dict(sess, validation_targets, dbinterface=None)
+        else:
+            validation_res = None
+        dbinterface.save(train_res=train_results, valid_res=validation_res, validation_only=False)
+
     stop_queues(sess, queues)
     dbinterface.sync_with_host()
-    sess.close()
     return dbinterface.outrecs
 
 
@@ -720,7 +750,7 @@ def train_from_params(save_params,
                       validation_params=None,
                       log_device_placement=False,
                       load_params=None
-                  ):
+                      ):
     """
     Main training interface function.
 
@@ -803,11 +833,11 @@ def train_from_params(save_params,
                                 for this validation default to those used in constructing
                                 the training data queue.
                         'num_steps': (int) number of batches of validation source to compute
-                        'agg_func': (optional, callable) how to aggregate validation results 
+                        'agg_func': (optional, callable) how to aggregate validation results
                                 across batches after computation. Signature is:
                                     - one input argument: the list of validation batch results
                                     - one output: aggregated version
-                                Default is utils.identity_func 
+                                Default is utils.identity_func
                         'online_agg_func': (optional, callable) how to aggregate validation results
                                 on a per-batch basis. Siganture is:
                                     - three input arguments: (current aggregate, new result, step)
@@ -832,7 +862,7 @@ def train_from_params(save_params,
             If loss exceeds this during training, HiLossError is thrown
 
         - num_steps (int or None, default: None)
-            How many total steps of the optimization are run.  If None, train is run until process is cancelled. 
+            How many total steps of the optimization are run.  If None, train is run until process is cancelled.
 
       - load_params (dict)
             Dictionary of arguments for loading model, if different from saver
@@ -843,14 +873,14 @@ def train_from_params(save_params,
     """
 
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
-        ####TODO:  option to try to load first and see if records exist
-        ####       and if so, construct entirely from record ("revivification").  
+        #### TODO:  option to try to load first and see if records exist
+        ####       and if so, construct entirely from record ("revivification").
         global_step = tf.get_variable('global_step', [],
                                       initializer=tf.constant_initializer(0),
                                       dtype=tf.int64,
                                       trainable=False)
-        
-        train_params['data_params'], queue = get_data(queue_params=train_params.get('queue_params'), 
+
+        train_params['data_params'], queue = get_data(queue_params=train_params.get('queue_params'),
                                                **train_params['data_params'])
         queues = [queue]
         train_inputs = queue.batch
@@ -860,22 +890,22 @@ def train_from_params(save_params,
             train_params['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
 
         model_params, train_outputs = get_model(train_inputs, train=True, **model_params)
-    
+
         if loss_params is None:
             loss_params = {}
         loss_params, loss = get_loss(train_inputs, train_outputs, **loss_params)
 
         if learning_rate_params is None:
             learning_rate_params = {}
-        learning_rate_params, learning_rate = get_learning_rate(global_step, 
+        learning_rate_params, learning_rate = get_learning_rate(global_step,
                                                                 **learning_rate_params)
-        
 
-        optimizer_params, optimizer = get_optimizer(learning_rate, 
-                                                    loss, 
-                                                    global_step, 
+
+        optimizer_params, optimizer = get_optimizer(learning_rate,
+                                                    loss,
+                                                    global_step,
                                                     optimizer_params)
-        
+
         train_targets = {'loss': loss,
                          'learning_rate': learning_rate,
                          'optimizer': optimizer}
@@ -912,7 +942,7 @@ def train_from_params(save_params,
         dbinterface = DBInterface(sess=sess, global_step=global_step, params=params,
                                   save_params=save_params, load_params=load_params)
         dbinterface.initialize()
-        return train(sess,
+        res = train(sess,
                      queues,
                      dbinterface,
                      train_targets=train_targets,
@@ -920,6 +950,8 @@ def train_from_params(save_params,
                      num_steps=train_params['num_steps'],
                      thres_loss=train_params['thres_loss'],
                      validation_targets=valid_targets_dict)
+        sess.close()
+        return res
 
 
 def get_valid_targets_dict(validation_params,
@@ -932,7 +964,7 @@ def get_valid_targets_dict(validation_params,
     valid_targets_dict = OrderedDict()
     queues = []
     model_params = copy.deepcopy(model_params)
-    model_params.pop('train', None) ##hackety-hack
+    model_params.pop('train', None)  # hackety-hack
     if cfg_final is None:
         assert 'cfg_final' in model_params
         cfg_final = model_params['cfg_final']
@@ -945,7 +977,7 @@ def get_valid_targets_dict(validation_params,
         vinputs = queue.batch
         scope_name = 'validation/%s' % vtarg
         with tf.name_scope(scope_name):
-            _mp, voutputs = get_model(vinputs, train=False, **model_params) 
+            _mp, voutputs = get_model(vinputs, train=False, **model_params)
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
@@ -957,12 +989,12 @@ def get_valid_targets_dict(validation_params,
 def check_model_equivalence(m1, m2, name):
     """TODO: fill this in to make it stronger"""
     assert set(m1.keys()) == set(m2.keys()), (m1.keys(), m2.keys())
-    
+
 
 def get_validation_target(vinputs, voutputs,
                           default_target_func=utils.get_loss_dict,
                           default_target_params=DEFAULT_LOSS_PARAMS,
-                          agg_func=utils.identity_func, 
+                          agg_func=utils.identity_func,
                           online_agg_func=utils.append_and_return,
                           **validation_params):
     target_params = validation_params.get('targets', dict(default_target_params))
@@ -973,7 +1005,7 @@ def get_validation_target(vinputs, voutputs,
     if 'num_steps' not in validation_params:
         assert hasattr(vinputs, 'total_batches'), '"num_batches" not specified in validation params, '\
                                  'data object must have "total_batches" attribute to be used as default.'
-        validation_params['num_steps'] = vinputs.total_batches  
+        validation_params['num_steps'] = vinputs.total_batches
     validation_params['agg_func'] = agg_func
     validation_params['online_agg_func'] = online_agg_func
     valid_targets = {'targets': vtargets,
@@ -981,9 +1013,9 @@ def get_validation_target(vinputs, voutputs,
                      'online_agg_func': validation_params['online_agg_func'],
                      'num_steps': validation_params['num_steps']}
     return validation_params, valid_targets
-    
 
-def get_data(func, queue_params=None, **data_params):        
+
+def get_data(func, queue_params=None, **data_params):
     inputs = func(**data_params)
     queue = Queue(inputs, **queue_params)
     data_params['func'] = func
@@ -1021,9 +1053,9 @@ def get_learning_rate(global_step, func=tf.train.exponential_decay, **learning_r
     return learning_rate_params, learning_rate
 
 
-def get_optimizer(learning_rate, 
+def get_optimizer(learning_rate,
                    loss,
-                   global_step,                   
+                   global_step,
                    optimizer_params,
                    default_optimizer_params=DEFAULT_OPTIMIZER_PARAMS,
                    default_optimizer_func=ClipOptimizer):
