@@ -1,5 +1,15 @@
 """
-The is the basic illustration of training.
+These tests show basic procedures for training, validating, and extracting features from 
+models.   
+
+Note about MongoDB:
+The tests require a MongoDB instance to be available on the port defined by "testport" in 
+the code below.   This db can either be local to where you run these tests (and therefore
+on 'localhost' by default) or it can be running somewhere else and then by ssh-tunneled on 
+the relevant port to the host where you run these tests.  [That is, before testing, you'd run
+         ssh -f -N -L  [testport]:localhost:[testport] [username]@mongohost.xx.xx
+on the machine where you're running these tests.   [mongohost] is the where the mongodb
+instance is running.
 """
 from __future__ import division, print_function, absolute_import
 import os
@@ -61,15 +71,17 @@ testcol = 'testcol'              #name of the mongodb collection where results w
 
 
 def test_training():
-    """This test illustrates how basic training is performed using the tfutils.base.train_from_params function.  
-       This is the first in a sequence of interconnected tests. It creates a pretrained model that is used by
+    """This test illustrates how basic training is performed using the  
+       tfutils.base.train_from_params function.  This is the first in a sequence of 
+       interconnected tests. It creates a pretrained model that is used by
        the next few tests (test_validation and test_feature_extraction).
 
-       As can be seen by looking at how the test checks for correctness, after the training is run, results 
-       of training, including (intermittently) the full variables needed to re-initialize the tensorflow model, 
-       are stored in a MongoDB.   
+       As can be seen by looking at how the test checks for correctness, after the 
+       training is run, results of training, including (intermittently) the full variables
+       needed to re-initialize the tensorflow model, are stored in a MongoDB.   
 
-       Also see docstring of the tfutils.base.train_from_params function for more detailed information about usage. 
+       Also see docstring of the tfutils.base.train_from_params function for more detailed
+       information about usage. 
     """
     #delete old database if it exists
     conn = pm.MongoClient(host=testhost,
@@ -151,8 +163,8 @@ def test_validation():
     using the tfutils.base.test_from_params function.  This test assumes that test_train function 
     has run first (to provide a pre-trained model to validate).
 
-    After the test is run, results from the validation are stored in the MongoDB. (The test shows the record
-    can be loaded for inspection.)
+    After the test is run, results from the validation are stored in the MongoDB. 
+    (The test shows how the record can be loaded for inspection.)
 
     See the docstring of tfutils.base.test_from_params for more detailed information on usage.
     """
@@ -199,15 +211,16 @@ def test_validation():
 
 def get_extraction_target(inputs, outputs, to_extract, **loss_params):
     """
-    Example validation target function to use to provide targets for extracting features.  This function also adds a 
-    standard "loss" target which you may or not may not want 
+    Example validation target function to use to provide targets for extracting features. 
+    This function also adds a standard "loss" target which you may or not may not want 
 
     The to_extract argument must be a dictionary of the form
           {name_for_saving: name_of_actual_tensor, ...}
-    where the "name_for_saving" is a human-friendly name you want to save extracted features under, and
-    name_of_actual_tensor is a name of the tensor in the tensorflow graph outputing the features desired
-    to be extracted.  To figure out what the names of the tensors you want to extract are "to_extract" argument, 
-    uncomment the commented-out lines, which will print a list of all available tensor names.
+    where the "name_for_saving" is a human-friendly name you want to save extracted 
+    features under, and name_of_actual_tensor is a name of the tensor in the tensorflow
+    graph outputing the features desired to be extracted.  To figure out what the names 
+    of the tensors you want to extract are "to_extract" argument,  uncomment the 
+    commented-out lines, which will print a list of all available tensor names.
     """
 
     #names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
@@ -220,13 +233,15 @@ def get_extraction_target(inputs, outputs, to_extract, **loss_params):
 
 def test_feature_extraction():
     """
-    This is a test illustrating how to perform feature extraction using tfutils.base.test_from_params. 
-    The basic idea is to specify a validation target that is simply the actual output of the model at some layer. 
-    (See the "get_extraction_target" function above as well.)  This test assumes that test_train has run first. 
+    This is a test illustrating how to perform feature extraction using 
+    tfutils.base.test_from_params. 
+    The basic idea is to specify a validation target that is simply the actual output of 
+    the model at some layer. (See the "get_extraction_target" function above as well.)  
+    This test assumes that test_train has run first. 
    
-    After the test is run, the results of the feature extraction are saved in the Grid File System associated
-    with the mongodb, with one file per batch of feature results.  See how the features are accessed by reading the
-    test code below.
+    After the test is run, the results of the feature extraction are saved in the Grid 
+    File System associated with the mongo database, with one file per batch of feature 
+    results.  See how the features are accessed by reading the test code below.
     """
     #set up parameters 
     params = {}
