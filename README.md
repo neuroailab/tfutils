@@ -25,11 +25,14 @@ This database can either be
     
 or:
     
-    * it can be running somewhere else and then by ssh-tunneled on the relevant port to the host where you run the neural networks.  That is, before running train_from_params or test_from_params, you'd run
+    * it can be running somewhere else and then by ssh-tunneled on the relevant port to the 
+    host where you run the neural networks.  That is, before running train_from_params or 
+    test_from_params, you'd run
     
          ssh -f -N -L  [portnum]:localhost:[portnum] [username]@mongohost.xx.xx
 
-    on the machine where you're neural network traing, where [mongohost] is the where the mongodb instance is running.
+    on the machine where you're neural network traing, where [mongohost] is the host where the 
+    mongodb instance is running.
 
 
 # Development
