@@ -4,7 +4,7 @@ Utilities for working with TensorFlow
 
 Current status: alpha. The API is still changing.
 
-The core functionality TFUtils currently provides are for saving and loading results of tensorflow model training and validation runs.  (Currently, the backend database for TFUtils is MongoDB but in the future this may be user-specifiable).  
+The core functionality TFUtils currently provides are for saving and loading results of tensorflow model training and validation runs.  (Currently, the backend database for TFUtils is MongoDB but in the future this may be user-specifiable). In many ways, TFUtils provides similar functionality to part of what is provided by the "tensorboard" utility that is part of the basic tensorflow package.  However, we feel that the design choices in TFUtils may be better suited to using tensorflow in  scientific workflows. 
 
 The two basic entry point functions are:
 
