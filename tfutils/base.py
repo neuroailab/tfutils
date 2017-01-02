@@ -428,7 +428,7 @@ class DBInterface(object):
             save_rec = sonify(rec)
             make_mongo_safe(save_rec)
 
-            thread = threading.Thread(target=self.save_thread, 
+            thread = threading.Thread(target=self._save_thread, 
                                  args=(save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs))
             thread.daemon = True
             thread.start()
@@ -439,7 +439,7 @@ class DBInterface(object):
             self.checkpoint_thread.join()
             self.checkpoint_thread = None
 
-    def save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
+    def _save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
         if save_filters_permanent or save_filters_tmp:
             save_rec['saved_filters'] = True
             save_path = os.path.join(self.cache_dir, 'checkpoint')
@@ -694,7 +694,7 @@ def train(sess,
     train_results = {}
     dbinterface.start_time_step = time.time()
     while step < num_steps:
-        if train_results or step == 0: _validate_and_save(train_results, step)
+        if (len(train_results) > 0) or step == 0: _validate_and_save(train_results, step)
         old_step = step
         dbinterface.start_time_step = time.time()
         train_results = sess.run(train_targets)
@@ -958,6 +958,7 @@ def check_model_equivalence(m1, m2, name):
     """TODO: fill this in to make it stronger"""
     assert set(m1.keys()) == set(m2.keys()), (m1.keys(), m2.keys())
     
+
 def get_validation_target(vinputs, voutputs,
                           default_target_func=utils.get_loss_dict,
                           default_target_params=DEFAULT_LOSS_PARAMS,
