@@ -155,7 +155,6 @@ def test_validation():
     can be loaded for inspection.)
 
     See the docstring of tfutils.base.test_from_params for more detailed information on usage.
-
     """
     #specify the parameters for the validation
     params = {}
@@ -224,7 +223,6 @@ def test_feature_extraction():
     This is a test illustrating how to perform feature extraction using tfutils.base.test_from_params. 
     The basic idea is to specify a validation target that is simply the actual output of the model at some layer. 
     (See the "get_extraction_target" function above as well.)  This test assumes that test_train has run first. 
-
    
     After the test is run, the results of the feature extraction are saved in the Grid File System associated
     with the mongodb, with one file per batch of feature results.  See how the features are accessed by reading the
