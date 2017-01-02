@@ -15,6 +15,29 @@ The two basic entry point functions are:
 The docstrings of these functions, as well as the test code test, provide much more detailed information on how to use the libraries.
 
 
+# MongoDB
+
+TFutils require a MongoDB instance to be available for loading/storing results.   This means you have to set up a running mongodb database process. (If you're not already familiar with Mongodb, read about how to do that on the MongoDB website.)
+
+This database can either be
+   
+    * local to where you run the neural networks (and therefore avaolable on 'localhost' by default), 
+    
+or:
+    
+    * it can be running somewhere else and then by ssh-tunneled on the relevant port to the 
+    host where you run the neural networks.  That is, before running train_from_params or 
+    test_from_params, you'd run
+    
+         ssh -f -N -L  [portnum]:localhost:[portnum] [username]@mongohost.xx.xx
+
+    on the machine where you're neural network traing, where [mongohost] is the host where the 
+    mongodb instance is running.
+    
+As is explained in the docstrings of base.train_from_params and base.test_from_params, and is exemplified in the test code in tests/test.py, the "save_params" and "load_params" arguments to these functions tells TFUtils which mongodb you want to save/load from.   
+
+NB: make sure if you're using a mongodb shared with other people, be careful that to ensure that your loaded/saved trainning records don't interfer with theirs.   Pick your save_params database names, collection names, and experiment ids to stay away from other peopls work.
+
 # Development
 
 Tests are run using `nose`. They are run automatically before pushing using
