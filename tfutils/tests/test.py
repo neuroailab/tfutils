@@ -2,9 +2,15 @@
 The is the basic illustration of training.
 """
 from __future__ import division, print_function, absolute_import
-import os, sys, math, time
+import os
+import sys
+import math
+import time
+import cPickle
 from datetime import datetime
+
 import pymongo as pm
+import gridfs
 import numpy as np
 
 import tensorflow as tf
@@ -47,16 +53,23 @@ class MNIST(object):
 
 
 num_batches_per_epoch = 10000//256
-testhost = 'localhost'
-testport = 31001
-testdbname = 'tfutils-test'
-testcol = 'testcol'
+
+testhost = 'localhost'           #Host on which the MongoDB instance to be used by tests needs to be running
+testport = 31001                 #port on which the MongoDB instance to be used by tests needs to be running
+testdbname = 'tfutils-test'      #name of the mongodb database where results will be stored by tests
+testcol = 'testcol'              #name of the mongodb collection where results will be stored by tests
 
 
 def test_training():
-    """This test illustrates how basic training is performed.
-       This is the first in a sequence of tests. It creates a database of results that is used
-       by the next few tests. 
+    """This test illustrates how basic training is performed using the tfutils.base.train_from_params function.  
+       This is the first in a sequence of interconnected tests. It creates a pretrained model that is used by
+       the next few tests (test_validation and test_feature_extraction).
+
+       As can be seen by looking at how the test checks for correctness, after the training is run, results 
+       of training, including (intermittently) the full variables needed to re-initialize the tensorflow model, 
+       are stored in a MongoDB.   
+
+       Also see docstring of the tfutils.base.train_from_params function for more detailed information about usage. 
     """
     #delete old database if it exists
     conn = pm.MongoClient(host=testhost,
@@ -112,7 +125,7 @@ def test_training():
     asserts_for_record(r, params, train=True)
 
 
-    #run another 500 steps
+    #run another 500 steps of training on the same experiment id.
     params['train_params']['num_steps'] = 1000
     base.train_from_params(**params)
     #test if results are as expected
@@ -123,7 +136,7 @@ def test_training():
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 1000})[0]
     asserts_for_record(r, params, train=True)
 
-    #run 500 more steps but save to a new exp_id
+    #run 500 more steps but save to a new experiment id.
     params['train_params']['num_steps'] = 1500
     params['load_params'] = {'exp_id': 'training0'}
     params['save_params']['exp_id'] = 'training1'
@@ -134,9 +147,17 @@ def test_training():
 
 def test_validation():
     """
-    This is a test illustrating how to run validation without training.
-    This test assumes that test_train has run first (to provide a model to validate).
+    This is a test illustrating how to compute performance on a trained model on a new dataset, 
+    using the tfutils.base.test_from_params function.  This test assumes that test_train function 
+    has run first (to provide a pre-trained model to validate).
+
+    After the test is run, results from the validation are stored in the MongoDB. (The test shows the record
+    can be loaded for inspection.)
+
+    See the docstring of tfutils.base.test_from_params for more detailed information on usage.
+
     """
+    #specify the parameters for the validation
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
     params['load_params'] = {'host': testhost,
@@ -154,13 +175,22 @@ def test_validation():
                                               'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
 
+    
+    #actually run the model
     base.test_from_params(**params)
 
+    #check that the results are correct
     conn = pm.MongoClient(host=testhost,
                           port=testport)
+
+    #... specifically, there is now a record containing the validation0 performance results
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'}).count() == 1
+    #... here's how to load the record:
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'validation0'})[0]
     asserts_for_record(r, params, train=False)
+
+    #... check that the recorrectly ties to the id information for the
+    #pre-trained model it was supposed to validate
     assert r['validates']
     f = r['validation_results']['valid0']['loss']
     idval = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'})[50]['_id']
@@ -169,10 +199,21 @@ def test_validation():
 
 
 def get_extraction_target(inputs, outputs, to_extract, **loss_params):
-    """here's how to figure out what names to use:
-    names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
-    print("NAMES", names)
     """
+    Example validation target function to use to provide targets for extracting features.  This function also adds a 
+    standard "loss" target which you may or not may not want 
+
+    The to_extract argument must be a dictionary of the form
+          {name_for_saving: name_of_actual_tensor, ...}
+    where the "name_for_saving" is a human-friendly name you want to save extracted features under, and
+    name_of_actual_tensor is a name of the tensor in the tensorflow graph outputing the features desired
+    to be extracted.  To figure out what the names of the tensors you want to extract are "to_extract" argument, 
+    uncomment the commented-out lines, which will print a list of all available tensor names.
+    """
+
+    #names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
+    #print("NAMES are: ", names)
+
     targets = {k: tf.get_default_graph().get_tensor_by_name(v) for k, v in to_extract.items()}
     targets['loss'] = utils.get_loss(inputs, outputs, **loss_params)
     return targets
@@ -180,9 +221,16 @@ def get_extraction_target(inputs, outputs, to_extract, **loss_params):
 
 def test_feature_extraction():
     """
-    This is a test illustrating how to perform feature extraction.  
-    This test assumes that test_train has run first. 
+    This is a test illustrating how to perform feature extraction using tfutils.base.test_from_params. 
+    The basic idea is to specify a validation target that is simply the actual output of the model at some layer. 
+    (See the "get_extraction_target" function above as well.)  This test assumes that test_train has run first. 
+
+   
+    After the test is run, the results of the feature extraction are saved in the Grid File System associated
+    with the mongodb, with one file per batch of feature results.  See how the features are accessed by reading the
+    test code below.
     """
+    #set up parameters 
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
     params['load_params'] = {'host': testhost,
@@ -205,23 +253,41 @@ def test_feature_extraction():
                                                                'n_threads': 4},
                                               'targets': targdict,
                                               'num_steps': 10,
-                                              'online_agg_func': utils.reduce_mean_dict
-                                            }
-                                   }
+                                              'online_agg_func': utils.reduce_mean_dict}}
+
+    #actually run the feature extraction
     base.test_from_params(**params)
 
+    #check that things are as expected. 
     conn = pm.MongoClient(host=testhost,
                           port=testport)
     coll = conn[testdbname][testcol+'.files']
     assert coll.find({'exp_id': 'validation1'}).count() == 11
+
+    #... load the containing the final "aggregate" result after all features have been extracted
     q = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': True}}
     assert coll.find(q).count() == 1
     r = coll.find(q)[0]
+    #... check that the record is well-formed
     asserts_for_record(r, params, train=False)
+
+    #... check that the correct "intermediate results" (the actual features extracted) records exist 
+    #and are correctly referenced. 
     q1 = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': False}}
     ids = coll.find(q1).distinct('_id')
     assert r['validation_results']['valid1']['intermediate_steps'] == ids
 
+    #... actually load feature batch 3
+    idval = r['validation_results']['valid1']['intermediate_steps'][3]
+    fn = coll.find({'item_for': idval})[0]['filename']
+    fs = gridfs.GridFS(coll.database, testcol)
+    fh = fs.get_last_version(fn)
+    saved_data  = cPickle.loads(fh.read())
+    fh.close()
+    features = saved_data['validation_results']['valid1']['features']
+    assert features.shape == (100, 128)
+    assert features.dtype == np.float32
+    
 
 def asserts_for_record(r, params, train=False):
     if r.get('saved_filters'):
