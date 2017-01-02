@@ -12,7 +12,7 @@ Utilities for working with TensorFlow
 
 # Quick start
 
-Look at `tutorials/alexnet.py` for a worked out example how to train AlexNet using tfutils.
+Look at `tutorials/train_alexnet.py` for a worked out example how to train AlexNet using tfutils.
 
 
 # More details
