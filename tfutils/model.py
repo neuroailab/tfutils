@@ -196,101 +196,65 @@ class ConvNet(object):
 
 def mnist(inputs, train=True, **kwargs):
     m = ConvNet(**kwargs)
-    reuse = None #if train else True
 
     with tf.contrib.framework.arg_scope([m.fc], init='trunc_norm', stddev=.01,
                                         bias=0, activation='relu', dropout=None):
-        with tf.variable_scope('hidden1', reuse=reuse):
+        with tf.variable_scope('hidden1'):
             m.fc(128, in_layer=inputs)
 
-        with tf.variable_scope('hidden2', reuse=reuse):
+        with tf.variable_scope('hidden2'):
             m.fc(32)
 
-        with tf.variable_scope('softmax_linear', reuse=reuse):
+        with tf.variable_scope('softmax_linear'):
             m.fc(10, activation=None)
 
     return m
 
 
-def alexnet(inputs, train=True, **kwargs):
+def alexnet(inputs, train=True, norm=True, **kwargs):
     m = ConvNet(**kwargs)
-    reuse = None #if train else True
 
     with tf.contrib.framework.arg_scope([m.conv], init='xavier',
-                                        stddev=.01, bias=.1, activation='relu'):
-        with tf.variable_scope('conv1', reuse=reuse):
+                                        stddev=.01, bias=0, activation='relu'):
+        with tf.variable_scope('conv1'):
             m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
-            m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            if norm:
+                m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
             m.pool(3, 2)
 
-        with tf.variable_scope('conv2', reuse=reuse):
+        with tf.variable_scope('conv2'):
             m.conv(256, 5, 1)
-            m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            if norm:
+                m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
             m.pool(3, 2)
 
-        with tf.variable_scope('conv3', reuse=reuse):
+        with tf.variable_scope('conv3'):
             m.conv(384, 3, 1)
 
-        with tf.variable_scope('conv4', reuse=reuse):
+        with tf.variable_scope('conv4'):
             m.conv(256, 3, 1)
 
-        with tf.variable_scope('conv5', reuse=reuse):
+        with tf.variable_scope('conv5'):
             m.conv(256, 3, 1)
             m.pool(3, 2)
 
-        with tf.variable_scope('fc6', reuse=reuse):
-            m.fc(4096, init='trunc_norm', dropout=.5)
+        with tf.variable_scope('fc6'):
+            m.fc(4096, init='trunc_norm', dropout=.5, bias=.1)
 
-        with tf.variable_scope('fc7', reuse=reuse):
-            m.fc(4096, init='trunc_norm', dropout=.5)
+        with tf.variable_scope('fc7'):
+            m.fc(4096, init='trunc_norm', dropout=.5, bias=.1)
 
-        with tf.variable_scope('fc8', reuse=reuse):
-            m.fc(1000, init='trunc_norm', activation=None, dropout=None)
+        with tf.variable_scope('fc8'):
+            m.fc(1000, init='trunc_norm', activation=None, dropout=None, bias=0)
 
     return m
 
 
-def alexnet_nonorm(inputs, train=True, **kwargs):
-    m = ConvNet(**kwargs)
-    reuse = None if train else True
-
-    with tf.contrib.framework.arg_scope([m.conv], init='xavier',
-                                        stddev=.01, bias=.1, activation='relu'):
-        with tf.variable_scope('conv1', reuse=reuse):
-            m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
-            m.pool(3, 2)
-
-        with tf.variable_scope('conv2', reuse=reuse):
-            m.conv(256, 5, 1)
-            m.pool(3, 2)
-
-        with tf.variable_scope('conv3', reuse=reuse):
-            m.conv(384, 3, 1)
-
-        with tf.variable_scope('conv4', reuse=reuse):
-            m.conv(256, 3, 1)
-
-        with tf.variable_scope('conv5', reuse=reuse):
-            m.conv(256, 3, 1)
-            m.pool(3, 2)
-
-        with tf.variable_scope('fc6', reuse=reuse):
-            m.fc(4096, init='trunc_norm', dropout=.5)
-
-        with tf.variable_scope('fc7', reuse=reuse):
-            m.fc(4096, init='trunc_norm', dropout=.5)
-
-        with tf.variable_scope('fc8', reuse=reuse):
-            m.fc(1000, init='trunc_norm', activation=None, dropout=None)
-
-    return m
-
-
-def mnist_tfutils(inputs, train=True, **kwargs):
-    m = mnist(inputs['images'], train=train, **kwargs)
+def mnist_tfutils(inputs, **kwargs):
+    m = mnist(inputs['images'], **kwargs)
     return m.output, m.params
 
 
-def alexnet_tfutils(inputs, train=True, **kwargs):
-    m = alexnet(inputs['images'], train=train, **kwargs)
+def alexnet_tfutils(inputs, **kwargs):
+    m = alexnet(inputs['images'], **kwargs)
     return m.output, m.params
