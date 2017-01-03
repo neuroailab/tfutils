@@ -75,7 +75,7 @@ class HDF5DataProvider(object):
         if mini_batch_size is None:
             mini_batch_size = self.batch_size
         self.mini_batch_size = mini_batch_size
-        self.total_batches = self.data_length // self.batch_size + 1
+        self.total_batches = (self.data_length - 1) // self.batch_size + 1
         self.curr_batch_num = 0
         self.curr_epoch = 1
         self.pad = pad
@@ -305,6 +305,7 @@ class Queue(object):
 
 
 class MNIST(object):
+
     def __init__(self,
                  data_path=None,
                  group='train',
@@ -329,7 +330,6 @@ class MNIST(object):
             self.data = data.test
         elif group == 'validation':
             self.data = data.validation
-            self.total_batches = data.validation.num_examples // self.batch_size
         else:
             raise ValueError('MNIST data input "{}" not known'.format(group))
 
@@ -338,7 +338,7 @@ class MNIST(object):
 
     def next(self):
         batch = self.data.next_batch(self.batch_size)
-        feed_dict = {'images': batch[0], 'labels': batch[1]}
+        feed_dict = {'images': batch[0], 'labels': batch[1].astype(np.int32)}
         return feed_dict
 
 
@@ -383,7 +383,7 @@ class ImageNet(HDF5DataProvider):
             data_path,
             [images, labels],
             batch_size=batch_size,
-            postprocess={images: self.postproc_img},
+            postprocess={images: self.postproc_img, labels: self.postproc_labels},
             pad=True,
             *args, **kwargs)
         if crop_size is None:
@@ -391,35 +391,19 @@ class ImageNet(HDF5DataProvider):
         else:
             self.crop_size = crop_size
 
-        if self.batch_size == 1:
-            self.node = {'images': tf.placeholder(tf.float32,
-                                    shape=(self.crop_size, self.crop_size, 3),
-                                    name='images'),
-                        'labels': tf.placeholder(tf.int64,
-                                                shape=[],
-                                                name='labels')}
-        else:
-            self.node = {'images': tf.placeholder(tf.float32,
-                                    shape=(self.batch_size, self.crop_size, self.crop_size, 3),
-                                    name='images'),
-                        'labels': tf.placeholder(tf.int64,
-                                                 shape=(self.batch_size, ),
-                                                 name='labels')}
-
     def postproc_img(self, ims, f):
         norm = ims.astype(np.float32) / 255
         off = np.random.randint(0, 256 - self.crop_size, size=2)
-        if self.batch_size == 1:
-            images_batch = norm[off[0]: off[0] + self.crop_size,
-                                off[1]: off[1] + self.crop_size]
-        else:
-            images_batch = norm[:,
-                                off[0]: off[0] + self.crop_size,
-                                off[1]: off[1] + self.crop_size]
+        images_batch = norm[:,
+                            off[0]: off[0] + self.crop_size,
+                            off[1]: off[1] + self.crop_size]
         return images_batch
+
+    def postproc_labels(self, labels, f):
+        return labels.astype(np.int32)
 
     def next(self):
         batch = super(ImageNet, self).next()
-        feed_dict = {self.node['images']: np.squeeze(batch[self.group + '/images']),
-                     self.node['labels']: np.squeeze(batch[self.group + '/labels'])}
+        feed_dict = {'images': np.squeeze(batch[self.group + '/images']),
+                     'labels': np.squeeze(batch[self.group + '/labels'])}
         return feed_dict

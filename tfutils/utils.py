@@ -175,6 +175,8 @@ def get_loss(inputs,
              agg_func_kwargs=None):
     if loss_func_kwargs is None:
         loss_func_kwargs = {}
+    if not isinstance(targets, (list, tuple, np.ndarray)):
+        targets = [targets]
     args = tuple([inputs[t] for t in targets])
     loss = loss_per_case_func(outputs, *args, **loss_func_kwargs)
     if agg_func is not None:
