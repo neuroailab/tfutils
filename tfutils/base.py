@@ -730,8 +730,6 @@ def train(sess,
         validation_res = run_targets_dict(sess, validation_targets,
                                           dbinterface=dbinterface,
                                           validation_only=False)
-
-    train_results = {}
     while step < num_steps:
         old_step = step
         dbinterface.start_time_step = time.time()
@@ -743,10 +741,10 @@ def train(sess,
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
 
-        if step % dbinterface.save_valid_freq == 0:
-            validation_res = run_targets_dict(sess, validation_targets, dbinterface=None)
-        else:
-            validation_res = None
+        validation_res = run_targets_dict(sess,
+                                          validation_targets if step % dbinterface.save_valid_freq == 0 else {},
+                                          dbinterface=None,
+                                          save_intermediate_freq=None)
         dbinterface.save(train_res=train_results, valid_res=validation_res, validation_only=False)
 
     stop_queues(sess, queues)
