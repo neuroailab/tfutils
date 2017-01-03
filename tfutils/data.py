@@ -64,7 +64,7 @@ class HDF5DataProvider(object):
                     else:
                         self.subsliceinds = np.zeros(self.data[source].shape[0]).astype(np.bool)
                         self.subsliceinds[self.subslice] = True
-                    self.subsliceinds = self.subsliceinds.nonzero()[0].astype(int)
+                        self.subsliceinds = self.subsliceinds.nonzero()[0].astype(int)
                 sz = self.data[source].shape
                 self.sizes[source] = (self.subsliceinds.shape[0],) + sz[1:]
             if not hasattr(self, 'data_length'):
