@@ -1,5 +1,9 @@
 from __future__ import division, print_function, absolute_import
-import os, copy, time, tempfile
+import os
+import copy
+import time
+import tempfile
+import sys
 
 import h5py
 import tqdm
@@ -7,10 +11,9 @@ import numpy as np
 import pandas
 import tensorflow as tf
 
-import sys
-sys.path.insert(0, '..')
 from tfutils import base, data, model
 
+sys.path.insert(0, '..')
 
 BATCH_SIZE = 256
 NSTEPS = 20
@@ -40,7 +43,7 @@ class DataInMem(object):
         self.kind = 'in gpu memory'
         self.batch_size = batch_size
         self.node = {'data': tf.Variable(tf.random_normal([self.batch_size, IMSIZE, IMSIZE, 3],
-                                          dtype=tf.float32, stddev=1e-1)),
+                                                          dtype=tf.float32, stddev=1e-1)),
                      'labels': tf.Variable(tf.zeros([self.batch_size], dtype=tf.int32))}
         self.batch = self.node
 

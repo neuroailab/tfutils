@@ -1,11 +1,11 @@
 """
-These tests show basic procedures for training, validating, and extracting features from 
-models.   
+These tests show basic procedures for training, validating, and extracting features from
+models.
 
 Note about MongoDB:
-The tests require a MongoDB instance to be available on the port defined by "testport" in 
+The tests require a MongoDB instance to be available on the port defined by "testport" in
 the code below.   This db can either be local to where you run these tests (and therefore
-on 'localhost' by default) or it can be running somewhere else and then by ssh-tunneled on 
+on 'localhost' by default) or it can be running somewhere else and then by ssh-tunneled on
 the relevant port to the host where you run these tests.  [That is, before testing, you'd run
          ssh -f -N -L  [testport]:localhost:[testport] [username]@mongohost.xx.xx
 on the machine where you're running these tests.   [mongohost] is the where the mongodb
@@ -17,9 +17,7 @@ import cPickle
 import pymongo as pm
 import gridfs
 import numpy as np
-
 import tensorflow as tf
-from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
 from tfutils import base, model, utils, data
 
@@ -33,14 +31,14 @@ testcol = 'testcol'          # name of the mongodb collection where results will
 
 
 def test_training():
-    """This test illustrates how basic training is performed using the  
-       tfutils.base.train_from_params function.  This is the first in a sequence of 
+    """This test illustrates how basic training is performed using the
+       tfutils.base.train_from_params function.  This is the first in a sequence of
        interconnected tests. It creates a pretrained model that is used by
        the next few tests (test_validation and test_feature_extraction).
 
-       As can be seen by looking at how the test checks for correctness, after the 
+       As can be seen by looking at how the test checks for correctness, after the
        training is run, results of training, including (intermittently) the full variables
-       needed to re-initialize the tensorflow model, are stored in a MongoDB.   
+       needed to re-initialize the tensorflow model, are stored in a MongoDB.
 
        Also see docstring of the tfutils.base.train_from_params function for more detailed
        information about usage.
@@ -85,19 +83,17 @@ def test_training():
                                               'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
 
-
     # actually run the training
     base.train_from_params(**params)
     # test if results are as expected
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 26
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0',
-            'saved_filters': True}).distinct('step') == [0, 200, 400]
+                                                    'saved_filters': True}).distinct('step') == [0, 200, 400]
 
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 0})[0]
     asserts_for_record(r, params, train=True)
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 20})[0]
     asserts_for_record(r, params, train=True)
-
 
     # run another 500 steps of training on the same experiment id.
     params['train_params']['num_steps'] = 1000
@@ -105,7 +101,7 @@ def test_training():
     # test if results are as expected
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 51
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0',
-         'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
+                                                    'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
     assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 1000})[0]
     asserts_for_record(r, params, train=True)
@@ -116,7 +112,7 @@ def test_training():
     params['save_params']['exp_id'] = 'training1'
     base.train_from_params(**params)
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training1',
-                            'saved_filters': True}).distinct('step') == [1200, 1400]
+                                                    'saved_filters': True}).distinct('step') == [1200, 1400]
 
 
 def test_validation():
@@ -125,7 +121,7 @@ def test_validation():
     using the tfutils.base.test_from_params function.  This test assumes that test_training function
     has run first (to provide a pre-trained model to validate).
 
-    After the test is run, results from the validation are stored in the MongoDB. 
+    After the test is run, results from the validation are stored in the MongoDB.
     (The test shows how the record can be loaded for inspection.)
 
     See the docstring of tfutils.base.test_from_params for more detailed information on usage.
@@ -147,7 +143,6 @@ def test_validation():
                                                                'n_threads': 4},
                                               'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
-
 
     # actually run the model
     base.test_from_params(**params)
@@ -172,15 +167,15 @@ def test_validation():
 
 def get_extraction_target(inputs, outputs, to_extract, **loss_params):
     """
-    Example validation target function to use to provide targets for extracting features. 
-    This function also adds a standard "loss" target which you may or not may not want 
+    Example validation target function to use to provide targets for extracting features.
+    This function also adds a standard "loss" target which you may or not may not want
 
     The to_extract argument must be a dictionary of the form
           {name_for_saving: name_of_actual_tensor, ...}
-    where the "name_for_saving" is a human-friendly name you want to save extracted 
+    where the "name_for_saving" is a human-friendly name you want to save extracted
     features under, and name_of_actual_tensor is a name of the tensor in the tensorflow
-    graph outputing the features desired to be extracted.  To figure out what the names 
-    of the tensors you want to extract are "to_extract" argument,  uncomment the 
+    graph outputing the features desired to be extracted.  To figure out what the names
+    of the tensors you want to extract are "to_extract" argument,  uncomment the
     commented-out lines, which will print a list of all available tensor names.
     """
 
@@ -194,14 +189,14 @@ def get_extraction_target(inputs, outputs, to_extract, **loss_params):
 
 def test_feature_extraction():
     """
-    This is a test illustrating how to perform feature extraction using 
-    tfutils.base.test_from_params. 
-    The basic idea is to specify a validation target that is simply the actual output of 
-    the model at some layer. (See the "get_extraction_target" function above as well.)  
-    This test assumes that test_train has run first. 
-   
-    After the test is run, the results of the feature extraction are saved in the Grid 
-    File System associated with the mongo database, with one file per batch of feature 
+    This is a test illustrating how to perform feature extraction using
+    tfutils.base.test_from_params.
+    The basic idea is to specify a validation target that is simply the actual output of
+    the model at some layer. (See the "get_extraction_target" function above as well.)
+    This test assumes that test_train has run first.
+
+    After the test is run, the results of the feature extraction are saved in the Grid
+    File System associated with the mongo database, with one file per batch of feature
     results.  See how the features are accessed by reading the test code below.
     """
     # set up parameters

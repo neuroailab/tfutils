@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import copy, threading, time
+import threading
 import numpy as np
 import h5py
 import tensorflow as tf
@@ -156,7 +156,7 @@ def perminverse(s):
     return X
 
 
-def isin(X,Y):
+def isin(X, Y):
     """
     Indices of elements in a numpy array that appear in another.
     Fast routine for determining indices of elements in numpy array `X` that
@@ -180,14 +180,14 @@ def isin(X,Y):
         T = Y.copy()
         T.sort()
         D = T.searchsorted(X)
-        T = np.append(T,np.array([0]))
+        T = np.append(T, np.array([0]))
         W = (T[D] == X)
-        if isinstance(W,bool):
-            return np.zeros((len(X),),bool)
+        if isinstance(W, bool):
+            return np.zeros((len(X), ), bool)
         else:
             return (T[D] == X)
     else:
-        return np.zeros((len(X),),bool)
+        return np.zeros((len(X), ), bool)
 
 
 class Queue(object):

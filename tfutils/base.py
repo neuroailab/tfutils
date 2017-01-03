@@ -1,7 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
-import os, sys, time, importlib, argparse, json, copy, logging
-import tarfile, cPickle, threading
+import os
+import sys
+import time
+import importlib
+import argparse
+import json
+import copy
+import logging
+import tarfile
+import cPickle
+import threading
 from collections import OrderedDict
 
 import tqdm
@@ -38,7 +47,7 @@ DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
                                   'agg_func': tf.reduce_mean})
 
 DEFAULT_OPTIMIZER_PARAMS = frozendict({'optimizer_class': tf.train.MomentumOptimizer,
-                                     'momentum': 0.9})
+                                       'momentum': 0.9})
 
 DEFAULT_TRAIN_NUM_STEPS = None
 
@@ -172,7 +181,7 @@ class DBInterface(object):
                 lv = save_params[_k]
             setattr(self, _k, sv)
             setattr(self, 'load_' + _k, lv)
-        self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables] )
+        self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables])
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
@@ -195,16 +204,17 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
-            if self.sameloc: raise Exception('Loading pointlessly')
+            if self.sameloc:
+                raise Exception('Loading pointlessly')
         load_query.update({'exp_id': self.load_exp_id})
         self.load_query = load_query
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
-                                                     port=self.load_port)
+                                                 port=self.load_port)
         else:
             self.load_conn = self.conn
         self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname],
-                                             self.load_collname)
+                                         self.load_collname)
         load_recent_name = '_'.join([self.load_dbname,
                                      self.load_collname,
                                      self.load_exp_id,
@@ -259,7 +269,6 @@ class DBInterface(object):
             self.sess.run(init)
             log.info('Model variables initialized from scratch.')
 
-
     @property
     def tf_saver(self):
         if not hasattr(self, '_tf_saver'):
@@ -299,7 +308,7 @@ class DBInterface(object):
         count_recent = collfs_recent.find(query).count()
         if count_recent > 0:  # get latest that matches query
             ckpt_record_recent = coll_recent.find(query,
-                                            sort=[('uploadDate', -1)])[0]
+                                                  sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
             if ckpt_record is None or ckpt_record_recent['uploadDate'] > ckpt_record['uploadDate']:
                 loading_from = coll_recent
@@ -324,7 +333,7 @@ class DBInterface(object):
                 load_dest.close()
                 load_dest = open(cache_filename, 'rwb+')
                 fsbucket = gridfs.GridFSBucket(database,
-                                        bucket_name=loading_from.name.split('.')[0])
+                                               bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
                     assert cache_filename.endswith('.tar')
@@ -376,7 +385,7 @@ class DBInterface(object):
             # TODO: also include error rate of the train set to monitor overfitting
             # DY: I don't understand this TODO -- isn't this already here?
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k,v) for k,v in train_res.items() if k != 'optimizer']
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer']
             message += ', '.join(msg2)
             log.info(message)
 
@@ -391,8 +400,8 @@ class DBInterface(object):
             rec['validation_results'] = valid_res
             message = 'Validation -- '
             message += ', '.join('{}: {}'.format(k,
-                        {_k:_v for _k, _v in v.items() if _k not in self.save_to_gfs}
-                        ) for k,v in valid_res.items())
+                                                 {_k: _v for _k, _v in v.items() if _k not in self.save_to_gfs}
+                                                 ) for k, v in valid_res.items())
             log.info(message)
 
         if validation_only:
@@ -433,7 +442,11 @@ class DBInterface(object):
             make_mongo_safe(save_rec)
 
             thread = threading.Thread(target=self._save_thread,
-                                 args=(save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs))
+                                      args=(save_filters_permanent,
+                                            save_filters_tmp,
+                                            save_rec,
+                                            step,
+                                            save_to_gfs))
             thread.daemon = True
             thread.start()
             self.checkpoint_thread = thread
@@ -633,7 +646,7 @@ def test_from_params(load_params,
 
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                        log_device_placement=log_device_placement))
+                                                log_device_placement=log_device_placement))
 
         dbinterface = DBInterface(load_params=load_params)
         dbinterface.load_rec()
@@ -666,10 +679,10 @@ def test_from_params(load_params,
 
         save_intermediate_freq = save_params.get('save_intermediate_freq')
         res = test(sess,
-                    queues,
-                    dbinterface,
-                    valid_targets_dict,
-                    save_intermediate_freq=save_intermediate_freq)
+                   queues,
+                   dbinterface,
+                   valid_targets_dict,
+                   save_intermediate_freq=save_intermediate_freq)
         sess.close()
         return res
 
@@ -873,15 +886,15 @@ def train_from_params(save_params,
     """
 
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
-        #### TODO:  option to try to load first and see if records exist
-        ####       and if so, construct entirely from record ("revivification").
+        # TODO:  option to try to load first and see if records exist
+        #        and if so, construct entirely from record ("revivification").
         global_step = tf.get_variable('global_step', [],
                                       initializer=tf.constant_initializer(0),
                                       dtype=tf.int64,
                                       trainable=False)
 
         train_params['data_params'], queue = get_data(queue_params=train_params.get('queue_params'),
-                                               **train_params['data_params'])
+                                                      **train_params['data_params'])
         queues = [queue]
         train_inputs = queue.batch
         if 'num_steps' not in train_params:
@@ -899,7 +912,6 @@ def train_from_params(save_params,
             learning_rate_params = {}
         learning_rate_params, learning_rate = get_learning_rate(global_step,
                                                                 **learning_rate_params)
-
 
         optimizer_params, optimizer = get_optimizer(learning_rate,
                                                     loss,
@@ -928,7 +940,7 @@ def train_from_params(save_params,
 
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                        log_device_placement=log_device_placement))
+                                                log_device_placement=log_device_placement))
 
         params = {'save_params': save_params,
                   'load_params': load_params,
@@ -943,13 +955,13 @@ def train_from_params(save_params,
                                   save_params=save_params, load_params=load_params)
         dbinterface.initialize()
         res = train(sess,
-                     queues,
-                     dbinterface,
-                     train_targets=train_targets,
-                     global_step=global_step,
-                     num_steps=train_params['num_steps'],
-                     thres_loss=train_params['thres_loss'],
-                     validation_targets=valid_targets_dict)
+                    queues,
+                    dbinterface,
+                    train_targets=train_targets,
+                    global_step=global_step,
+                    num_steps=train_params['num_steps'],
+                    thres_loss=train_params['thres_loss'],
+                    validation_targets=valid_targets_dict)
         sess.close()
         return res
 
@@ -981,7 +993,7 @@ def get_valid_targets_dict(validation_params,
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
-                                                                           **validation_params[vtarg])
+                                                                                    **validation_params[vtarg])
 
     return valid_targets_dict, queues
 
@@ -1034,11 +1046,11 @@ def get_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **model
 
 
 def get_loss(train_inputs,
-              train_outputs,
-              targets=DEFAULT_LOSS_PARAMS['targets'],
-              agg_func=DEFAULT_LOSS_PARAMS['agg_func'],
-              loss_per_case_func=DEFAULT_LOSS_PARAMS['loss_per_case_func'],
-              **loss_params):
+             train_outputs,
+             targets=DEFAULT_LOSS_PARAMS['targets'],
+             agg_func=DEFAULT_LOSS_PARAMS['agg_func'],
+             loss_per_case_func=DEFAULT_LOSS_PARAMS['loss_per_case_func'],
+             **loss_params):
     loss_params['targets'] = targets
     loss_params['agg_func'] = agg_func
     loss_params['loss_per_case_func'] = loss_per_case_func
@@ -1054,11 +1066,11 @@ def get_learning_rate(global_step, func=tf.train.exponential_decay, **learning_r
 
 
 def get_optimizer(learning_rate,
-                   loss,
-                   global_step,
-                   optimizer_params,
-                   default_optimizer_params=DEFAULT_OPTIMIZER_PARAMS,
-                   default_optimizer_func=ClipOptimizer):
+                  loss,
+                  global_step,
+                  optimizer_params,
+                  default_optimizer_params=DEFAULT_OPTIMIZER_PARAMS,
+                  default_optimizer_func=ClipOptimizer):
     if optimizer_params is None:
         optimizer_params = dict(default_optimizer_params)
     func = optimizer_params.pop('func', default_optimizer_func)
@@ -1080,6 +1092,7 @@ def get_params():
         mod = importlib.import_module(modname)
         args[p] = getattr(mod, objname)
     return args
+
 
 """
 Something like this could be used to create and save variables

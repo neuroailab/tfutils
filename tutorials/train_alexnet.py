@@ -1,12 +1,13 @@
 from __future__ import division, print_function, absolute_import
-import os, sys
-import numpy as np
+import os
+import sys
 
+import numpy as np
 import tensorflow as tf
 
-sys.path.insert(0, '..')
 from tfutils import base, data, model, optimizer
 
+sys.path.insert(0, '..')
 
 host = os.uname()[1]
 if host.startswith('node') or host == 'openmind7':  # OpenMind
@@ -25,8 +26,8 @@ def in_top_k(inputs, outputs, target):
 
 def online_agg(agg_res, res, step):
     if agg_res is None:
-        agg_res = {k:[] for k in res}
-    for k,v in res.items():
+        agg_res = {k: [] for k in res}
+    for k, v in res.items():
         agg_res[k].append(np.mean(v))
     return agg_res
 
@@ -145,7 +146,7 @@ params = {
                 'seed': 0,
             },
             'num_steps': data.ImageNet.N_VAL // BATCH_SIZE + 1,
-            'agg_func': lambda x: {k:np.mean(v) for k,v in x.items()},
+            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
             'online_agg_func': online_agg
         },
     },

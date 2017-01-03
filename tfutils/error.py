@@ -1,14 +1,14 @@
 class HiLossError(Exception):
-  pass
+    pass
 
 
 class NoChangeError(Exception):
-  pass
+    pass
 
 
 class RepoIsDirtyError(Exception):
-  pass
+    pass
 
 
 class NoGlobalStepError(Exception):
-  pass
+    pass

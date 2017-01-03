@@ -51,8 +51,10 @@ class ConvNet(object):
              activation='relu',
              weight_decay=None,
              in_layer=None):
-        if in_layer is None: in_layer = self.output
-        if weight_decay is None: weight_decay = 0.
+        if in_layer is None:
+            in_layer = self.output
+        if weight_decay is None:
+            weight_decay = 0.
         in_shape = in_layer.get_shape().as_list()[-1]
 
         if isinstance(ksize, int):
@@ -99,7 +101,8 @@ class ConvNet(object):
            activation='relu',
            dropout=.5,
            in_layer=None):
-        if in_layer is None: in_layer = self.output
+        if in_layer is None:
+            in_layer = self.output
         resh = tf.reshape(in_layer,
                           [in_layer.get_shape().as_list()[0], -1],
                           name='reshape')
@@ -138,7 +141,8 @@ class ConvNet(object):
              alpha=2e-5,
              beta=.75,
              in_layer=None):
-        if in_layer is None: in_layer = self.output
+        if in_layer is None:
+            in_layer = self.output
         self.output = tf.nn.lrn(in_layer,
                                 depth_radius=np.float(depth_radius),
                                 bias=np.float(bias),
@@ -159,7 +163,8 @@ class ConvNet(object):
              stride=2,
              padding='SAME',
              in_layer=None):
-        if in_layer is None: in_layer = self.output
+        if in_layer is None:
+            in_layer = self.output
 
         if isinstance(ksize, int):
             ksize1 = ksize
@@ -180,7 +185,8 @@ class ConvNet(object):
         return self.output
 
     def activation(self, kind='relu', in_layer=None):
-        if in_layer is None: in_layer = self.output
+        if in_layer is None:
+            in_layer = self.output
         if kind == 'relu':
             out = tf.nn.relu(in_layer, name='relu')
         else:
@@ -189,7 +195,8 @@ class ConvNet(object):
         return out
 
     def dropout(self, dropout=.5, in_layer=None):
-        if in_layer is None: in_layer = self.output
+        if in_layer is None:
+            in_layer = self.output
         self.output = tf.nn.dropout(in_layer, dropout, seed=self.seed, name='dropout')
         return self.output
 

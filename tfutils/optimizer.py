@@ -13,7 +13,7 @@ class ClipOptimizer(object):
             # gradient clipping. Some gradients returned are 'None' because
             # no relation between the variable and loss; so we skip those.
             gvs = [(tf.clip_by_value(grad, -1., 1.), var)
-                          for grad, var in gvs if grad is not None]
+                   for grad, var in gvs if grad is not None]
         return gvs
 
     def minimize(self, loss, global_step):

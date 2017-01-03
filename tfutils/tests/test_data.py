@@ -25,7 +25,7 @@ def test_queues():
     data_iter = [{'data': np.random.random((data_batch_size, 5, 5, 3))} for i in range(1)]
     queue = data.Queue(data_iter, data_batch_size=data_batch_size, batch_size=batch_size)
     batch = queue.next()
-    assert batch['data'].shape == (data_batch_size, 5,5,3)
+    assert batch['data'].shape == (data_batch_size, 5, 5, 3)
     assert queue.nodes['data'].get_shape().as_list() == [data_batch_size] + shape
     assert queue.batch['data'].get_shape().as_list() == [batch_size] + shape
 

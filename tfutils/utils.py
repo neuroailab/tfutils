@@ -7,14 +7,12 @@ import pkg_resources
 import os
 import re
 import copy
-import threading
-
 
 import numpy as np
 from bson.objectid import ObjectId
 import git
 
-from tfutils.error import RepoIsDirtyError
+# from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -82,7 +80,7 @@ def git_info(repo):
         shas = [_r.oldhexsha for _r in gitlog] + [_r.newhexsha for _r in gitlog]
         if commit not in shas:
             log.warning('Commit %s not in remote origin log for branch %s' % (commit,
-                                                                        branchname))
+                                                                              branchname))
             commit_in_log = False
         else:
             commit_in_log = True
@@ -111,8 +109,10 @@ def sonify(arg, memo=None):
     """when possible, returns version of argument that can be
        serialized trivally to json format
     """
-    if memo is None: memo = {}
-    if id(arg) in memo: rval = memo[id(arg)]
+    if memo is None:
+        memo = {}
+    if id(arg) in memo:
+        rval = memo[id(arg)]
 
     if isinstance(arg, ObjectId):
         rval = arg
@@ -126,10 +126,10 @@ def sonify(arg, memo=None):
         rval = type(arg)([sonify(ai, memo) for ai in arg])
     elif isinstance(arg, collections.OrderedDict):
         rval = collections.OrderedDict([(sonify(k, memo), sonify(v, memo))
-            for k, v in arg.items()])
+                                        for k, v in arg.items()])
     elif isinstance(arg, dict):
         rval = dict([(sonify(k, memo), sonify(v, memo))
-            for k, v in arg.items()])
+                     for k, v in arg.items()])
     elif isinstance(arg, (basestring, float, int, type(None))):
         rval = arg
     elif isinstance(arg, np.ndarray):
@@ -146,7 +146,7 @@ def sonify(arg, memo=None):
         objname = arg.__name__
         rval = version_check_and_info(mod)
         rval.update({'objname': objname,
-                        'modname': modname})
+                     'modname': modname})
         rval = sonify(rval)
     else:
         raise TypeError('sonify', arg)
@@ -251,7 +251,7 @@ def reduce_mean_dict(x, y, step):
     if x is None:
         x = {}
     for k in y:
-        #ka = k + '_agg'
+        # ka = k + '_agg'
         ka = k
         if k != 'validation_step':
             x[ka] = reduce_mean(x.get(ka), y[k], step)
@@ -264,7 +264,7 @@ def mean_dict(y):
     x = {}
     keys = y[0].keys()
     for k in keys:
-        #ka = k + '_agg'
+        # ka = k + '_agg'
         ka = k
         pluck = [_y[k] for _y in y]
         if k != 'validation_step':
@@ -310,8 +310,7 @@ class frozendict(collections.Mapping):
     def __hash__(self):
         if self._hash is None:
             h = 0
-            for key, value in iteritems(self._dict):
+            for key, value in self._dict.items():
                 h ^= hash((key, value))
             self._hash = h
         return self._hash
-
