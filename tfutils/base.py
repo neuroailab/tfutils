@@ -383,7 +383,6 @@ class DBInterface(object):
 
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
-            # DY: I don't understand this TODO -- isn't this already here?
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer']
             message += ', '.join(msg2)
@@ -728,8 +727,7 @@ def train(sess,
     if step == 0:
         dbinterface.start_time_step = time.time()
         validation_res = run_targets_dict(sess, validation_targets,
-                                          dbinterface=dbinterface,
-                                          validation_only=False)
+                                          dbinterface=dbinterface)
     while step < num_steps:
         old_step = step
         dbinterface.start_time_step = time.time()
@@ -741,10 +739,8 @@ def train(sess,
         if train_results['loss'] > thres_loss:
             raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'], thres_loss))
 
-        validation_res = run_targets_dict(sess,
-                                          validation_targets if step % dbinterface.save_valid_freq == 0 else {},
-                                          dbinterface=None,
-                                          save_intermediate_freq=None)
+        vtargs = validation_targets if step % dbinterface.save_valid_freq == 0 else {}
+        validation_res = run_targets_dict(sess, vtargs)
         dbinterface.save(train_res=train_results, valid_res=validation_res, validation_only=False)
 
     stop_queues(sess, queues)
