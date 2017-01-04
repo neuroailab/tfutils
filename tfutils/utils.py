@@ -101,6 +101,9 @@ def make_mongo_safe(_d):
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
             make_mongo_safe(_d[_k])
+        if not isinstance(_k, str):
+            _d[str(_k)] = _d.pop(_k)
+        _k = str(_k)
         if '.' in _k:
             _d[_k.replace('.', '___')] = _d.pop(_k)
 
