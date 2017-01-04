@@ -271,7 +271,6 @@ def asserts_for_record(r, params, train=False):
     vk1 = r['validation_results'].keys()
     assert set(vk) == set(vk1)
 
-    assert r['params']['model_params']['cfg_initial'] is None
     assert r['params']['model_params']['seed'] == 0
     assert r['params']['model_params']['func']['modname'] == 'tfutils.model'
     assert r['params']['model_params']['func']['objname'] == 'mnist_tfutils'

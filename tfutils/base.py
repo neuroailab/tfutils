@@ -653,7 +653,6 @@ def test_from_params(load_params,
         assert ld is not None, "No load data found for query, aborting"
         ld = ld[0]
         # TODO: have option to reconstitute model_params entirely from saved object ("revivification")
-        model_params['cfg_initial'] = ld['params']['model_params']['cfg_initial']
         model_params['seed'] = ld['params']['model_params']['seed']
         cfg_final = ld['params']['model_params']['cfg_final']
         train_queue_params = ld['params']['train_params']['queue_params']
@@ -772,7 +771,6 @@ def train_from_params(save_params,
                     - Must accept:
                         - "inputs" -- data object
                         - "train" -- boolean if training is happening
-                        - "cfg_initial" -- dictionary of params to be used to create final config
                         - "seed" -- seed for use in random generation of final config
                     - Must return:
                         - train output tensorflow nodes
@@ -975,7 +973,6 @@ def get_valid_targets_dict(validation_params,
         assert 'cfg_final' in model_params
         cfg_final = model_params['cfg_final']
     assert 'seed' in model_params
-    assert 'cfg_initial' in model_params
     for vtarg in validation_params:
         _, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
                             **validation_params[vtarg]['data_params'])
@@ -1028,8 +1025,7 @@ def get_data(func, queue_params=None, **data_params):
     return data_params, queue
 
 
-def get_model(train_inputs, func, cfg_initial=None, seed=0, train=False, **model_params):
-    model_params['cfg_initial'] = cfg_initial
+def get_model(train_inputs, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
     outputs, cfg_final = func(inputs=train_inputs,
