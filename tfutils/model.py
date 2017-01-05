@@ -220,6 +220,7 @@ def mnist(inputs, train=True, **kwargs):
 
 def alexnet(inputs, train=True, norm=True, **kwargs):
     m = ConvNet(**kwargs)
+    dropout = .5 if train else None
 
     with tf.contrib.framework.arg_scope([m.conv], init='xavier',
                                         stddev=.01, bias=0, activation='relu'):
@@ -246,10 +247,10 @@ def alexnet(inputs, train=True, norm=True, **kwargs):
             m.pool(3, 2)
 
         with tf.variable_scope('fc6'):
-            m.fc(4096, init='trunc_norm', dropout=.5, bias=.1)
+            m.fc(4096, init='trunc_norm', dropout=dropout, bias=.1)
 
         with tf.variable_scope('fc7'):
-            m.fc(4096, init='trunc_norm', dropout=.5, bias=.1)
+            m.fc(4096, init='trunc_norm', dropout=dropout, bias=.1)
 
         with tf.variable_scope('fc8'):
             m.fc(1000, init='trunc_norm', activation=None, dropout=None, bias=0)
