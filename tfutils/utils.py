@@ -180,8 +180,11 @@ def get_loss(inputs,
         loss_func_kwargs = {}
     if not isinstance(targets, (list, tuple, np.ndarray)):
         targets = [targets]
-    args = tuple([inputs[t] for t in targets])
-    loss = loss_per_case_func(outputs, *args, **loss_func_kwargs)
+    if len(targets) == 1:
+        labels = inputs[targets[0]]
+    else:
+        labels = [inputs[t] for t in targets]
+    loss = loss_per_case_func(logits=outputs, labels=labels, **loss_func_kwargs)
     if agg_func is not None:
         if agg_func_kwargs is None:
             agg_func_kwargs = {}
