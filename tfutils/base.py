@@ -125,6 +125,9 @@ class DBInterface(object):
                     - cache_filters_freq (int, default: 3000)
                         How often to cache filter values locally and save
                         to ___RECENT database
+                    - cache_dir (str, default: None)
+                        Path where caches will be saved locally. If None, will default to
+                        ~/.tfutils/<host:post>/<dbname>/<collname>/<exp_id>.
             - load_params (dict)
                 Similar to save_params, if you want loading to happen from a different
                 location than where saving occurs.   Parameters include:
@@ -149,9 +152,6 @@ class DBInterface(object):
             - global_step (tensorflow.Variable)
                 Global step variable, the one that is updated by apply_gradients.  This
                 is required if being using in a training context.
-            - cache_dir (str, default: None)
-                Path where caches will be saved locally. If None, will default to
-                ~/.tfutils/<host:post>/<dbname>/<collname>/<exp_id>.
             - *tfsaver_args, **tsaver_kwargs
                 Additional arguments to be passed onto base Saver class constructor
         """
@@ -220,6 +220,11 @@ class DBInterface(object):
                                      self.load_exp_id,
                                      '__RECENT'])
         self.load_collfs_recent = gridfs.GridFS(self.load_conn[load_recent_name])
+
+        if 'cache_dir' in save_params:
+            cache_dir = save_params['cache_dir']
+        else:
+            cache_dir = None
 
         if cache_dir is None:
             self.cache_dir = os.path.join(os.environ['HOME'],
