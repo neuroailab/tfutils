@@ -50,6 +50,8 @@ def exponential_decay(global_step,
             staircase=True)
     return lr
 
+def loss_with_postitional_para(outputs, targets, *args, **loss_func_kwargs):
+    return tf.nn.sparse_softmax_cross_entropy_with_logits(labels = targets, logits = outputs)
 
 BATCH_SIZE = 256
 NUM_BATCHES_PER_EPOCH = data.ImageNet.N_TRAIN // BATCH_SIZE
@@ -109,7 +111,8 @@ params = {
     'loss_params': {
         'targets': 'labels',
         'agg_func': tf.reduce_mean,
-        'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+        #'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+        'loss_per_case_func': loss_with_postitional_para,
     },
 
     'learning_rate_params': {
