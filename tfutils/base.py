@@ -414,17 +414,14 @@ class DBInterface(object):
             need_to_save = True
         else:
             save_filters_permanent = ((step % self.save_filters_freq == 0) and
-                                      (step > 0 or
-                                      (self.save_initial_filters and not self.load_data)))
+                                      (step > 0 or (self.save_initial_filters and not self.load_data)))
             save_filters_tmp = ((step % self.cache_filters_freq == 0) and
-                                (step > 0 or
-                                (self.save_initial_filters and not self.load_data)))
+                                (step > 0 or (self.save_initial_filters and not self.load_data)))
             save_metrics_now = step % self.save_metrics_freq == 0
             save_valid_now = step % self.save_valid_freq == 0
-            need_to_save = self.do_save and (save_filters_permanent or
-                                             save_filters_tmp or
-                                             save_metrics_now or
-                                             save_valid_now)
+            need_to_save = save_filters_permanent or save_filters_tmp or save_metrics_now or save_valid_now
+
+        need_to_save = self.do_save and need_to_save
 
         if need_to_save:
             self.rec_to_save = None
@@ -1012,7 +1009,7 @@ def get_validation_target(vinputs, voutputs,
     validation_params['targets'] = target_params
     if 'num_steps' not in validation_params:
         assert hasattr(vinputs, 'total_batches'), '"num_batches" not specified in validation params, '\
-                                 'data object must have "total_batches" attribute to be used as default.'
+            'data object must have "total_batches" attribute to be used as default.'
         validation_params['num_steps'] = vinputs.total_batches
     validation_params['agg_func'] = agg_func
     validation_params['online_agg_func'] = online_agg_func
