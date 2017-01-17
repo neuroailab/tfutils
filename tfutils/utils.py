@@ -187,14 +187,14 @@ def get_loss(inputs,
     else:
         labels = [inputs[t] for t in targets]
 
-    flag_without = True
-    flag_withtar = True
+    flag_with_out = True
+    flag_with_tar = True
     for key_value in loss_per_case_func_params.keys():
         if key_value=='_outputs':
-            flag_without = False
+            flag_with_out = False
             loss_func_kwargs[loss_per_case_func_params[key_value]] = outputs
         elif key_value=='_targets_$all':
-            flag_withtar = False
+            flag_with_tar = False
             loss_func_kwargs[loss_per_case_func_params[key_value]] = labels
         elif key_value.startswith('_targets_'):
             tmp_key = key_value[len('_targets_'):]
@@ -203,15 +203,15 @@ def get_loss(inputs,
                 loss_func_kwargs[loss_per_case_func_params[key_value]] = inputs[tmp_key]
 
     if len(targets) == 0:
-        flag_withtar = False
+        flag_with_tar = False
     elif len(targets) == 1:
         labels = inputs[targets[0]]
     else:
         labels = [inputs[t] for t in targets]
 
-    if not flag_withtar:
+    if not flag_with_tar:
         labels = []
-    if flag_without:
+    if flag_with_out:
         labels.insert(0, outputs)
     loss = loss_per_case_func(*labels, **loss_func_kwargs)
 
