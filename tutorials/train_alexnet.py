@@ -110,6 +110,7 @@ params = {
         'targets': 'labels',
         'agg_func': tf.reduce_mean,
         'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+        #'loss_per_case_func_params':
     },
 
     'learning_rate_params': {
