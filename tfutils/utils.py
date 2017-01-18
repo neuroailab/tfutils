@@ -173,6 +173,7 @@ def get_loss(inputs,
              outputs,
              targets,
              loss_per_case_func,
+             loss_per_case_func_params={'_outputs': 'logits', '_targets_$all': 'labels'},
              agg_func=None,
              loss_func_kwargs=None,
              agg_func_kwargs=None):
@@ -180,11 +181,40 @@ def get_loss(inputs,
         loss_func_kwargs = {}
     if not isinstance(targets, (list, tuple, np.ndarray)):
         targets = [targets]
+    targets = list(targets)
     if len(targets) == 1:
         labels = inputs[targets[0]]
     else:
         labels = [inputs[t] for t in targets]
-    loss = loss_per_case_func(logits=outputs, labels=labels, **loss_func_kwargs)
+
+    flag_with_out = True
+    flag_with_tar = True
+    for key_value in loss_per_case_func_params.keys():
+        if key_value=='_outputs':
+            flag_with_out = False
+            loss_func_kwargs[loss_per_case_func_params[key_value]] = outputs
+        elif key_value=='_targets_$all':
+            flag_with_tar = False
+            loss_func_kwargs[loss_per_case_func_params[key_value]] = labels
+        elif key_value.startswith('_targets_'):
+            tmp_key = key_value[len('_targets_'):]
+            if tmp_key in targets:
+                targets.remove(tmp_key)
+                loss_func_kwargs[loss_per_case_func_params[key_value]] = inputs[tmp_key]
+
+    if len(targets) == 0:
+        flag_with_tar = False
+    elif len(targets) == 1:
+        labels = inputs[targets[0]]
+    else:
+        labels = [inputs[t] for t in targets]
+
+    if not flag_with_tar:
+        labels = []
+    if flag_with_out:
+        labels.insert(0, outputs)
+    loss = loss_per_case_func(*labels, **loss_func_kwargs)
+
     if agg_func is not None:
         if agg_func_kwargs is None:
             agg_func_kwargs = {}

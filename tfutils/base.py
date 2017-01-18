@@ -795,6 +795,27 @@ def train_from_params(save_params,
     :Kwargs:
         - loss_params (dict):
             Parameters for to utils.get_loss function for specifying loss
+                - loss_params['targets'] is a string or a list of strings, 
+                  contain the names of inputs nodes that will be sent into the loss function
+                  Must be provided
+                - loss_params['loss_per_case_func'] is the function used to calculate the loss.
+                  Must be provided. 
+                  The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
+                - loss_params['loss_per_case_func_params'] is a dict including  help information about 
+                  how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
+                  Default is {'_outputs': 'logits', '_targets_$all': 'labels'}
+                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for 
+                      loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
+                      where 'outputs' is the output of the network, inputs is the input nodes, 
+                      and targets is loss_params['targets'].
+                    - Key value can have three choices:
+                      - '_outputs': the value of this key will be the name for 'outputs'.
+                      - '_targets_$all': name for '[inputs[t] for t in targets]'.
+                      - '_target_somename': name for 'inputs[somename]' is somename is inside targets.
+                    - Parameters not mentioned by the key values will still be sent to the function as positional parameters.
+                - loss_params['agg_func'] is the aggregate function, default is None
+                - loss_params['loss_func_kwargs']. Keyword parameters sent to loss_params['loss_per_case_func']. Default is None.
+                - loss_params['agg_func_kwargs']. Keyword parameters sent to loss_params['agg_func']. Default is None.
 
         - learning_rate_params (dict)
             Parameters for specifying learning_rate:
