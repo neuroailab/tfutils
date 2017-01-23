@@ -195,6 +195,7 @@ class DBInterface(object):
         self.outrecs = []
 
         self.conn = pymongo.MongoClient(host=self.host, port=self.port)
+        _info = self.conn.server_info()
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
         recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
@@ -211,6 +212,7 @@ class DBInterface(object):
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
                                                  port=self.load_port)
+            _info = self.load_conn.server_info()
         else:
             self.load_conn = self.conn
         self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname],
