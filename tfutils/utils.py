@@ -211,6 +211,8 @@ def get_loss(inputs,
 
     if not flag_withtar:
         labels = []
+    if not isinstance(labels, (list, tuple, np.ndarray)):
+        labels = [labels]
     if flag_without:
         labels.insert(0, outputs)
     loss = loss_per_case_func(*labels, **loss_func_kwargs)
