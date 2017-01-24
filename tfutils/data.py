@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import threading
+import sys, threading
+
 import numpy as np
 import h5py
 import tensorflow as tf
@@ -219,6 +220,7 @@ class Queue(object):
                                'to Queue constructor or have it defined in '
                                'data_iter.batch_size.')
 
+        self.locked = False
         self.coord = tf.train.Coordinator()
         self._first_call = True
         self._first_batch = self.data_iter.next()
@@ -268,11 +270,24 @@ class Queue(object):
         return self
 
     def next(self):
-        if self._first_call:
-            self._first_call = False
-            return self._first_batch
-        else:
-            return self.data_iter.next()
+        """
+        Thread-safe getting next batch
+        """
+        batch = None
+        while batch is None:
+            batch = self._next()
+        return batch
+
+    def _next(self):
+        if not self.locked:
+            self.locked = True
+            if self._first_call:
+                self._first_call = False
+                batch = self._first_batch
+            else:
+                batch = self.data_iter.next()
+            self.locked = False
+            return batch
 
     def thread_main(self, sess):
         """

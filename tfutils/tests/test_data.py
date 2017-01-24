@@ -55,7 +55,7 @@ def test_queue_unique():
     sess = tf.Session()
     queue.start_threads(sess)
     data_from_queue = []
-    for i in range(total_size // batch_size + 1):
+    for i in range(total_size // batch_size):
         batch = queue.batch['data'].eval(session=sess)
         data_from_queue.extend(batch.tolist())
 
@@ -64,7 +64,7 @@ def test_queue_unique():
     data_iter.cleanup()
 
     # Are values in order?
-    # assert np.all(data_from_file == data_from_queue)
+    # assert np.all(data_from_file[:total_size] == data_from_queue)
     # Are values unique?
     assert np.all([v == 1 for k,v in Counter(data_from_queue).items()])
 
