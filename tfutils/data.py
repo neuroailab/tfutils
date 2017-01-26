@@ -1,12 +1,59 @@
 from __future__ import absolute_import, division, print_function
 
-import sys, threading
+import sys, threading, os
 
 import numpy as np
 import h5py
 import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
+class TFRecordsDataProvider(object):
+    def __init__(self,
+                 tfsource,
+                 sourcelist,
+                 batch_size,
+                ):
+        """
+        - tfsource (str): path where tfrecords file(s) reside
+        - sourcelist (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
+        - batch_size (int): size of batches to be returned
+        """
+	if os.path.isdir(tfsource):
+	    tfrecord_pattern = os.path.join(tfsource, '*.tfrecords')
+	    self.datasource = tf.gfile.Glob(tfrecord_pattern)
+	    self.datasource.sort()
+	else:	
+            self.datasource = [tfsource]
+	self.filename_queue = tf.train.string_input_producer(self.datasource, shuffle=False) #TODO use number of epochs to control padding?
+
+	self.sourcelist = sourcelist
+	self.batch_size = batch_size
+
+	self.curr_batch_num = 0 
+	self.curr_epoch = 0
+
+    def set_epoch_batch(self, epoch, batch_num):
+        self.move_ptr_to(batch_num)
+        self.curr_epoch = epoch
+        self.curr_batch_num = batch_num
+
+    def move_ptr_to(self, batch_num):
+	raise NotImplementedError
+
+    def next(self):
+	return self.get_next_batch()
+
+    def parse_serialized_data(self, data):
+	features = {}
+	for source in self.sourcelist:
+	    features[source] = tf.FixedLenFeature([], self.sourcelist[source])
+	return tf.parse_example(data, features)
+
+    def get_next_batch(self):
+	reader = tf.TFRecordReader() #TODO self.reader vs reader?
+	self.curr_batch_num += 1
+	_, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
+	return self.parse_serialized_data(serialized_data)
 
 class HDF5DataProvider(object):
     def __init__(self,
