@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow.core.protobuf import saver_pb2
 
 from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from tfutils.data import Queue
+from tfutils.data import get_queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
 from tfutils.utils import (make_mongo_safe,
@@ -272,8 +272,10 @@ class DBInterface(object):
                 tf_saver.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
         if not self.do_restore or self.load_data is None:
-            init = tf.global_variables_initializer()
-            self.sess.run(init)
+            init_op_global = tf.global_variables_initializer()
+            self.sess.run(init_op_global)
+            init_op_local = tf.local_variables_initializer()
+            self.sess.run(init_op_local)            
             log.info('Model variables initialized from scratch.')
 
     @property
@@ -578,24 +580,23 @@ def run_targets_dict(sess,
     return results
 
 
-def start_queues(sess, queues):
+def start_queues(sess):
     """Helper function for starting queues before running processes.
     """
-    tf.train.start_queue_runners(sess=sess)
-    # start our custom queue runner's threads
-    if not hasattr(queues, '__iter__'):
-        queues = [queues]
-    for queue in queues:
-        queue.start_threads(sess)
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+    return coord, threads
 
-
-def stop_queues(sess, queues):
+    
+def stop_queues(sess, queues, coord, threads):
     """Helper function for stopping queues cleanly.
     """
-    if not hasattr(queues, '__iter__'):
-        queues = [queues]
+    coord.request_stop()
+    coord.join(threads)
     for queue in queues:
-        queue.stop_threads(sess)
+		close_op = queue.close(cancel_pending_enqueues=True)
+    	sess.run(close_op)
+
 
 
 def test(sess,
@@ -620,7 +621,7 @@ def test(sess,
             How frequently to save intermediate results captured during test
             None means no intermediate saving will be saved
     """
-    start_queues(sess, queues)
+    coord, threads = start_queues(sess)
     dbinterface.start_time_step = time.time()
     valid_results_summary = run_targets_dict(sess,
                                              valid_targets,
@@ -628,7 +629,7 @@ def test(sess,
                                              dbinterface=dbinterface,
                                              validation_only=True)
     dbinterface.sync_with_host()
-    stop_queues(sess, queues)
+    stop_queues(sess, queues, coord, threads)
     return valid_results_summary, dbinterface.outrecs
 
 
@@ -725,7 +726,7 @@ def train(sess,
         return
 
     log.info('Training beginning ...')
-    start_queues(sess, queues)
+    coord, threads = start_queues(sess)
 
     if step == 0:
         dbinterface.start_time_step = time.time()
@@ -746,7 +747,7 @@ def train(sess,
         validation_res = run_targets_dict(sess, vtargs)
         dbinterface.save(train_res=train_results, valid_res=validation_res, validation_only=False)
 
-    stop_queues(sess, queues)
+    stop_queues(sess, queues, coord, threads)
     dbinterface.sync_with_host()
     return dbinterface.outrecs
 
@@ -910,10 +911,10 @@ def train_from_params(save_params,
                                       dtype=tf.int64,
                                       trainable=False)
 
-        train_params['data_params'], queue = get_data(queue_params=train_params.get('queue_params'),
+        train_params['data_params'], train_inputs, queue = get_data(queue_params=train_params.get('queue_params'),
                                                       **train_params['data_params'])
         queues = [queue]
-        train_inputs = queue.batch
+     
         if 'num_steps' not in train_params:
             train_params['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
         if 'thres_loss' not in train_params:
@@ -999,10 +1000,9 @@ def get_valid_targets_dict(validation_params,
         cfg_final = model_params['cfg_final']
     assert 'seed' in model_params
     for vtarg in validation_params:
-        _, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
+        _, vinputs, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
                             **validation_params[vtarg]['data_params'])
         queues.append(queue)
-        vinputs = queue.batch
         scope_name = 'validation/%s' % vtarg
         with tf.name_scope(scope_name):
             _mp, voutputs = get_model(vinputs, train=False, **model_params)
@@ -1044,10 +1044,21 @@ def get_validation_target(vinputs, voutputs,
 
 
 def get_data(func, queue_params=None, **data_params):
-    inputs = func(**data_params)
-    queue = Queue(inputs, **queue_params)
+    input_ops, dtypes, shapes = func(**data_params)
+    assert len(input_ops) == data_params['n_threads']
+    batch_size = data_params['batch_size']
     data_params['func'] = func
-    return data_params, queue
+    enqueue_ops = []
+    queue = get_queue(dtypes, shapes, **queue_params)
+    for input_op in input_ops:
+    	if batch_size == 1:
+			enqueue_ops.append(queue.enqueue(input_op))
+		else:
+			enqueue_ops.append(queue.enqueue_many(input_op))
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, 
+        enqueue_ops))	
+    inputs = queue.dequeue_many(queue_params['batch_size'])
+    return data_params, inputs, queue
 
 
 def get_model(train_inputs, func, seed=0, train=False, **model_params):
