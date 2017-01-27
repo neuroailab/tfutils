@@ -11,49 +11,66 @@ class TFRecordsDataProvider(object):
     def __init__(self,
                  tfsource,
                  sourcelist,
-                 batch_size,
+                 batch_size=256,
+                 num_threads=4,
                 ):
         """
         - tfsource (str): path where tfrecords file(s) reside
         - sourcelist (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
-        - batch_size (int): size of batches to be returned
+        - batch_size (int, default=256): size of batches to be returned
+        - num_threads (int, default=4): number of threads to be used
         """
-	if os.path.isdir(tfsource):
-	    tfrecord_pattern = os.path.join(tfsource, '*.tfrecords')
-	    self.datasource = tf.gfile.Glob(tfrecord_pattern)
-	    self.datasource.sort()
-	else:	
+	self.init(tfsource, sourcelist, batch_size)
+	return self.init_threads()
+
+    def init(self, tfsource, sourcelist, batch_size):
+        self.sourcelist = sourcelist
+        self.batch_size = batch_size
+        self.readers = []
+
+        if os.path.isdir(tfsource):
+            tfrecord_pattern = os.path.join(tfsource, '*.tfrecords')
+            self.datasource = tf.gfile.Glob(tfrecord_pattern)
+            self.datasource.sort()
+        else:
             self.datasource = [tfsource]
-	self.filename_queue = tf.train.string_input_producer(self.datasource, shuffle=False) #TODO use number of epochs to control padding?
+        self.filename_queue = tf.train.string_input_producer(self.datasource, \
+		shuffle=False) #TODO use number of epochs to control padding?
 
-	self.sourcelist = sourcelist
-	self.batch_size = batch_size
+        self.features = {}
+        for source in self.sourcelist:
+            self.features[source] = tf.FixedLenFeature([], self.sourcelist[source])
 
-	self.curr_batch_num = 0 
-	self.curr_epoch = 0
+    def init_threads(self):
+        self.input_ops = []
+        self.dtypes = []
+        self.shapes = None #unconstrained shapes
+        for thread in range(num_threads):
+            reader = self.create_input_provider()
+            self.input_ops.append(get_input_op(reader))
 
-    def set_epoch_batch(self, epoch, batch_num):
+        for source in self.sourcelist:
+            self.dtypes.append(sourcelist[source])
+
+        return [self.input_ops, self.dtypes, self.shapes]
+
+    def set_batch(self, batch_num):
         self.move_ptr_to(batch_num)
-        self.curr_epoch = epoch
-        self.curr_batch_num = batch_num
 
     def move_ptr_to(self, batch_num):
-	raise NotImplementedError
-
-    def next(self):
-	return self.get_next_batch()
+        raise NotImplementedError
 
     def parse_serialized_data(self, data):
-	features = {}
-	for source in self.sourcelist:
-	    features[source] = tf.FixedLenFeature([], self.sourcelist[source])
-	return tf.parse_example(data, features)
+        return tf.parse_example(data, self.features)
 
-    def get_next_batch(self):
-	reader = tf.TFRecordReader() #TODO self.reader vs reader?
-	self.curr_batch_num += 1
-	_, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
-	return self.parse_serialized_data(serialized_data)
+    def create_input_provider(self):
+        self.readers.append(tf.TFRecordReader())
+        return self.readers[-1]
+
+    def get_input_op(self, reader):
+        _, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
+        return self.parse_serialized_data(serialized_data)
+
 
 class HDF5DataProvider(object):
     def __init__(self,
