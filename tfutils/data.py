@@ -258,8 +258,8 @@ def isin(X, Y):
         return np.zeros((len(X), ), bool)
 
 
-def get_queue(dtypes,
-              shapes,
+def get_queue(dtypes_dict,
+              shapes_dict,
               queue_type='fifo',
               batch_size=256,
               capacity=None,
@@ -267,30 +267,40 @@ def get_queue(dtypes,
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
+    names = []
+    dtypes = []
+    shapes = []
 
+    for name in self.nodes.keys():
+        names.append(name)
+        dtypes.append(dtypes_dict[name])
+        if shapes_dict is not None:
+            shapes.append(shapes_dict[name])
+    if shapes_dict is None:
+        shapes = None
 
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=self.capacity,
                                            min_after_dequeue=self.capacity // 2,
                                            dtypes=dtypes,
                                            shapes=shapes,
-                                           names=self.nodes.keys(),
+                                           names=names,
                                            seed=seed)
     elif queue_type == 'fifo':
         queue = tf.FIFOQueue(capacity=self.capacity,
                                   dtypes=dtypes,
                                   shapes=shapes,
-                                  names=self.nodes.keys())
+                                  names=names)
     elif queue_type == 'padding_fifo':
         queue = tf.PaddingFIFOQueue(capacity=self.capacity,
                                          dtypes=dtypes,
                                          shapes=shapes,
-                                         names=self.nodes.keys())
+                                         names=names)
     elif queue_type == 'priority':
         queue = tf.PriorityQueue(capacity=self.capacity,
                                       types=dtypes,
                                       shapes=shapes,
-                                      names=self.nodes.keys())
+                                      names=names)
     else:
         Exception('Queue type %s not recognized' % queue_type)
 
