@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import sys, threading, os
+import sys
+import threading
+import os
 
 import numpy as np
 import h5py

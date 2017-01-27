@@ -195,7 +195,7 @@ class DBInterface(object):
         self.outrecs = []
 
         self.conn = pymongo.MongoClient(host=self.host, port=self.port)
-        _info = self.conn.server_info()
+        self.conn.server_info()
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
         recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
@@ -212,7 +212,7 @@ class DBInterface(object):
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
                                                  port=self.load_port)
-            _info = self.load_conn.server_info()
+            self.load_conn.server_info()
         else:
             self.load_conn = self.conn
         self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname],
@@ -275,7 +275,7 @@ class DBInterface(object):
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
-            self.sess.run(init_op_local)            
+            self.sess.run(init_op_local)
             log.info('Model variables initialized from scratch.')
 
     @property
@@ -587,7 +587,7 @@ def start_queues(sess):
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
     return coord, threads
 
-    
+
 def stop_queues(sess, queues, coord, threads):
     """Helper function for stopping queues cleanly.
     """
@@ -596,7 +596,6 @@ def stop_queues(sess, queues, coord, threads):
     for queue in queues:
         close_op = queue.close(cancel_pending_enqueues=True)
         sess.run(close_op)
-
 
 
 def test(sess,
@@ -798,18 +797,18 @@ def train_from_params(save_params,
     :Kwargs:
         - loss_params (dict):
             Parameters for to utils.get_loss function for specifying loss
-                - loss_params['targets'] is a string or a list of strings, 
+                - loss_params['targets'] is a string or a list of strings,
                   contain the names of inputs nodes that will be sent into the loss function
                   Must be provided
                 - loss_params['loss_per_case_func'] is the function used to calculate the loss.
-                  Must be provided. 
+                  Must be provided.
                   The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
-                - loss_params['loss_per_case_func_params'] is a dict including  help information about 
+                - loss_params['loss_per_case_func_params'] is a dict including  help information about
                   how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
                   Default is {'_outputs': 'logits', '_targets_$all': 'labels'}
-                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for 
+                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for
                       loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
-                      where 'outputs' is the output of the network, inputs is the input nodes, 
+                      where 'outputs' is the output of the network, inputs is the input nodes,
                       and targets is loss_params['targets'].
                     - Key value can have three choices:
                       - '_outputs': the value of this key will be the name for 'outputs'.
@@ -911,10 +910,11 @@ def train_from_params(save_params,
                                       dtype=tf.int64,
                                       trainable=False)
 
-        train_params['data_params'], train_inputs, queue = get_data(queue_params=train_params.get('queue_params'),
-                                                      **train_params['data_params'])
+        queue_params = train_params.get('queue_params')
+        train_params['data_params'], train_inputs, queue = get_data(queue_params=queue_params,
+                                                                    **train_params['data_params'])
         queues = [queue]
-     
+
         if 'num_steps' not in train_params:
             train_params['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
         if 'thres_loss' not in train_params:
@@ -951,7 +951,7 @@ def train_from_params(save_params,
             validation_params = {}
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
                                                              model_params,
-                                                             train_params.get('queue_params'),
+                                                             queue_params,
                                                              loss_params,
                                                              cfg_final=model_params['cfg_final'])
         queues.extend(vqueues)
@@ -1000,8 +1000,9 @@ def get_valid_targets_dict(validation_params,
         cfg_final = model_params['cfg_final']
     assert 'seed' in model_params
     for vtarg in validation_params:
-        _, vinputs, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
-                            **validation_params[vtarg]['data_params'])
+        queue_params = validation_params[vtarg].get('queue_params', default_queue_params)
+        _, vinputs, queue = get_data(queue_params=queue_params,
+                                     **validation_params[vtarg]['data_params'])
         queues.append(queue)
         scope_name = 'validation/%s' % vtarg
         with tf.name_scope(scope_name):
@@ -1055,8 +1056,8 @@ def get_data(func, queue_params=None, **data_params):
             enqueue_ops.append(queue.enqueue(input_op))
         else:
             enqueue_ops.append(queue.enqueue_many(input_op))
-    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, 
-        enqueue_ops))   
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue,
+                                                                             enqueue_ops))
     inputs = queue.dequeue_many(queue_params['batch_size'])
     return data_params, inputs, queue
 
