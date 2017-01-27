@@ -55,6 +55,7 @@ class TFRecordsDataProvider(object):
 	_, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
 	return self.parse_serialized_data(serialized_data)
 
+
 class HDF5DataProvider(object):
     def __init__(self,
                  hdf5source,
