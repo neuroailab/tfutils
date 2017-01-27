@@ -18,19 +18,19 @@ class TFRecordsDataProvider(object):
         - sourcelist (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
         - batch_size (int): size of batches to be returned
         """
-	if os.path.isdir(tfsource):
-	    tfrecord_pattern = os.path.join(tfsource, '*.tfrecords')
-	    self.datasource = tf.gfile.Glob(tfrecord_pattern)
-	    self.datasource.sort()
-	else:	
+    if os.path.isdir(tfsource):
+        tfrecord_pattern = os.path.join(tfsource, '*.tfrecords')
+        self.datasource = tf.gfile.Glob(tfrecord_pattern)
+        self.datasource.sort()
+    else:   
             self.datasource = [tfsource]
-	self.filename_queue = tf.train.string_input_producer(self.datasource, shuffle=False) #TODO use number of epochs to control padding?
+    self.filename_queue = tf.train.string_input_producer(self.datasource, shuffle=False) #TODO use number of epochs to control padding?
 
-	self.sourcelist = sourcelist
-	self.batch_size = batch_size
+    self.sourcelist = sourcelist
+    self.batch_size = batch_size
 
-	self.curr_batch_num = 0 
-	self.curr_epoch = 0
+    self.curr_batch_num = 0 
+    self.curr_epoch = 0
 
     def set_epoch_batch(self, epoch, batch_num):
         self.move_ptr_to(batch_num)
@@ -38,22 +38,22 @@ class TFRecordsDataProvider(object):
         self.curr_batch_num = batch_num
 
     def move_ptr_to(self, batch_num):
-	raise NotImplementedError
+    raise NotImplementedError
 
     def next(self):
-	return self.get_next_batch()
+    return self.get_next_batch()
 
     def parse_serialized_data(self, data):
-	features = {}
-	for source in self.sourcelist:
-	    features[source] = tf.FixedLenFeature([], self.sourcelist[source])
-	return tf.parse_example(data, features)
+    features = {}
+    for source in self.sourcelist:
+        features[source] = tf.FixedLenFeature([], self.sourcelist[source])
+    return tf.parse_example(data, features)
 
     def get_next_batch(self):
-	reader = tf.TFRecordReader() #TODO self.reader vs reader?
-	self.curr_batch_num += 1
-	_, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
-	return self.parse_serialized_data(serialized_data)
+    reader = tf.TFRecordReader() #TODO self.reader vs reader?
+    self.curr_batch_num += 1
+    _, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
+    return self.parse_serialized_data(serialized_data)
 
 
 class HDF5DataProvider(object):
@@ -240,42 +240,42 @@ def isin(X, Y):
 
 
 def get_queue(dtypes,
-			  shapes,
-			  queue_type='fifo',
-			  batch_size=256,
-			  capacity=None,
-			  seed=0):
+              shapes,
+              queue_type='fifo',
+              batch_size=256,
+              capacity=None,
+              seed=0):
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
 
 
-	if queue_type == 'random':
-		queue = tf.RandomShuffleQueue(capacity=self.capacity,
-										   min_after_dequeue=self.capacity // 2,
-										   dtypes=dtypes,
-										   shapes=shapes,
-										   names=self.nodes.keys(),
-										   seed=seed)
-	elif queue_type == 'fifo':
-		queue = tf.FIFOQueue(capacity=self.capacity,
-								  dtypes=dtypes,
-								  shapes=shapes,
-								  names=self.nodes.keys())
-	elif queue_type == 'padding_fifo':
-		queue = tf.PaddingFIFOQueue(capacity=self.capacity,
-										 dtypes=dtypes,
-										 shapes=shapes,
-										 names=self.nodes.keys())
-	elif queue_type == 'priority':
-		queue = tf.PriorityQueue(capacity=self.capacity,
-									  types=dtypes,
-									  shapes=shapes,
-									  names=self.nodes.keys())
-	else:
-		Exception('Queue type %s not recognized' % queue_type)
+    if queue_type == 'random':
+        queue = tf.RandomShuffleQueue(capacity=self.capacity,
+                                           min_after_dequeue=self.capacity // 2,
+                                           dtypes=dtypes,
+                                           shapes=shapes,
+                                           names=self.nodes.keys(),
+                                           seed=seed)
+    elif queue_type == 'fifo':
+        queue = tf.FIFOQueue(capacity=self.capacity,
+                                  dtypes=dtypes,
+                                  shapes=shapes,
+                                  names=self.nodes.keys())
+    elif queue_type == 'padding_fifo':
+        queue = tf.PaddingFIFOQueue(capacity=self.capacity,
+                                         dtypes=dtypes,
+                                         shapes=shapes,
+                                         names=self.nodes.keys())
+    elif queue_type == 'priority':
+        queue = tf.PriorityQueue(capacity=self.capacity,
+                                      types=dtypes,
+                                      shapes=shapes,
+                                      names=self.nodes.keys())
+    else:
+        Exception('Queue type %s not recognized' % queue_type)
 
-	return queue
+    return queue
 
 
 class MNIST(object):

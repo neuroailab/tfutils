@@ -594,8 +594,8 @@ def stop_queues(sess, queues, coord, threads):
     coord.request_stop()
     coord.join(threads)
     for queue in queues:
-		close_op = queue.close(cancel_pending_enqueues=True)
-    	sess.run(close_op)
+        close_op = queue.close(cancel_pending_enqueues=True)
+        sess.run(close_op)
 
 
 
@@ -1051,12 +1051,12 @@ def get_data(func, queue_params=None, **data_params):
     enqueue_ops = []
     queue = get_queue(dtypes, shapes, **queue_params)
     for input_op in input_ops:
-    	if batch_size == 1:
-			enqueue_ops.append(queue.enqueue(input_op))
-		else:
-			enqueue_ops.append(queue.enqueue_many(input_op))
+        if batch_size == 1:
+            enqueue_ops.append(queue.enqueue(input_op))
+        else:
+            enqueue_ops.append(queue.enqueue_many(input_op))
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, 
-        enqueue_ops))	
+        enqueue_ops))   
     inputs = queue.dequeue_many(queue_params['batch_size'])
     return data_params, inputs, queue
 
