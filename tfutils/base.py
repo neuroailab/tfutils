@@ -1045,12 +1045,14 @@ def get_validation_target(vinputs, voutputs,
 
 
 def get_data(func, queue_params=None, **data_params):
-    input_ops, dtypes, shapes = func(**data_params)
+    data_provider = func(**data_params)
+    input_ops, dtypes, shapes = data_provider.init_threads()
     assert len(input_ops) == data_params['n_threads']
+    assert len(input_ops) > 0
     batch_size = data_params['batch_size']
     data_params['func'] = func
     enqueue_ops = []
-    queue = get_queue(dtypes, shapes, **queue_params)
+    queue = get_queue(input_ops[0], dtypes, shapes, **queue_params)
     for input_op in input_ops:
         if batch_size == 1:
             enqueue_ops.append(queue.enqueue(input_op))

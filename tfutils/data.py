@@ -14,19 +14,18 @@ class TFRecordsDataProviderBase(object):
                  tfsource,
                  sourcelist,
                  batch_size=256,
-                 num_threads=4,
+                 n_threads=4,
                 ):
         """
         - tfsource (str): path where tfrecords file(s) reside
         - sourcelist (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
         - batch_size (int, default=256): size of batches to be returned
-        - num_threads (int, default=4): number of threads to be used
+        - n_threads (int, default=4): number of threads to be used
         """
+	self.init(tfsource, sourcelist, batch_size, n_threads)
 
-	self.init(tfsource, sourcelist, batch_size)
-	return self.init_threads()
-
-    def init(self, tfsource, sourcelist, batch_size):
+    def init(self, tfsource, sourcelist, batch_size, num_threads):
+        self.num_threads = num_threads
         self.sourcelist = sourcelist
         self.batch_size = batch_size
         self.readers = []
@@ -49,9 +48,9 @@ class TFRecordsDataProviderBase(object):
         self.dtypes = {}
         self.shapes = None #unconstrained shapes
 
-        for thread in range(num_threads):
+        for thread in range(self.num_threads):
             reader = self.create_input_provider()
-            features = get_input_op(reader)
+            features = self.get_input_op(reader)
             self.input_ops.append(features)
             if len(self.dtypes.keys()) == 0:
                 for k in features:
@@ -72,7 +71,7 @@ class TFRecordsDataProviderBase(object):
         return self.readers[-1]
 
     def get_input_op(self, reader):
-        _, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
+        _, serialized_data = reader.read_up_to(self.filename_queue, self.batch_size)
         return self.parse_serialized_data(serialized_data)
 
 
@@ -82,7 +81,7 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
                  sourcedict,
                  decodelist,
                  batch_size=256,
-                 num_threads=4,
+                 n_threads=4,
                  postprocess=None,
                 ):
         """
@@ -93,46 +92,49 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
         - num_threads (int, default=4): number of threads to be used
         - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.
         """
-        return self.init(tfsource, sourcedict, decodelist, \
-                batch_size, num_threads, postprocess)
+        return self.init_from_base(tfsource, sourcedict, decodelist, \
+                batch_size, n_threads, postprocess)
 
-    def init(self, tfsource, sourcedict, decodelist,
+    def init_from_base(self, tfsource, sourcedict, decodelist, \
             batch_size, num_threads, postprocess):
 
         self.decodelist = decodelist
         self.postprocess = {} if postprocess is None else postprocess
 
         for source in self.decodelist:
-            assert source in self.sourcedict.keys(), \
+            assert source in sourcedict.keys(), \
                         'decodelist has to be a subset of sourcelist'
         for source in self.postprocess:
-            assert source in self.sourcedict.keys(), \
+            assert source in sourcedict.keys(), \
                         'postprocess has to be a subset of sourcelist'
 
         self.datadict = {}
-        for source in self.sourcedict:
-            self.datadict[source] = self.sourcelist[source]
+        for source in sourcedict:
+            self.datadict[source] = sourcedict[source]
         if self.decodelist is not None:
             self.datadict['height'] = tf.int64
             self.datadict['width'] = tf.int64
             self.datadict['channels'] = tf.int64
 
+        super(TFRecordsDataProvider, self).__init__(
+                tfsource,
+                self.datadict,
+                batch_size,
+                num_threads)
+
+    def init_threads(self):
         self.input_ops, self.dtypes, self.shapes = \
-                super(TFRecordsDataProvider, self).__init__(
-                        tfsource,
-                        datadict,
-                        batch_size,
-                        num_threads)
-        self.input_ops = decode_data_many(self.input_ops)
+                super(TFRecordsDataProvider, self).init_threads()
+        self.input_ops = self.decode_data_many(self.input_ops)
         return [self.input_ops, self.dtypes, self.shapes]
 
     def decode_data_many(self, data):
-        for i in range(data):
+        for i in range(len(data)):
             data[i] = self.decode_features(data[i])
         return data
 
     def decode_features(self, features):
-        if decodelist is not None:
+        if self.decodelist is not None:
             width = tf.cast(features['width'], tf.int32)[0]
             height = tf.cast(features['height'], tf.int32)[0]
             channels = tf.cast(features['channels'], tf.int32)[0]
@@ -142,6 +144,8 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
                 if k in self.decodelist:
                     features[k] = tf.decode_raw(features[k], tf.uint8)
                     features[k] = tf.reshape(features[k], shape)
+                if k is 'parsed_actions':
+                    features[k] = tf.decode_raw(features[k], tf.float64)
         return features
 
     def set_batch(self, batch_num):
@@ -331,7 +335,8 @@ def isin(X, Y):
         return np.zeros((len(X), ), bool)
 
 
-def get_queue(dtypes_dict,
+def get_queue(nodes,
+              dtypes_dict,
               shapes_dict,
               queue_type='fifo',
               batch_size=256,
@@ -340,11 +345,13 @@ def get_queue(dtypes_dict,
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
+    assert capacity is not None, 'queue capacity was not defined'
+
     names = []
     dtypes = []
     shapes = []
 
-    for name in self.nodes.keys():
+    for name in nodes.keys():
         names.append(name)
         dtypes.append(dtypes_dict[name])
         if shapes_dict is not None:
@@ -353,24 +360,24 @@ def get_queue(dtypes_dict,
         shapes = None
 
     if queue_type == 'random':
-        queue = tf.RandomShuffleQueue(capacity=self.capacity,
+        queue = tf.RandomShuffleQueue(capacity=capacity,
                                            min_after_dequeue=self.capacity // 2,
                                            dtypes=dtypes,
                                            shapes=shapes,
                                            names=names,
                                            seed=seed)
     elif queue_type == 'fifo':
-        queue = tf.FIFOQueue(capacity=self.capacity,
+        queue = tf.FIFOQueue(capacity=capacity,
                                   dtypes=dtypes,
                                   shapes=shapes,
                                   names=names)
     elif queue_type == 'padding_fifo':
-        queue = tf.PaddingFIFOQueue(capacity=self.capacity,
+        queue = tf.PaddingFIFOQueue(capacity=capacity,
                                          dtypes=dtypes,
                                          shapes=shapes,
                                          names=names)
     elif queue_type == 'priority':
-        queue = tf.PriorityQueue(capacity=self.capacity,
+        queue = tf.PriorityQueue(capacity=capacity,
                                       types=dtypes,
                                       shapes=shapes,
                                       names=names)
