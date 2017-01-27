@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import sys, threading, os
+import sys
+import threading
+import os
 
 import numpy as np
 import h5py
@@ -20,6 +22,7 @@ class TFRecordsDataProvider(object):
         - batch_size (int, default=256): size of batches to be returned
         - num_threads (int, default=4): number of threads to be used
         """
+
 	self.init(tfsource, sourcelist, batch_size)
 	return self.init_threads()
 
@@ -255,132 +258,43 @@ def isin(X, Y):
         return np.zeros((len(X), ), bool)
 
 
-class Queue(object):
+def get_queue(dtypes,
+              shapes,
+              queue_type='fifo',
+              batch_size=256,
+              capacity=None,
+              seed=0):
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
 
-    def __init__(self,
-                 data,
-                 data_batch_size=None,
-                 queue_type='fifo',
-                 batch_size=256,
-                 n_threads=4,
-                 capacity=None,
-                 seed=0):
-        self.data_iter = iter(data)
-        self.batch_size = batch_size
-        self.n_threads = n_threads
-        if capacity is None:
-            self.capacity = self.n_threads * self.batch_size * 2
-        else:
-            self.capacity = capacity
 
-        if data_batch_size is None:
-            try:
-                data_batch_size = self.data_iter.batch_size
-            except KeyError:
-                raise KeyError('Need to define data batch size; either pass it '
-                               'to Queue constructor or have it defined in '
-                               'data_iter.batch_size.')
-
-        self.locked = False
-        self.coord = tf.train.Coordinator()
-        self._first_call = True
-        self._first_batch = self.data_iter.next()
-        self.nodes = {}
-        dtypes = []
-        shapes = []
-        for key, value in self._first_batch.items():
-            self.nodes[key] = tf.placeholder(value.dtype, shape=value.shape, name=key)
-            dtypes.append(value.dtype)
-            if data_batch_size > 1:
-                shapes.append(value.shape[1:])
-            else:
-                shapes.append(value.shape)
-
-        if queue_type == 'random':
-            self.queue = tf.RandomShuffleQueue(capacity=self.capacity,
-                                               min_after_dequeue=self.capacity // 2,
-                                               dtypes=dtypes,
-                                               shapes=shapes,
-                                               names=self.nodes.keys(),
-                                               seed=seed)
-        elif queue_type == 'fifo':
-            self.queue = tf.FIFOQueue(capacity=self.capacity,
-                                      dtypes=dtypes,
+    if queue_type == 'random':
+        queue = tf.RandomShuffleQueue(capacity=self.capacity,
+                                           min_after_dequeue=self.capacity // 2,
+                                           dtypes=dtypes,
+                                           shapes=shapes,
+                                           names=self.nodes.keys(),
+                                           seed=seed)
+    elif queue_type == 'fifo':
+        queue = tf.FIFOQueue(capacity=self.capacity,
+                                  dtypes=dtypes,
+                                  shapes=shapes,
+                                  names=self.nodes.keys())
+    elif queue_type == 'padding_fifo':
+        queue = tf.PaddingFIFOQueue(capacity=self.capacity,
+                                         dtypes=dtypes,
+                                         shapes=shapes,
+                                         names=self.nodes.keys())
+    elif queue_type == 'priority':
+        queue = tf.PriorityQueue(capacity=self.capacity,
+                                      types=dtypes,
                                       shapes=shapes,
                                       names=self.nodes.keys())
-        elif queue_type == 'padding_fifo':
-            self.queue = tf.PaddingFIFOQueue(capacity=self.capacity,
-                                             dtypes=dtypes,
-                                             shapes=shapes,
-                                             names=self.nodes.keys())
-        elif queue_type == 'priority':
-            self.queue = tf.PriorityQueue(capacity=self.capacity,
-                                          types=dtypes,
-                                          shapes=shapes,
-                                          names=self.nodes.keys())
-        else:
-            Exception('Queue type %s not recognized' % queue_type)
+    else:
+        Exception('Queue type %s not recognized' % queue_type)
 
-        if data_batch_size > 1:
-            self.enqueue_op = self.queue.enqueue_many(self.nodes)
-        else:
-            self.enqueue_op = self.queue.enqueue(self.nodes)
-        self.batch = self.queue.dequeue_many(batch_size)
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        """
-        Thread-safe getting next batch
-        """
-        batch = None
-        while batch is None:
-            batch = self._next()
-        return batch
-
-    def _next(self):
-        if not self.locked:
-            self.locked = True
-            if self._first_call:
-                self._first_call = False
-                batch = self._first_batch
-            else:
-                batch = self.data_iter.next()
-            self.locked = False
-            return batch
-
-    def thread_main(self, sess):
-        """
-        Function run on alternate thread. Basically, keep adding data to the queue.
-        """
-        for batch in self:
-            if not self.coord.should_stop():
-                try:
-                    feed_dict = {node: batch[name] for name, node in self.nodes.items()}
-                    sess.run(self.enqueue_op, feed_dict=feed_dict)
-                except tf.errors.CancelledError:
-                    break
-            else:
-                break
-
-    def start_threads(self, sess):
-        """ Start background threads to feed queue """
-        threads = []
-        for n in range(self.n_threads):
-            t = threading.Thread(target=self.thread_main, args=(sess,))
-            t.daemon = True  # thread will close when parent quits
-            t.start()
-            threads.append(t)
-        self.threads = threads
-
-    def stop_threads(self, sess):
-        self.coord.request_stop()
-        close_op = self.queue.close(cancel_pending_enqueues=True)
-        sess.run(close_op)
+    return queue
 
 
 class MNIST(object):

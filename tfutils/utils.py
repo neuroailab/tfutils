@@ -190,10 +190,10 @@ def get_loss(inputs,
     flag_with_out = True
     flag_with_tar = True
     for key_value in loss_per_case_func_params.keys():
-        if key_value=='_outputs':
+        if key_value == '_outputs':
             flag_with_out = False
             loss_func_kwargs[loss_per_case_func_params[key_value]] = outputs
-        elif key_value=='_targets_$all':
+        elif key_value == '_targets_$all':
             flag_with_tar = False
             loss_func_kwargs[loss_per_case_func_params[key_value]] = labels
         elif key_value.startswith('_targets_'):
