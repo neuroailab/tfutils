@@ -9,7 +9,7 @@ import h5py
 import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
-class TFRecordsDataProvider(object):
+class TFRecordsDataProviderBase(object):
     def __init__(self,
                  tfsource,
                  sourcelist,
@@ -46,15 +46,16 @@ class TFRecordsDataProvider(object):
 
     def init_threads(self):
         self.input_ops = []
-        self.dtypes = []
+        self.dtypes = {}
         self.shapes = None #unconstrained shapes
+
         for thread in range(num_threads):
             reader = self.create_input_provider()
-            self.input_ops.append(get_input_op(reader))
-
-        for source in self.sourcelist:
-            self.dtypes.append(sourcelist[source])
-
+            features = get_input_op(reader)
+            self.input_ops.append(features)
+            if len(self.dtypes.keys()) == 0:
+                for k in features:
+                    self.dtypes[k] = features[k]
         return [self.input_ops, self.dtypes, self.shapes]
 
     def set_batch(self, batch_num):
@@ -73,6 +74,78 @@ class TFRecordsDataProvider(object):
     def get_input_op(self, reader):
         _, serialized_data = reader.read_up_to(filename_queue, self.batch_size)
         return self.parse_serialized_data(serialized_data)
+
+
+class TFRecordsDataProvider(TFRecordsDataProviderBase):
+    def __init__(self,
+                 tfsource,
+                 sourcedict,
+                 decodelist,
+                 batch_size=256,
+                 num_threads=4,
+                 postprocess=None,
+                ):
+        """
+        - tfsource (str): path where tfrecords file(s) reside
+        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
+        - decodelist (list of strs): list of keys in the tfrecords file that have to be decoded from raw bytes format and reshaped to their original form, e. g. numpy arrays or serialized images
+        - batch_size (int, default=256): size of batches to be returned
+        - num_threads (int, default=4): number of threads to be used
+        - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.
+        """
+        return self.init(tfsource, sourcedict, decodelist, \
+                batch_size, num_threads, postprocess)
+
+    def init(self, tfsource, sourcedict, decodelist,
+            batch_size, num_threads, postprocess):
+
+        self.decodelist = decodelist
+        self.postprocess = {} if postprocess is None else postprocess
+
+        for source in self.decodelist:
+            assert source in self.sourcedict.keys(), \
+                        'decodelist has to be a subset of sourcelist'
+        for source in self.postprocess:
+            assert source in self.sourcedict.keys(), \
+                        'postprocess has to be a subset of sourcelist'
+
+        self.datadict = {}
+        for source in self.sourcedict:
+            self.datadict[source] = self.sourcelist[source]
+        if self.decodelist is not None:
+            self.datadict['height'] = tf.int64
+            self.datadict['width'] = tf.int64
+            self.datadict['channels'] = tf.int64
+
+        self.input_ops, self.dtypes, self.shapes = \
+                super(TFRecordsDataProvider, self).__init__(
+                        tfsource,
+                        datadict,
+                        batch_size,
+                        num_threads)
+        self.input_ops = decode_data_many(self.input_ops)
+        return [self.input_ops, self.dtypes, self.shapes]
+
+    def decode_data_many(self, data):
+        for i in range(data):
+            data[i] = self.decode_features(data[i])
+        return data
+
+    def decode_features(self, features):
+        if decodelist is not None:
+            width = tf.cast(features['width'], tf.int32)[0]
+            height = tf.cast(features['height'], tf.int32)[0]
+            channels = tf.cast(features['channels'], tf.int32)[0]
+            shape = tf.pack([self.batch_size, height, width, channels])
+
+            for k in features:
+                if k in self.decodelist:
+                    features[k] = tf.decode_raw(features[k], tf.uint8)
+                    features[k] = tf.reshape(features[k], shape)
+        return features
+
+    def set_batch(self, batch_num):
+        super(TFRecordsDataProvider, self).set_batch(batch_num)
 
 
 class HDF5DataProvider(object):
