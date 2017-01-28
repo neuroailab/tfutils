@@ -431,13 +431,16 @@ class DBInterface(object):
             save_to_gfs = {}
             for _k in self.save_to_gfs:
                 if train_res:
-                    save_to_gfs['train_results'] = {}
+                    if 'train_results' not in save_to_gfs:
+                        save_to_gfs['train_results'] = {}
                     if _k in train_res:
                         save_to_gfs['train_results'][_k] = train_res.pop(_k)
                 if valid_res:
-                    save_to_gfs['validation_results'] = {}
+                    if 'validation_results' not in save_to_gfs:
+                        save_to_gfs['validation_results'] = {}
                     for _vk in valid_res:
-                        save_to_gfs['validation_results'][_vk] = {}
+                        if _vk not in save_to_gfs['validation_results']:
+                            save_to_gfs['validation_results'][_vk] = {}
                         if _k in valid_res[_vk]:
                             save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
 
