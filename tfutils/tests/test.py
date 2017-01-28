@@ -25,7 +25,7 @@ from tfutils import base, model, utils, data
 num_batches_per_epoch = 10000//256
 
 testhost = 'localhost'       # Host on which the MongoDB instance to be used by tests needs to be running
-testport = 27017             # port on which the MongoDB instance to be used by tests needs to be running
+testport = 31001             # port on which the MongoDB instance to be used by tests needs to be running
 testdbname = 'tfutils-test'  # name of the mongodb database where results will be stored by tests
 testcol = 'testcol'          # name of the mongodb collection where results will be stored by tests
 
@@ -179,8 +179,8 @@ def get_extraction_target(inputs, outputs, to_extract, **loss_params):
     commented-out lines, which will print a list of all available tensor names.
     """
 
-    names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
-    print("NAMES are: ", names)
+    # names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
+    # print("NAMES are: ", names)
 
     targets = {k: tf.get_default_graph().get_tensor_by_name(v) for k, v in to_extract.items()}
     targets['loss'] = utils.get_loss(inputs, outputs, **loss_params)
