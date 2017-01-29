@@ -152,7 +152,8 @@ def sonify(arg, memo=None):
                      'modname': modname})
         rval = sonify(rval)
     else:
-        raise TypeError('sonify', arg)
+	rval = 'tensorflow_parameter' #TODO!!!!
+        #raise TypeError('sonify', arg)
 
     memo[id(rval)] = rval
     return rval

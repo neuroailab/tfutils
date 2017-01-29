@@ -12,36 +12,32 @@ from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 class TFRecordsDataProviderBase(object):
     def __init__(self,
                  tfsource,
-                 sourcelist,
+                 sourcedict,
                  batch_size=256,
                  n_threads=4,
                 ):
         """
         - tfsource (str): path where tfrecords file(s) reside
-        - sourcelist (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
+        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
         - batch_size (int, default=256): size of batches to be returned
         - n_threads (int, default=4): number of threads to be used
         """
-	self.init(tfsource, sourcelist, batch_size, n_threads)
+	self.init(tfsource, sourcedict, batch_size, n_threads)
 
-    def init(self, tfsource, sourcelist, batch_size, num_threads):
+    def init(self, tfsource, sourcedict, batch_size, num_threads):
         self.num_threads = num_threads
-        self.sourcelist = sourcelist
+        self.sourcedict = sourcedict
         self.batch_size = batch_size
         self.readers = []
 
-        if os.path.isdir(tfsource):
-            tfrecord_pattern = os.path.join(tfsource, '*.tfrecords')
-            self.datasource = tf.gfile.Glob(tfrecord_pattern)
-            self.datasource.sort()
-        else:
-            self.datasource = [tfsource]
-        self.filename_queue = tf.train.string_input_producer(self.datasource, \
+        self.tfsource = tfsource
+        self.datasources = self.get_data_paths(tfsource)
+        self.filename_queue = tf.train.string_input_producer(self.datasources, \
 		shuffle=False) #TODO use number of epochs to control padding?
 
         self.features = {}
-        for source in self.sourcelist:
-            self.features[source] = tf.FixedLenFeature([], self.sourcelist[source])
+        for source in self.sourcedict:
+            self.features[source] = tf.FixedLenFeature([], self.sourcedict[source])
 
     def init_threads(self):
         self.input_ops = []
@@ -54,8 +50,16 @@ class TFRecordsDataProviderBase(object):
             self.input_ops.append(features)
             if len(self.dtypes.keys()) == 0:
                 for k in features:
-                    self.dtypes[k] = features[k]
+                    self.dtypes[k] = self.sourcedict[k]
         return [self.input_ops, self.dtypes, self.shapes]
+
+    def get_data_paths(self, path):
+        if os.path.isdir(path):
+            tfrecord_pattern = os.path.join(path, '*.tfrecords')
+            datasources = tf.gfile.Glob(tfrecord_pattern)
+            return datasources.sort()
+        else:
+            return [path]
 
     def set_batch(self, batch_num):
         self.move_ptr_to(batch_num)
@@ -79,54 +83,112 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
     def __init__(self,
                  tfsource,
                  sourcedict,
-                 decodelist,
+                 imagelist=None,
                  batch_size=256,
                  n_threads=4,
                  postprocess=None,
+                 py_postprocess=None,
                 ):
         """
         - tfsource (str): path where tfrecords file(s) reside
         - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
-        - decodelist (list of strs): list of keys in the tfrecords file that have to be decoded from raw bytes format and reshaped to their original form, e. g. numpy arrays or serialized images
+        - imagelist (list of strs): list of image type keys in the tfrecords file that have to be decoded from raw bytes format and reshaped to their original form, e. g. numpy arrays or serialized images, imagelist is a subset of sourcedict
         - batch_size (int, default=256): size of batches to be returned
         - num_threads (int, default=4): number of threads to be used
-        - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.
+        - postprocess (dict of callables): functions for postprocess data using tf methods.  Keys of this are subset of sourcedict.
+        - py_postprocess (dict of (callable, tf return types) tuples): functions for postprocess data using python methods. Keys of this are subset of sourcedict.
         """
-        return self.init_from_base(tfsource, sourcedict, decodelist, \
-                batch_size, n_threads, postprocess)
+        return self.init_from_base(tfsource, sourcedict, imagelist, \
+                batch_size, n_threads, postprocess, py_postprocess)
 
-    def init_from_base(self, tfsource, sourcedict, decodelist, \
-            batch_size, num_threads, postprocess):
+    def init_from_base(self, tfsource, sourcedict, imagelist, \
+            batch_size, num_threads, postprocess, py_postprocess):
 
-        self.decodelist = decodelist
+        self.imagelist = imagelist
         self.postprocess = {} if postprocess is None else postprocess
+        self.py_postprocess = {} if py_postprocess is None else py_postprocess
 
-        for source in self.decodelist:
+        for source in self.imagelist:
             assert source in sourcedict.keys(), \
-                        'decodelist has to be a subset of sourcelist'
+                        'imagelist has to be a subset of sourcedict'
         for source in self.postprocess:
             assert source in sourcedict.keys(), \
-                        'postprocess has to be a subset of sourcelist'
-
-        self.datadict = {}
-        for source in sourcedict:
-            self.datadict[source] = sourcedict[source]
-        if self.decodelist is not None:
-            self.datadict['height'] = tf.int64
-            self.datadict['width'] = tf.int64
-            self.datadict['channels'] = tf.int64
+                        'postprocess has to be a subset of sourcedict'
+        for source in self.py_postprocess:
+            assert source in sourcedict.keys(), \
+                        'postprocess_py has to be a subset of sourcedict'
 
         super(TFRecordsDataProvider, self).__init__(
                 tfsource,
-                self.datadict,
+                sourcedict,
                 batch_size,
                 num_threads)
+
+    def get_dtypes(self, sources):
+        dtypes = {} 
+        for source in sources:
+            if source in self.imagelist:
+                dtypes[source] = tf.uint8
+            else:
+                dtypes[source] = sources[source]
+        return dtypes
+
+    def get_shapes(self, sources, tfsource):
+        shapes = {}
+        image_shape = self.get_image_shape(tfsource)
+        for source in sources:
+            if source in self.imagelist:
+                shapes[source] = image_shape
+            else:
+                shapes[source] = []
+        return shapes
+
+    def get_image_shape(self, tfsource):
+        datasources = super(TFRecordsDataProvider, self).get_data_paths(tfsource)
+        assert len(self.datasources) > 0, 'No data files provided!'
+        file_ptr = tf.python_io.tf_record_iterator(path=datasources[0])
+
+        data = file_ptr.next()
+        example = tf.train.Example()
+        example.ParseFromString(data)
+
+        height = int(example.features.feature['height'].int64_list.value[0])
+        width = int(example.features.feature['width'].int64_list.value[0])
+        channels = int(example.features.feature['channels'].int64_list.value[0])
+
+        file_ptr.close()
+        return [height, width, channels]
 
     def init_threads(self):
         self.input_ops, self.dtypes, self.shapes = \
                 super(TFRecordsDataProvider, self).init_threads()
-        self.input_ops = self.decode_data_many(self.input_ops)
+        if self.imagelist is not None:
+        # update data types, shapes and ops if image decoding was requested  
+            self.shapes = self.get_shapes(self.sourcedict, self.tfsource)
+            self.dtypes = self.get_dtypes(self.sourcedict)
+            self.input_ops = self.decode_data_many(self.input_ops)
+        if len(self.postprocess) > 0:
+            self.input_ops = self.postprocess_many(self.input_ops)
+        if len(self.py_postprocess) > 0:
+            self.input_ops = self.py_postprocess_many(self.input_ops)
         return [self.input_ops, self.dtypes, self.shapes]
+
+    def postprocess_many(self, data):
+        for i in range(len(data)):
+            for source in self.postprocess:
+                data[i][source], self.dtypes[source], self.shapes[source] = \
+                        self.postprocess[source]( \
+                                data[i][source], self.dtypes[source], self.shapes[source])
+        return data
+
+    def py_postprocess_many(self, data):
+        raise NotImplementedError('Not yet tested!')
+        for i in range(len(data)):
+            for source in self.py_postprocess:
+                func = self.py_postprocess[source][0]
+                return_type = self.py_postprocess[source][1]
+                data[i][source] = tf.py_func(func, data[i][source], return_type)
+        return data
 
     def decode_data_many(self, data):
         for i in range(len(data)):
@@ -134,18 +196,10 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
         return data
 
     def decode_features(self, features):
-        if self.decodelist is not None:
-            width = tf.cast(features['width'], tf.int32)[0]
-            height = tf.cast(features['height'], tf.int32)[0]
-            channels = tf.cast(features['channels'], tf.int32)[0]
-            shape = tf.pack([self.batch_size, height, width, channels])
-
-            for k in features:
-                if k in self.decodelist:
-                    features[k] = tf.decode_raw(features[k], tf.uint8)
-                    features[k] = tf.reshape(features[k], shape)
-                if k is 'parsed_actions':
-                    features[k] = tf.decode_raw(features[k], tf.float64)
+        for k in features:
+            if k in self.imagelist:
+                features[k] = tf.decode_raw(features[k], tf.uint8)
+                features[k] = tf.reshape(features[k], [self.batch_size] + self.shapes[k])
         return features
 
     def set_batch(self, batch_num):
