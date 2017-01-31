@@ -415,7 +415,7 @@ def get_queue(nodes,
 
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=capacity,
-                                           min_after_dequeue=self.capacity // 2,
+                                           min_after_dequeue=capacity // 2,
                                            dtypes=dtypes,
                                            shapes=shapes,
                                            names=names,
