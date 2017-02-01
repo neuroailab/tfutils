@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 import threading
 import os
+import functools
 
 import numpy as np
 import h5py
@@ -399,8 +400,9 @@ def get_queue(nodes,
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
-    assert capacity is not None, 'queue capacity was not defined'
-
+    if capacity is None:
+        capacity = 2 * batch_size
+        
     names = []
     dtypes = []
     shapes = []
@@ -446,7 +448,8 @@ class MNIST(object):
     def __init__(self,
                  data_path=None,
                  group='train',
-                 batch_size=100):
+                 batch_size=100,
+                 n_threads=1):
         """
         A specific reader for IamgeNet stored as a HDF5 file
 
@@ -455,6 +458,7 @@ class MNIST(object):
             - group: train, validation, test
             - batch_size
         """
+        self.n_threads = n_threads
         self.batch_size = batch_size
 
         if data_path is None:
@@ -477,6 +481,14 @@ class MNIST(object):
         batch = self.data.next_batch(self.batch_size)
         feed_dict = {'images': batch[0], 'labels': batch[1].astype(np.int32)}
         return feed_dict
+
+    def init_threads(self):
+        func = functools.partial(self.data.next_batch, self.batch_size)
+        batches = [tf.py_func(func, [], [tf.float32, tf.uint8]) for _ in range(self.n_threads)]
+        ops = [{'images': b[0], 'labels': tf.cast(b[1], tf.int32)} for b in batches]
+        dtypes = {'images': tf.float32, 'labels': tf.int32}
+        shapes = {'images': [784], 'labels': []}
+        return ops, dtypes, shapes
 
 
 class ImageNet(HDF5DataProvider):
