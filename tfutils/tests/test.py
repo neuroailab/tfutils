@@ -25,7 +25,7 @@ from tfutils import base, model, utils, data
 num_batches_per_epoch = 10000//256
 
 testhost = 'localhost'       # Host on which the MongoDB instance to be used by tests needs to be running
-testport = 31001             # port on which the MongoDB instance to be used by tests needs to be running
+testport = 29101             # port on which the MongoDB instance to be used by tests needs to be running
 testdbname = 'tfutils-test'  # name of the mongodb database where results will be stored by tests
 testcol = 'testcol'          # name of the mongodb collection where results will be stored by tests
 
@@ -65,10 +65,10 @@ def test_training():
                              'cache_filters_freq': 100}
     params['train_params'] = {'data_params': {'func': data.MNIST,
                                               'batch_size': 100,
-                                              'group': 'train'},
+                                              'group': 'train',
+                                              'n_threads': 4},
                               'queue_params': {'queue_type': 'fifo',
-                                               'batch_size': 100,
-                                               'n_threads': 4},
+                                               'batch_size': 100},
                               'num_steps': 500}
     params['learning_rate_params'] = {'learning_rate': 0.05,
                                       'decay_steps': num_batches_per_epoch,
@@ -76,11 +76,10 @@ def test_training():
                                       'staircase': True}
     params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
                                                               'batch_size': 100,
-                                                              'group': 'test'},
+                                                              'group': 'test',
+                                                              'n_threads': 4},
                                               'queue_params': {'queue_type': 'fifo',
-                                                               'batch_size': 100,
-                                                               'n_threads': 4},
-                                              'num_steps': 10,
+                                                               'batch_size': 100},                                                                'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
 
     # actually run the training
@@ -137,10 +136,10 @@ def test_validation():
     params['save_params'] = {'exp_id': 'validation0'}
     params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
                                                               'batch_size': 100,
-                                                              'group': 'test'},
+                                                              'group': 'test',
+                                                              'n_threads': 4},
                                               'queue_params': {'queue_type': 'fifo',
-                                                               'batch_size': 100,
-                                                               'n_threads': 4},
+                                                               'batch_size': 100},
                                               'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
 
@@ -216,10 +215,10 @@ def test_feature_extraction():
     targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': data.MNIST,
                                                               'batch_size': 100,
-                                                              'group': 'test'},
+                                                              'group': 'test',
+                                                              'n_threads': 4},
                                               'queue_params': {'queue_type': 'fifo',
-                                                               'batch_size': 100,
-                                                               'n_threads': 4},
+                                                               'batch_size': 100},
                                               'targets': targdict,
                                               'num_steps': 10,
                                               'online_agg_func': utils.reduce_mean_dict}}
