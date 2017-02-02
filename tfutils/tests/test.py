@@ -199,6 +199,7 @@ def test_feature_extraction():
     results.  See how the features are accessed by reading the test code below.
     """
     # set up parameters
+    exp_id = 'validation1'
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
     params['load_params'] = {'host': testhost,
@@ -206,12 +207,12 @@ def test_feature_extraction():
                              'dbname': testdbname,
                              'collname': testcol,
                              'exp_id': 'training0'}
-    params['save_params'] = {'exp_id': 'validation1',
+    params['save_params'] = {'exp_id': exp_id,
                              'save_intermediate_freq': 1,
-                             'save_to_gfs': ['features']}
+                             'save_to_gfs': ['features', 'more_features']}
 
     targdict = {'func': get_extraction_target,
-                'to_extract': {'features': 'validation/valid1/hidden1/fc:0'}}
+                'to_extract': {'features': 'validation/valid1/hidden1/fc:0', 'more_features' : 'validation/valid1/hidden2/fc:0'}}
     targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': data.MNIST,
                                                               'batch_size': 100,
@@ -230,10 +231,10 @@ def test_feature_extraction():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
     coll = conn[testdbname][testcol+'.files']
-    assert coll.find({'exp_id': 'validation1'}).count() == 11
+    assert coll.find({'exp_id': exp_id}).count() == 11
 
     # ... load the containing the final "aggregate" result after all features have been extracted
-    q = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': True}}
+    q = {'exp_id': exp_id, 'validation_results.valid1.intermediate_steps': {'$exists': True}}
     assert coll.find(q).count() == 1
     r = coll.find(q)[0]
     # ... check that the record is well-formed
@@ -241,7 +242,7 @@ def test_feature_extraction():
 
     # ... check that the correct "intermediate results" (the actual features extracted) records exist
     # and are correctly referenced.
-    q1 = {'exp_id': 'validation1', 'validation_results.valid1.intermediate_steps': {'$exists': False}}
+    q1 = {'exp_id': exp_id, 'validation_results.valid1.intermediate_steps': {'$exists': False}}
     ids = coll.find(q1).distinct('_id')
     assert r['validation_results']['valid1']['intermediate_steps'] == ids
 
@@ -252,9 +253,14 @@ def test_feature_extraction():
     fh = fs.get_last_version(fn)
     saved_data = cPickle.loads(fh.read())
     fh.close()
+    first_results = saved_data['validation_results']['valid1']
+    assert 'features' in first_results and 'more_features' in first_results
     features = saved_data['validation_results']['valid1']['features']
+    more_features = saved_data['validation_results']['valid1']['more_features']
     assert features.shape == (100, 128)
     assert features.dtype == np.float32
+    assert more_features.shape == (100, 32)
+    assert more_features.dtype == np.float32
 
 
 def asserts_for_record(r, params, train=False):
