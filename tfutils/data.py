@@ -66,7 +66,7 @@ class TFRecordsDataProviderBase(object):
         self.move_ptr_to(batch_num)
 
     def move_ptr_to(self, batch_num):
-        raise NotImplementedError
+        raise NotImplementedError #TODO
 
     def parse_serialized_data(self, data):
         return tf.parse_example(data, self.features)
@@ -183,7 +183,7 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
         return data
 
     def py_postprocess_many(self, data):
-        raise NotImplementedError('Not yet tested!')
+        raise NotImplementedError('Not yet tested!') #TODO
         for i in range(len(data)):
             for source in self.py_postprocess:
                 func = self.py_postprocess[source][0]
