@@ -207,6 +207,46 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
         super(TFRecordsDataProvider, self).set_batch(batch_num)
 
 
+class ParallelBySliceProvider(object):
+    def __init__(self,
+                 func,
+                 kwargs,
+                 mode='block',
+                 batch_size=256,
+                 n_threads=1):        
+        self.func = func
+        self.kwargs = kwargs
+        self.mode = mode
+        self.n_threads = n_threads
+        self.batch_size = batch_size
+
+    def init_threads(self):
+        n = self.n_threads
+        ops = []
+        tester = self.func(**self.kwargs)
+        N = tester.data_length
+        testbatch = tester.next()
+        labels = tester.labels
+        testbatch = zip(labels, testbatch)
+        dtypes = {k: v.dtype for k, v in batch}
+        shapes = {k: v.shapes[1:] for k, v in batch}
+        if self.mode == 'block':
+            blocksize = N / n
+            ends = [[i * blocksize, (i+1) * blocksize] for i in range(n)]
+            ends[-1] = max(ends[-1][1], N)
+            subslices = [np.arange(e0, e1) for e0, e1 in ends]
+        elif self.mode == 'alternate':
+            subslices = [np.arange(N)[i::] for i in range(n)]        
+        for n in self.n_threads:
+            kwargs = copy.deepcopy(self.kwargs)
+            kwargs['subslice'] = subslices[n]
+            dp = self.func(**kwargs)
+            op = tf.py_func(dp.next, [], [dtypes[k] for k in labels])
+            op = {k: op[k]}
+            ops.append(op)
+        return ops, dtypes, shapes
+    
+        
 class HDF5DataProvider(object):
     def __init__(self,
                  hdf5source,
@@ -451,8 +491,6 @@ class MNIST(object):
                  batch_size=100,
                  n_threads=1):
         """
-        A specific reader for IamgeNet stored as a HDF5 file
-
         Kwargs:
             - data_path: path to imagenet data
             - group: train, validation, test
