@@ -225,18 +225,23 @@ class ParallelBySliceProvider(object):
         ops = []
         tester = self.func(**self.kwargs)
         N = tester.data_length
-        testbatch = tester.next()
         labels = tester.labels
-        testbatch = zip(labels, testbatch)
-        dtypes = {k: v.dtype for k, v in batch}
-        shapes = {k: v.shapes[1:] for k, v in batch}
         if self.mode == 'block':
             blocksize = N / n
             ends = [[i * blocksize, (i+1) * blocksize] for i in range(n)]
             ends[-1] = max(ends[-1][1], N)
             subslices = [np.arange(e0, e1) for e0, e1 in ends]
         elif self.mode == 'alternate':
-            subslices = [np.arange(N)[i::] for i in range(n)]        
+            subslices = [np.arange(N)[i::] for i in range(n)]
+        if hasattr(tester, 'dtypes'):
+            dtypes = tester.dtypes
+            shapes = tester.shapes
+        else:
+            testbatch = tester.next()
+            testbatch = zip(labels, testbatch)
+            dtypes = {k: v.dtype for k, v in batch}
+            shapes = {k: v.shapes[1:] for k, v in batch}
+
         for n in self.n_threads:
             kwargs = copy.deepcopy(self.kwargs)
             kwargs['subslice'] = subslices[n]
@@ -320,6 +325,14 @@ class HDF5DataProvider(object):
         self.curr_epoch = 1
         self.pad = pad
 
+    @property
+    def dtypes(self):
+        return [self.data[source].dtype for source in self.sourcelist]
+
+    @property
+    def shapes(self):
+        return [self.sizes[source][1:] for source in self.sourcelist]
+    
     def set_epoch_batch(self, epoch, batch_num):
         self.curr_epoch = epoch
         self.curr_batch_num = batch_num
@@ -332,8 +345,13 @@ class HDF5DataProvider(object):
     def __iter__(self):
         return self
 
+    @property
+    def labels(self):
+        return self.sourcelist
+    
     def next(self):
-        return self.get_next_batch()
+        b = self.get_next_batch()
+        return [b[k] for k in self.sourcelist]
 
     def increment_batch_num(self):
         m = self.total_batches
