@@ -1,14 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
-import sys
-import threading
 import os
 import functools
+import copy
 
 import numpy as np
 import h5py
 import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
+
 
 class TFRecordsDataProviderBase(object):
     def __init__(self,
@@ -19,7 +19,8 @@ class TFRecordsDataProviderBase(object):
                 ):
         """
         - tfsource (str): path where tfrecords file(s) reside
-        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
+        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are 
+          the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
         - batch_size (int, default=256): size of batches to be returned
         - n_threads (int, default=4): number of threads to be used
         """
@@ -223,31 +224,32 @@ class ParallelBySliceProvider(object):
     def init_threads(self):
         n = self.n_threads
         ops = []
-        tester = self.func(**self.kwargs)
+        tester = self.func(batch_size=self.batch_size, **self.kwargs)
         N = tester.data_length
         labels = tester.labels
         if self.mode == 'block':
             blocksize = N / n
             ends = [[i * blocksize, (i+1) * blocksize] for i in range(n)]
-            ends[-1] = max(ends[-1][1], N)
-            subslices = [np.arange(e0, e1) for e0, e1 in ends]
+            ends[-1][1] = max(ends[-1][1], N)
+            subslices = [np.arange(e0, e1).astype(np.int) for e0, e1 in ends]
         elif self.mode == 'alternate':
-            subslices = [np.arange(N)[i::] for i in range(n)]
+            subslices = [np.arange(N)[i::].astype(np.int) for i in range(n)]
         if hasattr(tester, 'dtypes'):
             dtypes = tester.dtypes
             shapes = tester.shapes
         else:
             testbatch = tester.next()
             testbatch = zip(labels, testbatch)
-            dtypes = {k: v.dtype for k, v in batch}
-            shapes = {k: v.shapes[1:] for k, v in batch}
+            dtypes = {k: v.dtype for k, v in testbatch}
+            shapes = {k: v.shapes[1:] for k, v in testbatch}
 
-        for n in self.n_threads:
+        for n in range(self.n_threads):
             kwargs = copy.deepcopy(self.kwargs)
             kwargs['subslice'] = subslices[n]
+            kwargs['batch_size'] = self.batch_size
             dp = self.func(**kwargs)
             op = tf.py_func(dp.next, [], [dtypes[k] for k in labels])
-            op = {k: op[k]}
+            op = {k: op[i] for i, k in enumerate(labels)}
             ops.append(op)
         return ops, dtypes, shapes
     
@@ -305,7 +307,7 @@ class HDF5DataProvider(object):
                     elif hasattr(self.subslice, '__call__'):
                         self.subsliceinds = self.subslice(self.file, self.sourcelist)
                     elif len(self.subslice) == self.data[source].shape[0]:
-                        self.subsliceinds = self.subslice[:]
+                        self.subsliceinds = self.subslice[:].astype(np.int)
                     else:
                         self.subsliceinds = np.zeros(self.data[source].shape[0]).astype(np.bool)
                         self.subsliceinds[self.subslice] = True
@@ -327,11 +329,11 @@ class HDF5DataProvider(object):
 
     @property
     def dtypes(self):
-        return [self.data[source].dtype for source in self.sourcelist]
+        return {source: self.data[source].dtype for source in self.sourcelist}
 
     @property
     def shapes(self):
-        return [self.sizes[source][1:] for source in self.sourcelist]
+        return {source: self.sizes[source][1:] for source in self.sourcelist}
     
     def set_epoch_batch(self, epoch, batch_num):
         self.curr_epoch = epoch
