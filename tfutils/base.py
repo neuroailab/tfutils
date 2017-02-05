@@ -42,6 +42,11 @@ TODO:
     - epoch and batch_num should be added to what is saved.   But how to do that with Queues?
 """
 
+if 'TFUTILS_HOME' in os.environ:
+    TFUTILS_HOME = os.environ['TFUTILS_HOME']
+else:
+    TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
+
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
                                   'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
                                   'agg_func': tf.reduce_mean})
@@ -229,8 +234,7 @@ class DBInterface(object):
             cache_dir = None
 
         if cache_dir is None:
-            self.cache_dir = os.path.join(os.environ['HOME'],
-                                          '.tfutils',
+            self.cache_dir = os.path.join(TFUTILS_HOME,
                                           '%s:%d' % (self.host, self.port),
                                           self.dbname,
                                           self.collname,
@@ -639,7 +643,8 @@ def test_from_params(load_params,
                      model_params,
                      validation_params,
                      log_device_placement=False,
-                     save_params=None):
+                     save_params=None,
+                     dont_run=False):
 
     """
     Main testing interface function.
@@ -681,6 +686,9 @@ def test_from_params(load_params,
                                   load_params=load_params,
                                   save_params=save_params)
         dbinterface.initialize()
+
+        if dont_run:
+            return sess, queues, dbinterface, valid_targets_dict
 
         save_intermediate_freq = save_params.get('save_intermediate_freq')
         res = test(sess,
@@ -762,7 +770,8 @@ def train_from_params(save_params,
                       optimizer_params=None,
                       validation_params=None,
                       log_device_placement=False,
-                      load_params=None
+                      load_params=None,
+                      dont_run=False
                       ):
     """
     Main training interface function.
@@ -975,6 +984,10 @@ def train_from_params(save_params,
         dbinterface = DBInterface(sess=sess, global_step=global_step, params=params,
                                   save_params=save_params, load_params=load_params)
         dbinterface.initialize()
+
+        if dont_run:
+            return sess, queues, dbinterface, train_targets, global_step, validation_targets
+
         res = train(sess,
                     queues,
                     dbinterface,
@@ -1126,10 +1139,11 @@ def get_params():
     return args
 
 
+
 """
 Something like this could be used to create and save variables
 in a readable format.
-    def save_variables_to_readable_format()
+    def save_variables_to_readable_format():
         Vars = tf.all_variables()
         tmp = int(time.time())
         for v in Vars:

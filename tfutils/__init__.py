@@ -3,6 +3,6 @@ import tfutils.data
 import tfutils.error
 import tfutils.model
 import tfutils.optimizer
-import tufilts.utils
+import tfutils.utils
 
 __version__ = '0.1.dev1'
