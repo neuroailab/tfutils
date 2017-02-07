@@ -1,14 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
-import sys
-import threading
 import os
 import functools
+import copy
 
 import numpy as np
 import h5py
 import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
+
 
 class TFRecordsDataProviderBase(object):
     def __init__(self,
@@ -19,7 +19,8 @@ class TFRecordsDataProviderBase(object):
                 ):
         """
         - tfsource (str): path where tfrecords file(s) reside
-        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
+        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are 
+          the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
         - batch_size (int, default=256): size of batches to be returned
         - n_threads (int, default=4): number of threads to be used
         """
@@ -207,6 +208,72 @@ class TFRecordsDataProvider(TFRecordsDataProviderBase):
         super(TFRecordsDataProvider, self).set_batch(batch_num)
 
 
+class ParallelBySliceProvider(object):
+    def __init__(self,
+                 basefunc,
+                 kwargs,
+                 mode='block',
+                 batch_size=256,
+                 skip_idxs = False,
+                 n_threads=1):        
+        self.func = basefunc
+        self.kwargs = kwargs
+        self.mode = mode
+        self.n_threads = n_threads
+        self.batch_size = batch_size
+        self.skip_idxs = skip_idxs
+        if 'group' in kwargs.keys():
+            self._group = kwargs['group']
+        else:
+            self._group = None
+
+    def init_threads(self):
+        n = self.n_threads
+        ops = []
+        tester = self.func(batch_size=self.batch_size, **self.kwargs)
+        N = tester.data_length
+        labels = tester.labels
+
+        if self.skip_idxs:
+            good_idxs = self.func.good_idxs
+            num_good = len(good_idxs)
+            while num_good % n != 0:
+                num_good -= 1
+
+        if self.mode == 'block':
+            blocksize = N / n
+            ends = [[i * blocksize, (i+1) * blocksize] for i in range(n)]
+            ends[-1][1] = max(ends[-1][1], N)
+            subslices = [np.arange(e0, e1).astype(np.int) for e0, e1 in ends]
+        elif self.mode == 'alternate':
+            subslices = [np.arange(N)[i::].astype(np.int) for i in range(n)]
+        elif self.mode == 'skipped':
+            subslices = np.array(good_idxs)[:num_good]
+            if self._group == 'train':
+                subslices = subslices[:-self.func.N_VAL].reshape(4, -1).tolist()
+            elif self._group == 'val':
+                subslices = subslices[-self.func.N_VAL:].reshape(4, -1).tolist()
+            elif self._group is None:
+                subslices = subslices.reshape(4, -1).tolist()
+        if hasattr(tester, 'dtypes'):
+            dtypes = tester.dtypes
+            shapes = tester.shapes
+        else:
+            testbatch = tester.next()
+            testbatch = zip(labels, testbatch)
+            dtypes = {k: v.dtype for k, v in testbatch}
+            shapes = {k: v.shapes[1:] for k, v in testbatch}
+        for n in range(self.n_threads):
+            kwargs = copy.deepcopy(self.kwargs)
+            kwargs['subslice'] = subslices[n]
+            kwargs['batch_size'] = self.batch_size
+            dp = self.func(**kwargs)
+            op = tf.py_func(dp.next, [], [dtypes[k] for k in labels])
+            op = {k: op[i] for i, k in enumerate(labels)}
+            ops.append(op)
+        return ops, dtypes, shapes
+    
+        
 class HDF5DataProvider(object):
     def __init__(self,
                  hdf5source,
@@ -216,7 +283,10 @@ class HDF5DataProvider(object):
                  mini_batch_size=None,
                  preprocess=None,
                  postprocess=None,
-                 pad=False):
+                 pad=False,
+                 input_shapes=None,
+                 input_dtypes=None,
+                 model_input_labels=None):
 
         """
         - hdf5source (str): path where hdf5 file resides
@@ -233,10 +303,16 @@ class HDF5DataProvider(object):
         - preprocess (dict of callables): functions for preprocessing data in the datasources.  keys of this are subset
         - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.
         - pad (bool): whether to pad data returned if amount of data left to return is less then full batch size
+        - input_shapes: dict containing post-processed shapes of input data to model, keys are elements in sourcelist
+        - input_dtypes: dict containing post-processed data types of input data to model, keys are elements in sourcelist
+        - model_input_labels: list which can be provided to the model itself for input/output target calls
+             this is used in cases where we have explicit training/val splits in the data-provider (group in an hdf5)
+             but the model must take something such as inputs['images'] 
         """
         self.hdf5source = hdf5source
         self.file = h5py.File(self.hdf5source, 'r')
         self.sourcelist = sourcelist
+
         self.subslice = subslice
         self.subsliceinds = None
         self.preprocess = {} if preprocess is None else preprocess
@@ -244,6 +320,22 @@ class HDF5DataProvider(object):
 
         self.data = {}
         self.sizes = {}
+
+        if input_shapes is not None:
+            self.input_shapes = input_shapes
+        else:
+            self.input_shapes is None
+
+        if input_dtypes is not None:
+            self.input_dtypes = input_dtypes
+        else:
+            self.input_dtypes is None
+
+        if model_input_labels is not None:
+            self.model_input_labels = model_input_labels
+        else:
+            self.model_input_labels = None
+        
         for source in self.sourcelist:
             self.data[source] = self.file[source]
             if source in self.preprocess:
@@ -260,13 +352,14 @@ class HDF5DataProvider(object):
                     elif hasattr(self.subslice, '__call__'):
                         self.subsliceinds = self.subslice(self.file, self.sourcelist)
                     elif len(self.subslice) == self.data[source].shape[0]:
-                        self.subsliceinds = self.subslice[:]
+                        self.subsliceinds = self.subslice[:].astype(np.int)
                     else:
                         self.subsliceinds = np.zeros(self.data[source].shape[0]).astype(np.bool)
                         self.subsliceinds[self.subslice] = True
                         self.subsliceinds = self.subsliceinds.nonzero()[0].astype(int)
                 sz = self.data[source].shape
                 self.sizes[source] = (self.subsliceinds.shape[0],) + sz[1:]
+
             if not hasattr(self, 'data_length'):
                 self.data_length = self.sizes[source][0]
             assert self.sizes[source][0] == self.data_length, (self.sizes[source], self.data_length)
@@ -280,6 +373,30 @@ class HDF5DataProvider(object):
         self.curr_epoch = 1
         self.pad = pad
 
+
+    @property
+    def labels(self):
+        if self.model_input_labels is not None:
+            return self.model_input_labels
+        else:
+            return self.sourcelist
+
+    @property
+    def dtypes(self):
+#        return {'images':np.float32,'labels':np.int32}
+        if self.input_dtypes is not None:
+            return self.input_dtypes
+        else:
+            return {source: self.data[source].dtype for source in self.sourcelist}
+
+    @property
+    def shapes(self):
+#        return {'images':(224,224,3),'labels':()}
+        if self.input_shapes is not None:
+            return self.input_shapes
+        else:
+            return {source: self.sizes[source][1:] for source in self.sourcelist}
+    
     def set_epoch_batch(self, epoch, batch_num):
         self.curr_epoch = epoch
         self.curr_batch_num = batch_num
@@ -291,9 +408,10 @@ class HDF5DataProvider(object):
 
     def __iter__(self):
         return self
-
+    
     def next(self):
-        return self.get_next_batch()
+        b = self.get_next_batch()
+        return [b[k] for k in self.sourcelist]
 
     def increment_batch_num(self):
         m = self.total_batches
@@ -451,8 +569,6 @@ class MNIST(object):
                  batch_size=100,
                  n_threads=1):
         """
-        A specific reader for IamgeNet stored as a HDF5 file
-
         Kwargs:
             - data_path: path to imagenet data
             - group: train, validation, test
@@ -526,13 +642,13 @@ class ImageNet(HDF5DataProvider):
                 Extra arguments for HDF5DataProvider
         """
         self.group = group
-        images = group + '/images'
-        labels = group + '/labels'
+        images_key = group + '/images'
+        labels_key = group + '/labels'
         super(ImageNet, self).__init__(
             data_path,
-            [images, labels],
+            [images_key, labels_key],
             batch_size=batch_size,
-            postprocess={images: self.postproc_img, labels: self.postproc_labels},
+            postprocess={images_key: self.postproc_img, labels_key: self.postproc_labels},
             pad=True,
             *args, **kwargs)
         if crop_size is None:
@@ -541,8 +657,15 @@ class ImageNet(HDF5DataProvider):
             self.crop_size = crop_size
 
     def postproc_img(self, ims, f):
-        norm = ims.astype(np.float32) / 255
+        norm = ims.astype(np.float32) / 255.0
+
         off = np.random.randint(0, 256 - self.crop_size, size=2)
+
+        if self.group=='train':
+            off = np.random.randint(0, 256 - self.crop_size, size=2)
+        else:
+            off = int((256 - self.crop_size)/2)
+            off = [off, off]
         images_batch = norm[:,
                             off[0]: off[0] + self.crop_size,
                             off[1]: off[1] + self.crop_size]
@@ -551,8 +674,8 @@ class ImageNet(HDF5DataProvider):
     def postproc_labels(self, labels, f):
         return labels.astype(np.int32)
 
-    def next(self):
-        batch = super(ImageNet, self).next()
-        feed_dict = {'images': np.squeeze(batch[self.group + '/images']),
-                     'labels': np.squeeze(batch[self.group + '/labels'])}
-        return feed_dict
+    # def next(self):
+    #     batch = super(ImageNet, self).next()
+    #     feed_dict = {'images': np.squeeze(batch[self.group + '/images']),
+    #                  'labels': np.squeeze(batch[self.group + '/labels'])}
+    #     return feed_dict

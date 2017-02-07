@@ -29,15 +29,24 @@ class ConvNet(object):
     def graph(self):
         return tf.get_default_graph().as_graph_def()
 
-    def initializer(self, kind='xavier', stddev=.01):
+    def initializer(self, kind='xavier', stddev=.01,init_file = None,init_keys = None):
         if kind == 'xavier':
             init = tf.contrib.layers.initializers.xavier_initializer(seed=self.seed)
         elif kind == 'trunc_norm':
             init = tf.truncated_normal_initializer(mean=0, stddev=stddev, seed=self.seed)
+        elif kind == 'from_file':
+            #If we are initializing a pretrained model from a file, load the key from this file
+            #Assumes a numpy .npz object
+            #init_keys is going to be a dictionary mapping {'Weight': weight_key,'bias':bias_key}
+            params = np.load(init_file)
+            init = {}
+            init['Weight'] = params[init_keys['Weight']]
+            init['bias'] = params[init_keys['bias']]
         else:
             raise ValueError('Please provide an appropriate initialization '
                              'method: xavier or trunc_norm')
         return init
+
 
     @tf.contrib.framework.add_arg_scope
     def conv(self,
@@ -50,7 +59,9 @@ class ConvNet(object):
              bias=1,
              activation='relu',
              weight_decay=None,
-             in_layer=None):
+             in_layer=None,
+             init_file=None,
+             init_layer_keys=None):
         if in_layer is None:
             in_layer = self.output
         if weight_decay is None:
@@ -63,18 +74,30 @@ class ConvNet(object):
         else:
             ksize1, ksize2 = ksize
 
-        kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
-                                 shape=[ksize1, ksize2, in_shape, out_shape],
-                                 dtype=tf.float32,
-                                 regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                                 name='weights')
+        if init != 'from_file':
+            kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
+                                     shape=[ksize1, ksize2, in_shape, out_shape],
+                                     dtype=tf.float32,
+                                     regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                     name='weights')
+            biases = tf.get_variable(initializer=tf.constant_initializer(bias),
+                                     shape=[out_shape],
+                                     dtype=tf.float32,
+                                     name='bias')
+        else:
+            init_dict = self.initializer(init,init_file = init_file,init_keys = init_layer_keys)
+            kernel = tf.get_variable(initializer=init_dict['Weight'],
+                                     dtype=tf.float32,
+                                     regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                     name='weights')
+            biases = tf.get_variable(initializer=init_dict['bias'],
+                                     dtype=tf.float32,
+                                     name='bias')
+
+            
         conv = tf.nn.conv2d(in_layer, kernel,
                             strides=[1, stride, stride, 1],
                             padding=padding)
-        biases = tf.get_variable(initializer=tf.constant_initializer(bias),
-                                 shape=[out_shape],
-                                 dtype=tf.float32,
-                                 name='bias')
         self.output = tf.nn.bias_add(conv, biases, name='conv')
         if activation is not None:
             self.output = self.activation(kind=activation)
@@ -100,22 +123,35 @@ class ConvNet(object):
            bias=1,
            activation='relu',
            dropout=.5,
-           in_layer=None):
+           in_layer=None,
+           init_file=None,
+           init_layer_keys=None):
+
+
         if in_layer is None:
             in_layer = self.output
         resh = tf.reshape(in_layer,
                           [in_layer.get_shape().as_list()[0], -1],
                           name='reshape')
         in_shape = resh.get_shape().as_list()[-1]
-
-        kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
-                                 shape=[in_shape, out_shape],
-                                 dtype=tf.float32,
-                                 name='weights')
-        biases = tf.get_variable(initializer=tf.constant_initializer(bias),
-                                 shape=[out_shape],
-                                 dtype=tf.float32,
-                                 name='bias')
+        if init != 'from_file':
+            kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
+                                     shape=[in_shape, out_shape],
+                                     dtype=tf.float32,
+                                     name='weights')
+            biases = tf.get_variable(initializer=tf.constant_initializer(bias),
+                                     shape=[out_shape],
+                                     dtype=tf.float32,
+                                     name='bias')
+        else:
+            init_dict = self.initializer(init,init_file = init_file,init_keys = init_layer_keys)
+            kernel = tf.get_variable(initializer=init_dict['Weight'],
+                                     dtype=tf.float32,
+                                     name='weights')
+            biases = tf.get_variable(initializer=init_dict['bias'],
+                                     dtype=tf.float32,
+                                     name='bias')
+            
         fcm = tf.matmul(resh, kernel)
         self.output = tf.nn.bias_add(fcm, biases, name='fc')
         if activation is not None:
@@ -217,7 +253,6 @@ def mnist(inputs, train=True, **kwargs):
 
     return m
 
-
 def alexnet(inputs, train=True, norm=True, **kwargs):
     m = ConvNet(**kwargs)
     dropout = .5 if train else None
@@ -258,6 +293,46 @@ def alexnet(inputs, train=True, norm=True, **kwargs):
     return m
 
 
+def alexnet_3dworld(inputs, train=True, norm=True, **kwargs):
+    m = ConvNet(**kwargs)
+    dropout = .5 if train else None
+
+    with tf.contrib.framework.arg_scope([m.conv], init='xavier',
+                                        stddev=.01, bias=0, activation='relu'):
+        with tf.variable_scope('conv1'):
+            m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
+            if norm:
+                m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.pool(3, 2)
+
+        with tf.variable_scope('conv2'):
+            m.conv(256, 5, 1)
+            if norm:
+                m.norm(depth_radius=5, bias=1, alpha=.0001, beta=.75)
+            m.pool(3, 2)
+
+        with tf.variable_scope('conv3'):
+            m.conv(384, 3, 1)
+
+        with tf.variable_scope('conv4'):
+            m.conv(256, 3, 1)
+
+        with tf.variable_scope('conv5'):
+            m.conv(256, 3, 1)
+            m.pool(3, 2)
+
+        with tf.variable_scope('fc6'):
+            m.fc(4096, init='trunc_norm', dropout=dropout, bias=.1)
+
+        with tf.variable_scope('fc7'):
+            m.fc(4096, init='trunc_norm', dropout=dropout, bias=.1)
+
+        with tf.variable_scope('fc8'):
+            m.fc(55, init='trunc_norm', activation=None, dropout=None, bias=0)
+
+    return m
+
+
 def mnist_tfutils(inputs, **kwargs):
     m = mnist(inputs['images'], **kwargs)
     return m.output, m.params
@@ -265,4 +340,8 @@ def mnist_tfutils(inputs, **kwargs):
 
 def alexnet_tfutils(inputs, **kwargs):
     m = alexnet(inputs['images'], **kwargs)
+    return m.output, m.params
+
+def alexnet_3dworld_tfutils(inputs, **kwargs):
+    m = alexnet_3dworld(inputs['images'], **kwargs)
     return m.output, m.params
