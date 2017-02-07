@@ -37,10 +37,10 @@ class ConvNet(object):
         elif kind == 'from_file':
             #If we are initializing a pretrained model from a file, load the key from this file
             #Assumes a numpy .npz object
-            #init_keys is going to be a dictionary mapping {'Weight': weight_key,'bias':bias_key}
+            #init_keys is going to be a dictionary mapping {'weight': weight_key,'bias':bias_key}
             params = np.load(init_file)
             init = {}
-            init['Weight'] = params[init_keys['Weight']]
+            init['weight'] = params[init_keys['weight']]
             init['bias'] = params[init_keys['bias']]
         else:
             raise ValueError('Please provide an appropriate initialization '
@@ -85,8 +85,10 @@ class ConvNet(object):
                                      dtype=tf.float32,
                                      name='bias')
         else:
-            init_dict = self.initializer(init,init_file = init_file,init_keys = init_layer_keys)
-            kernel = tf.get_variable(initializer=init_dict['Weight'],
+            init_dict = self.initializer(init,
+                                         init_file=init_file,
+                                         init_keys=init_layer_keys)
+            kernel = tf.get_variable(initializer=init_dict['weight'],
                                      dtype=tf.float32,
                                      regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                                      name='weights')
@@ -94,7 +96,6 @@ class ConvNet(object):
                                      dtype=tf.float32,
                                      name='bias')
 
-            
         conv = tf.nn.conv2d(in_layer, kernel,
                             strides=[1, stride, stride, 1],
                             padding=padding)
@@ -144,8 +145,10 @@ class ConvNet(object):
                                      dtype=tf.float32,
                                      name='bias')
         else:
-            init_dict = self.initializer(init,init_file = init_file,init_keys = init_layer_keys)
-            kernel = tf.get_variable(initializer=init_dict['Weight'],
+            init_dict = self.initializer(init,
+                                         init_file=init_file,
+                                         init_keys=init_layer_keys)
+            kernel = tf.get_variable(initializer=init_dict['weight'],
                                      dtype=tf.float32,
                                      name='weights')
             biases = tf.get_variable(initializer=init_dict['bias'],

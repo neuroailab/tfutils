@@ -214,18 +214,12 @@ class ParallelBySliceProvider(object):
                  kwargs,
                  mode='block',
                  batch_size=256,
-                 skip_idxs = False,
-                 n_threads=1):        
+                 n_threads=1):
         self.func = basefunc
         self.kwargs = kwargs
         self.mode = mode
         self.n_threads = n_threads
         self.batch_size = batch_size
-        self.skip_idxs = skip_idxs
-        if 'group' in kwargs.keys():
-            self._group = kwargs['group']
-        else:
-            self._group = None
 
     def init_threads(self):
         n = self.n_threads
@@ -234,12 +228,6 @@ class ParallelBySliceProvider(object):
         N = tester.data_length
         labels = tester.labels
 
-        if self.skip_idxs:
-            good_idxs = self.func.good_idxs
-            num_good = len(good_idxs)
-            while num_good % n != 0:
-                num_good -= 1
-
         if self.mode == 'block':
             blocksize = N / n
             ends = [[i * blocksize, (i+1) * blocksize] for i in range(n)]
@@ -247,25 +235,18 @@ class ParallelBySliceProvider(object):
             subslices = [np.arange(e0, e1).astype(np.int) for e0, e1 in ends]
         elif self.mode == 'alternate':
             subslices = [np.arange(N)[i::].astype(np.int) for i in range(n)]
-        elif self.mode == 'skipped':
-            subslices = np.array(good_idxs)[:num_good]
-            if self._group == 'train':
-                subslices = subslices[:-self.func.N_VAL].reshape(4, -1).tolist()
-            elif self._group == 'val':
-                subslices = subslices[-self.func.N_VAL:].reshape(4, -1).tolist()
-            elif self._group is None:
-                subslices = subslices.reshape(4, -1).tolist()
-        if hasattr(tester, 'dtypes'):
-            dtypes = tester.dtypes
-            shapes = tester.shapes
-        else:
-            testbatch = tester.next()
-            testbatch = zip(labels, testbatch)
-            dtypes = {k: v.dtype for k, v in testbatch}
-            shapes = {k: v.shapes[1:] for k, v in testbatch}
+
+        testbatch = tester.next()
+        testbatch = zip(labels, testbatch)
+        dtypes = {k: v.dtype for k, v in testbatch}
+        shapes = {k: v.shapes[1:] for k, v in testbatch}
         for n in range(self.n_threads):
             kwargs = copy.deepcopy(self.kwargs)
-            kwargs['subslice'] = subslices[n]
+            if 'subslice' not in self.kwargs:
+                kwargs['subslice'] = subslices[n]
+            else:
+                good_inds = tester.subsliceinds
+                kwargs['subslice'] = good_inds[subslices[n]]
             kwargs['batch_size'] = self.batch_size
             dp = self.func(**kwargs)
             op = tf.py_func(dp.next, [], [dtypes[k] for k in labels])
@@ -283,10 +264,7 @@ class HDF5DataProvider(object):
                  mini_batch_size=None,
                  preprocess=None,
                  postprocess=None,
-                 pad=False,
-                 input_shapes=None,
-                 input_dtypes=None,
-                 model_input_labels=None):
+                 pad=False):
 
         """
         - hdf5source (str): path where hdf5 file resides
@@ -303,11 +281,6 @@ class HDF5DataProvider(object):
         - preprocess (dict of callables): functions for preprocessing data in the datasources.  keys of this are subset
         - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.
         - pad (bool): whether to pad data returned if amount of data left to return is less then full batch size
-        - input_shapes: dict containing post-processed shapes of input data to model, keys are elements in sourcelist
-        - input_dtypes: dict containing post-processed data types of input data to model, keys are elements in sourcelist
-        - model_input_labels: list which can be provided to the model itself for input/output target calls
-             this is used in cases where we have explicit training/val splits in the data-provider (group in an hdf5)
-             but the model must take something such as inputs['images'] 
         """
         self.hdf5source = hdf5source
         self.file = h5py.File(self.hdf5source, 'r')
@@ -325,16 +298,6 @@ class HDF5DataProvider(object):
             self.input_shapes = input_shapes
         else:
             self.input_shapes is None
-
-        if input_dtypes is not None:
-            self.input_dtypes = input_dtypes
-        else:
-            self.input_dtypes is None
-
-        if model_input_labels is not None:
-            self.model_input_labels = model_input_labels
-        else:
-            self.model_input_labels = None
         
         for source in self.sourcelist:
             self.data[source] = self.file[source]
@@ -373,30 +336,10 @@ class HDF5DataProvider(object):
         self.curr_epoch = 1
         self.pad = pad
 
-
     @property
     def labels(self):
-        if self.model_input_labels is not None:
-            return self.model_input_labels
-        else:
-            return self.sourcelist
+        return self.sourcelist
 
-    @property
-    def dtypes(self):
-#        return {'images':np.float32,'labels':np.int32}
-        if self.input_dtypes is not None:
-            return self.input_dtypes
-        else:
-            return {source: self.data[source].dtype for source in self.sourcelist}
-
-    @property
-    def shapes(self):
-#        return {'images':(224,224,3),'labels':()}
-        if self.input_shapes is not None:
-            return self.input_shapes
-        else:
-            return {source: self.sizes[source][1:] for source in self.sourcelist}
-    
     def set_epoch_batch(self, epoch, batch_num):
         self.curr_epoch = epoch
         self.curr_batch_num = batch_num
