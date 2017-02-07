@@ -237,9 +237,10 @@ class ParallelBySliceProvider(object):
             subslices = [np.arange(N)[i::].astype(np.int) for i in range(n)]
 
         testbatch = tester.next()
+        print(testbatch)
         testbatch = zip(labels, testbatch)
         dtypes = {k: v.dtype for k, v in testbatch}
-        shapes = {k: v.shapes[1:] for k, v in testbatch}
+        shapes = {k: v.shape[1:] for k, v in testbatch}
         for n in range(self.n_threads):
             kwargs = copy.deepcopy(self.kwargs)
             if 'subslice' not in self.kwargs:
@@ -293,11 +294,6 @@ class HDF5DataProvider(object):
 
         self.data = {}
         self.sizes = {}
-
-        if input_shapes is not None:
-            self.input_shapes = input_shapes
-        else:
-            self.input_shapes is None
         
         for source in self.sourcelist:
             self.data[source] = self.file[source]
