@@ -25,8 +25,7 @@ from tfutils import base, model, utils, data
 num_batches_per_epoch = 10000//256
 
 testhost = 'localhost'       # Host on which the MongoDB instance to be used by tests needs to be running
-testport = 27017
-# testport = 29101             # port on which the MongoDB instance to be used by tests needs to be running
+testport = 29101             # port on which the MongoDB instance to be used by tests needs to be running
 testdbname = 'tfutils-test'  # name of the mongodb database where results will be stored by tests
 testcol = 'testcol'          # name of the mongodb collection where results will be stored by tests
 
