@@ -397,7 +397,8 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer']
+            print(train_res.keys())
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer' and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
@@ -440,7 +441,9 @@ class DBInterface(object):
                     if 'train_results' not in save_to_gfs:
                         save_to_gfs['train_results'] = {}
                     if _k in train_res:
-                        save_to_gfs['train_results'][_k] = train_res.pop(_k)
+                        save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
+                        if len(save_to_gfs['train_results'][_k]) == 1:
+                            save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
                     if 'validation_results' not in save_to_gfs:
                         save_to_gfs['validation_results'] = {}
@@ -449,6 +452,7 @@ class DBInterface(object):
                             save_to_gfs['validation_results'][_vk] = {}
                         if _k in valid_res[_vk]:
                             save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
+
 
             save_rec = sonify(rec)
             make_mongo_safe(save_rec)
