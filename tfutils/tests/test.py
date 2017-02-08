@@ -25,7 +25,8 @@ from tfutils import base, model, utils, data
 num_batches_per_epoch = 10000//256
 
 testhost = 'localhost'       # Host on which the MongoDB instance to be used by tests needs to be running
-testport = 29101             # port on which the MongoDB instance to be used by tests needs to be running
+testport = 27017
+# testport = 29101             # port on which the MongoDB instance to be used by tests needs to be running
 testdbname = 'tfutils-test'  # name of the mongodb database where results will be stored by tests
 testcol = 'testcol'          # name of the mongodb collection where results will be stored by tests
 
@@ -62,14 +63,16 @@ def test_training():
                              'exp_id': 'training0',
                              'save_valid_freq': 20,
                              'save_filters_freq': 200,
-                             'cache_filters_freq': 100}
+                             'cache_filters_freq': 100,
+                             }
     params['train_params'] = {'data_params': {'func': data.MNIST,
                                               'batch_size': 100,
                                               'group': 'train',
                                               'n_threads': 4},
                               'queue_params': {'queue_type': 'fifo',
                                                'batch_size': 100},
-                              'num_steps': 500}
+                              'num_steps': 500
+                              }
     params['learning_rate_params'] = {'learning_rate': 0.05,
                                       'decay_steps': num_batches_per_epoch,
                                       'decay_rate': 0.95,
@@ -112,6 +115,76 @@ def test_training():
     base.train_from_params(**params)
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training1',
                                                     'saved_filters': True}).distinct('step') == [1200, 1400]
+
+
+def get_first_image_target(inputs, outputs, **ttarg_params):
+    """A target for saving the first image of every batch.
+      Used in test_training test below to test save_to_gfs option.
+    """
+    return {'first_image' : inputs['images'][0]}
+
+
+def test_training_save():
+    """This test illustrates saving to the grid file system during training time. 
+
+    """
+    exp_id = 'training2'
+    testcol_2 = 'testcol2'
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+    # delete old collection if it exists
+    coll = conn[testdbname][testcol_2 + '.files']
+    coll.drop()
+
+    # set up the parameters
+    params = {}
+    params['model_params'] = {'func': model.mnist_tfutils}
+    params['save_params'] = {'host': testhost,
+                             'port': testport,
+                             'dbname': testdbname,
+                             'collname': testcol_2,
+                             'exp_id': exp_id,
+                             'save_valid_freq': 3000,
+                             'save_filters_freq': 30000,
+                             'cache_filters_freq': 3000,
+                             'save_to_gfs' : ['first_image']
+                             }
+    params['train_params'] = {'data_params': {'func': data.MNIST,
+                                              'batch_size': 100,
+                                              'group': 'train',
+                                              'n_threads': 4},
+                              'queue_params': {'queue_type': 'fifo',
+                                               'batch_size': 100},
+                              'num_steps': 500,
+                              'targets' : {'func' : get_first_image_target}
+                              }
+    params['learning_rate_params'] = {'learning_rate': 0.05,
+                                      'decay_steps': num_batches_per_epoch,
+                                      'decay_rate': 0.95,
+                                      'staircase': True}
+
+    # actually run the training
+    base.train_from_params(**params)
+
+    #check that the first image has been saved 
+    q = {'exp_id' : exp_id, 'train_results' : {'$exists' : True}}
+    coll = conn[testdbname][testcol_2 + '.files']
+    train_steps = coll.find(q)
+    assert train_steps.count() == 5, (train_steps.count(), 5)
+    idx = train_steps[0]['_id']
+    fn = coll.find({'item_for' : idx})[0]['filename']
+    fs = gridfs.GridFS(coll.database, testcol_2)
+    fh = fs.get_last_version(fn)
+    saved_data = cPickle.loads(fh.read())
+    fh.close()
+    assert 'train_results' in saved_data and 'first_image' in saved_data['train_results']
+    assert len(saved_data['train_results']['first_image']) == 100, (len(saved_data['train_results']['first_image']), 100)
+    assert saved_data['train_results']['first_image'][0].shape == (28 * 28,), (saved_data['train_results']['first_image'][0].shape, (28 * 28,))
+
+
+
+
+
 
 
 def test_validation():
