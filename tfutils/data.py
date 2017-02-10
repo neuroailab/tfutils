@@ -65,21 +65,14 @@ class ParallelByFileProviderBase(object):
 
     def init_threads(self):
         self.input_ops = []
-        self.dtypes = {}
-        self.shapes = None #unconstrained shapes
         for thread_num in range(self.num_threads):
             op = {}
             for attr_num in range(self.num_attrs):
                 fq = self.file_queues[thread_num][attr_num]
                 op.update(self.get_input_op(fq))
             self.input_ops.append(op)
-
-        self.apply_postprocessing()
-            
-        if len(self.dtypes.keys()) == 0:
-            for k in op:
-                self.dtypes[k] = self.meta_dict[k]
-        return [self.input_ops, self.dtypes, self.shapes]
+        self.apply_postprocessing()            
+        return self.input_ops
 
     def get_data_paths(self, paths):
         datasources = []
@@ -100,19 +93,13 @@ class ParallelByFileProviderBase(object):
 
     def apply_postprocessing(self):
         ops = self.input_ops
-        dtypes = self.dtypes
-        odtypes = copy.deepcopy(dtypes)
-        shapes = self.shapes
-        oshapes = copy.deepcopy(shapes)
         for i in range(len(data)):
             for source in self.postprocess:
-                dt = odtypes[source]
-                shp = oshapes[source]
+                op = ops[i][source]
                 for func, args, kwargs in self.postprocess[source]:
-                    op, dt, shp = func(ops[i][source], dt, shp, *args, **kwargs)
+                    op = func(op, *args, **kwargs)
                 ops[i][source] = op
-                dtypes[source] = dt
-                shapes[source] = shp
+
 
 """
     def get_dtypes(self, sources):
@@ -169,11 +156,24 @@ class ParallelByFileProviderBase(object):
 """
 
 def parse_standard_tfmeta(paths):
-    return parsed_meta
-    
+    #TODO: allow specification of metadata paths
+    d = {}
+    for path in paths:
+        mpath = os.path.join(path, 'meta.pkl')
+        if os.path.isfile(mpath):
+            d0 = cPickle.load(open(mpath))
+            assert set(d0.keys()).intersection(d.keys()) == set(), (d0.keys(), d.keys())
+            d.update(d0)
+    return d
+            
 
 class TFRecordsDataProvider(ParallelByFileProviderBase):
-    def __init__(self, source_paths, meta_dict=None, postprocess=None, batch_size=256, **kwargs):
+    def __init__(self,
+                 source_paths,
+                 meta_dict=None,
+                 postprocess=None,
+                 batch_size=256,
+                 **kwargs):
         """
         """
         parsed_meta_dict = parse_standard_tfmeta(source_paths)
@@ -191,8 +191,8 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
         for k in meta_dict:
             if k not in postprocess:
                 postprocess[k] = []
-            postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], )))
-            postprocess[k].insert(1, (tf.reshape, ([batch_size] + meta_dict[k]['shape'], )))
+            postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
+            postprocess[k].insert(1, (tf.reshape, ([batch_size] + meta_dict[k]['shape'], ), {}))
 
         super(TFRecordsDataProvider, self).__init__(source_path,
                                                     meta_dict,
@@ -209,19 +209,6 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
         _, serialized_data = reader.read_up_to(fq, self.batch_size)
         return tf.parse_example(serialized_data, self.parsers)
             
-    def init_threads(self):
-        self.input_ops, self.dtypes, self.shapes = \
-                super(TFRecordsDataProvider, self).init_threads()
-        if self.imagelist is not None:
-        # update data types, shapes and ops if image decoding was requested  
-            self.shapes = self.get_shapes(self.sourcedict, self.tfsource)
-            self.dtypes = self.get_dtypes(self.sourcedict)
-            self.input_ops = self.decode_data_many(self.input_ops)
-        if len(self.py_postprocess) > 0:
-            self.input_ops = self.py_postprocess_many(self.input_ops)
-        return [self.input_ops, self.dtypes, self.shapes]
-
-
 
 class ParallelBySliceProvider(object):
     def __init__(self,
@@ -252,10 +239,6 @@ class ParallelBySliceProvider(object):
             subslices = [np.arange(N)[i::].astype(np.int) for i in range(n)]
 
         testbatch = tester.next()
-        print(testbatch)
-        testbatch = zip(labels, testbatch)
-        dtypes = {k: v.dtype for k, v in testbatch}
-        shapes = {k: v.shape[1:] for k, v in testbatch}
         for n in range(self.n_threads):
             kwargs = copy.deepcopy(self.kwargs)
             if 'subslice' not in self.kwargs:
@@ -265,10 +248,12 @@ class ParallelBySliceProvider(object):
                 kwargs['subslice'] = good_inds[subslices[n]]
             kwargs['batch_size'] = self.batch_size
             dp = self.func(**kwargs)
-            op = tf.py_func(dp.next, [], [dtypes[k] for k in labels])
-            op = {k: op[i] for i, k in enumerate(labels)}
+            op = tf.py_func(dp.next, [], [t.dtype for t in testbatch])
+            for _op, t in zip(op, testbatch):
+                _op.set_shape(t.shape[1:])
+            op = dict(zip(labels, op))
             ops.append(op)
-        return ops, dtypes, shapes
+        return ops
     
         
 class HDF5DataProvider(object):
@@ -463,8 +448,6 @@ def isin(X, Y):
 
 
 def get_queue(nodes,
-              dtypes_dict,
-              shapes_dict,
               queue_type='fifo',
               batch_size=256,
               capacity=None,
@@ -481,11 +464,8 @@ def get_queue(nodes,
 
     for name in nodes.keys():
         names.append(name)
-        dtypes.append(dtypes_dict[name])
-        if shapes_dict is not None:
-            shapes.append(shapes_dict[name])
-    if shapes_dict is None:
-        shapes = None
+        dtypes.append(nodes[name].dtype)
+        shapes.append(nodes[name].get_shape())
 
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=capacity,
@@ -555,10 +535,11 @@ class MNIST(object):
     def init_threads(self):
         func = functools.partial(self.data.next_batch, self.batch_size)
         batches = [tf.py_func(func, [], [tf.float32, tf.uint8]) for _ in range(self.n_threads)]
+        for b in batches:
+            b[0].set_shape([784])
+            b[1].set_shape([])
         ops = [{'images': b[0], 'labels': tf.cast(b[1], tf.int32)} for b in batches]
-        dtypes = {'images': tf.float32, 'labels': tf.int32}
-        shapes = {'images': [784], 'labels': []}
-        return ops, dtypes, shapes
+        return ops
 
 
 class ImageNet(HDF5DataProvider):
