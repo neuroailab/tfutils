@@ -397,7 +397,6 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            print(train_res.keys())
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer' and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
