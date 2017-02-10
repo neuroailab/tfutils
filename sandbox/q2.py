@@ -1,21 +1,22 @@
 import tensorflow as tf
 import itertools
-import random
+import numpy as np
 
-def random_cycle(ls):
+def random_cycle(ls, rng):
     local_ls = ls[:] # defensive copy
     while True:
-        random.shuffle(local_ls)
+        rng.shuffle(local_ls)
         for e in local_ls:
             yield e
 
 class Coordinator(object):
-    def __init__(self, lst, shuffle=False):
+    def __init__(self, lst, shuffle=False, seed=0):
         self.curval = {}
         self.lst = lst
         self.shuffle = shuffle
+        rng = np.random.RandomState(seed=seed)
         if self.shuffle:
-            self.itr = random_cycle(lst)
+            self.itr = random_cycle(lst, rng)
         else:
             self.itr = itertools.cycle(lst)
 
