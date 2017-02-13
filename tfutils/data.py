@@ -49,7 +49,7 @@ class ParallelByFileProviderBase(object):
         self.datasources = self.get_data_paths(source_paths)
         assert len(self.datasources) == self.n_attrs
 
-        if self.n_attrs == 1:
+        if self.n_attrs == 1:            
             fq = tf.train.string_input_producer(self.datasources[0],
                                                 shuffle=shuffle,
                                                 seed=shuffle_seed)
@@ -171,7 +171,7 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
             dtype = meta_dict[k]['dtype']
             if dtype not in [tf.float32, tf.int64]:
                 postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
-                postprocess[k].insert(1, (tf.reshape, ([batch_size] + meta_dict[k]['shape'], ), {}))
+                postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
 
         super(TFRecordsDataProvider, self).__init__(source_paths,
                                                     meta_dict,
@@ -622,3 +622,11 @@ class Item(object):
                 pass
             else:
                 return val
+
+
+def random_cycle(ls, rng):
+    local_ls = ls[:] # defensive copy
+    while True:
+        rng.shuffle(local_ls)
+        for e in local_ls:
+            yield e
