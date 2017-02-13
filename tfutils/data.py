@@ -21,6 +21,7 @@ class ParallelByFileProviderBase(object):
                  batch_size=256,
                  n_threads=4,
                  postprocess=None,
+                 args=None,
                  shuffle=False,
                  shuffle_seed=0):
         """
@@ -41,6 +42,7 @@ class ParallelByFileProviderBase(object):
         self.batch_size = batch_size
         self.n_threads = n_threads
         self.postprocess = {} if postprocess is None else postprocess
+        self.args = args
         for source in self.postprocess:
             assert source in self.meta_dict.keys(), 'postprocess has to be a subset of meta_dict'
 
@@ -76,7 +78,11 @@ class ParallelByFileProviderBase(object):
             op = {}
             for attr_num in range(self.n_attrs):
                 fq = self.file_queues[thread_num][attr_num]
-                _op = self.get_input_op(fq)
+                if self.args is not None:
+                    args = self.args[attr_num]
+                else:
+                    args = ()
+                _op = self.get_input_op(fq, *args)
                 if self.trans_dict:
                     sp = self.source_paths[attr_num]
                     for (sp0, k) in self.trans_dict:
@@ -114,19 +120,27 @@ class ParallelByFileProviderBase(object):
                 ops[i][source] = op
 
 
+def get_parser(dtype):
+    dtype = dtype if dtype in [tf.float32, tf.int64] else tf.string
+    return tf.FixedLenFeature([], dtype)
+
+
 def parse_standard_tfmeta(paths, trans_dict=None):
     d = {}
+    parser_list = []
     for path in paths:
         mpath = os.path.join(path, 'meta.pkl')
         if os.path.isfile(mpath):
             d0 = cPickle.load(open(mpath))
+            parsers = {k: get_parser(d0[k]['dtype']) for k in d0}
+            parser_list.append(parsers)
             if trans_dict:
                 for k in d0:
                     if (path, k) in trans_dict:
                         d0[trans_dict[(path, k)]] = d0.pop(k)
             assert set(d0.keys()).intersection(d.keys()) == set(), (d0.keys(), d.keys())
             d.update(d0)
-    return d
+    return d, parser_list
             
 
 class TFRecordsDataProvider(ParallelByFileProviderBase):
@@ -139,7 +153,7 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
                  **kwargs):
         """
         """
-        parsed_meta_dict = parse_standard_tfmeta(source_paths, trans_dict=trans_dict)
+        parsed_meta_dict, parser_list = parse_standard_tfmeta(source_paths, trans_dict=trans_dict)
         if meta_dict is None:
             meta_dict = parsed_meta_dict
         else:
@@ -162,20 +176,16 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
         super(TFRecordsDataProvider, self).__init__(source_paths,
                                                     meta_dict,
                                                     trans_dict=trans_dict,
+                                                    args=[(p, ) for p in parser_list],
                                                     batch_size=batch_size,
                                                     postprocess=postprocess,
                                                     **kwargs)
 
-        self.parsers = {}
-        for source in self.meta_dict:
-            dtype = self.meta_dict[source]['dtype']
-            dtype = dtype if dtype in [tf.float32, tf.int64] else tf.string
-            self.parsers[source] = tf.FixedLenFeature([], dtype)
         
-    def get_input_op(self, fq):
+    def get_input_op(self, fq, parsers):
         reader = tf.TFRecordReader()
         _, serialized_data = reader.read_up_to(fq, self.batch_size)
-        return tf.parse_example(serialized_data, self.parsers)
+        return tf.parse_example(serialized_data, parsers)
             
 
 class ParallelBySliceProvider(object):
