@@ -2,22 +2,27 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import functools
+import itertools
 import copy
+import cPickle
 
 import numpy as np
 import h5py
 import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
+from tfutils.utils import isstring
 
 class ParallelByFileProviderBase(object):
     def __init__(self,
                  source_paths,
                  meta_dict,
+                 trans_dict=None,
                  batch_size=256,
                  n_threads=4,
-                 postprocess=None
-                ):
+                 postprocess=None,
+                 shuffle=False,
+                 shuffle_seed=0):
         """
         - source (str): path where file(s) reside
         - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are 
@@ -30,46 +35,54 @@ class ParallelByFileProviderBase(object):
             assert isstring(source_paths)
             source_paths = [source_paths]
         self.source_paths = source_paths
-        self.num_attrs = len(self.source_paths)
+        self.n_attrs = len(self.source_paths)
         self.meta_dict = meta_dict
+        self.trans_dict = trans_dict
         self.batch_size = batch_size
-        self.num_threads = num_threads
+        self.n_threads = n_threads
         self.postprocess = {} if postprocess is None else postprocess
         for source in self.postprocess:
             assert source in self.meta_dict.keys(), 'postprocess has to be a subset of meta_dict'
 
         self.datasources = self.get_data_paths(source_paths)
-        assert len(self.datasources) == self.num_attrs
+        assert len(self.datasources) == self.n_attrs
 
-        if self.num_attrs == 1:
-            fq = tf.train_string_input_producer(self.datasources[0],
+        if self.n_attrs == 1:
+            fq = tf.train.string_input_producer(self.datasources[0],
                                                 shuffle=shuffle,
                                                 seed=shuffle_seed)
-            self.file_queues = [fq] * self.num_threads
+            self.file_queues = [[fq]] * self.n_threads
         else:
             self.file_queues = []
             tuples = zip(*self.datasources)
             if shuffle:
-                rng = np.random.RandomState(seed=seed)
+                rng = np.random.RandomState(seed=shuffle_seed)
                 tuples = random_cycle(tuples, rng)
             else:
                 tuples = itertools.cycle(tuples)
-            for n in range(self.num_threads):
+            for n in range(self.n_threads):
                 coord = Coordinator(tuples)
-                for j in range(self.num_attrs):
+                fqs = []
+                for j in range(self.n_attrs):
                     item = Item(coord, j)
                     func = tf.py_func(item.next, [], [tf.string])
-                    fq = tr.train.string_input_producer(func)
+                    fq = tf.train.string_input_producer(func)
                     fqs.append(fq)
                 self.file_queues.append(fqs)
 
     def init_threads(self):
         self.input_ops = []
-        for thread_num in range(self.num_threads):
+        for thread_num in range(self.n_threads):
             op = {}
-            for attr_num in range(self.num_attrs):
+            for attr_num in range(self.n_attrs):
                 fq = self.file_queues[thread_num][attr_num]
-                op.update(self.get_input_op(fq))
+                _op = self.get_input_op(fq)
+                if self.trans_dict:
+                    sp = self.source_paths[attr_num]
+                    for (sp0, k) in self.trans_dict:
+                        if sp == sp0 and k in _op:
+                            _op[self.trans_dict[(sp0, k)]] = _op.pop(k)
+                op.update(_op)
             self.input_ops.append(op)
         self.apply_postprocessing()            
         return self.input_ops
@@ -93,7 +106,7 @@ class ParallelByFileProviderBase(object):
 
     def apply_postprocessing(self):
         ops = self.input_ops
-        for i in range(len(data)):
+        for i in range(len(ops)):
             for source in self.postprocess:
                 op = ops[i][source]
                 for func, args, kwargs in self.postprocess[source]:
@@ -101,67 +114,16 @@ class ParallelByFileProviderBase(object):
                 ops[i][source] = op
 
 
-"""
-    def get_dtypes(self, sources):
-        dtypes = {} 
-        for source in sources:
-            if source in self.imagelist:
-                dtypes[source] = tf.uint8
-            else:
-                dtypes[source] = sources[source]
-        return dtypes
-
-    def get_shapes(self, sources, tfsource):
-        shapes = {}
-        image_shape = self.get_image_shape(tfsource)
-        for source in sources:
-            if source in self.imagelist:
-                shapes[source] = image_shape
-            else:
-                shapes[source] = []
-        return shapes
-
-    def get_image_shape(self, tfsource):
-        datasources = super(TFRecordsDataProvider, self).get_data_paths(tfsource)
-        assert len(self.datasources) > 0, 'No data files provided!'
-        file_ptr = tf.python_io.tf_record_iterator(path=datasources[0])
-
-        data = file_ptr.next()
-        example = tf.train.Example()
-        example.ParseFromString(data)
-
-        height = int(example.features.feature['height'].int64_list.value[0])
-        width = int(example.features.feature['width'].int64_list.value[0])
-        channels = int(example.features.feature['channels'].int64_list.value[0])
-
-        file_ptr.close()
-        return [height, width, channels]
-
-    def py_postprocess_many(self, data):
-        raise NotImplementedError('Not yet tested!') #TODO
-        for i in range(len(data)):
-            for source in self.py_postprocess:
-                func = self.py_postprocess[source][0]
-                return_type = self.py_postprocess[source][1]
-                data[i][source] = tf.py_func(func, data[i][source], return_type)
-        return data
-
-    def decode_features(self, features):
-        for k in features:
-            if k in self.imagelist:
-                features[k] = tf.decode_raw(features[k], tf.uint8)
-                features[k] = tf.reshape(features[k], [self.batch_size] + self.shapes[k])
-        return features
-
-"""
-
-def parse_standard_tfmeta(paths):
-    #TODO: allow specification of metadata paths
+def parse_standard_tfmeta(paths, trans_dict=None):
     d = {}
     for path in paths:
         mpath = os.path.join(path, 'meta.pkl')
         if os.path.isfile(mpath):
             d0 = cPickle.load(open(mpath))
+            if trans_dict:
+                for k in d0:
+                    if (path, k) in trans_dict:
+                        d0[trans_dict[(path, k)]] = d0.pop(k)
             assert set(d0.keys()).intersection(d.keys()) == set(), (d0.keys(), d.keys())
             d.update(d0)
     return d
@@ -171,12 +133,13 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
     def __init__(self,
                  source_paths,
                  meta_dict=None,
+                 trans_dict=None,
                  postprocess=None,
                  batch_size=256,
                  **kwargs):
         """
         """
-        parsed_meta_dict = parse_standard_tfmeta(source_paths)
+        parsed_meta_dict = parse_standard_tfmeta(source_paths, trans_dict=trans_dict)
         if meta_dict is None:
             meta_dict = parsed_meta_dict
         else:
@@ -191,18 +154,23 @@ class TFRecordsDataProvider(ParallelByFileProviderBase):
         for k in meta_dict:
             if k not in postprocess:
                 postprocess[k] = []
-            postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
-            postprocess[k].insert(1, (tf.reshape, ([batch_size] + meta_dict[k]['shape'], ), {}))
+            dtype = meta_dict[k]['dtype']
+            if dtype not in [tf.float32, tf.int64]:
+                postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
+                postprocess[k].insert(1, (tf.reshape, ([batch_size] + meta_dict[k]['shape'], ), {}))
 
-        super(TFRecordsDataProvider, self).__init__(source_path,
+        super(TFRecordsDataProvider, self).__init__(source_paths,
                                                     meta_dict,
+                                                    trans_dict=trans_dict,
                                                     batch_size=batch_size,
                                                     postprocess=postprocess,
                                                     **kwargs)
 
         self.parsers = {}
         for source in self.meta_dict:
-            self.parsers[source] = tf.FixedLenFeature([], self.meta_dict[source])
+            dtype = self.meta_dict[source]['dtype']
+            dtype = dtype if dtype in [tf.float32, tf.int64] else tf.string
+            self.parsers[source] = tf.FixedLenFeature([], dtype)
         
     def get_input_op(self, fq):
         reader = tf.TFRecordReader()
@@ -250,7 +218,7 @@ class ParallelBySliceProvider(object):
             dp = self.func(**kwargs)
             op = tf.py_func(dp.next, [], [t.dtype for t in testbatch])
             for _op, t in zip(op, testbatch):
-                _op.set_shape(t.shape[1:])
+                _op.set_shape(t.shape)
             op = dict(zip(labels, op))
             ops.append(op)
         return ops
@@ -465,7 +433,7 @@ def get_queue(nodes,
     for name in nodes.keys():
         names.append(name)
         dtypes.append(nodes[name].dtype)
-        shapes.append(nodes[name].get_shape())
+        shapes.append(nodes[name].get_shape()[1: ])
 
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=capacity,
@@ -536,8 +504,8 @@ class MNIST(object):
         func = functools.partial(self.data.next_batch, self.batch_size)
         batches = [tf.py_func(func, [], [tf.float32, tf.uint8]) for _ in range(self.n_threads)]
         for b in batches:
-            b[0].set_shape([784])
-            b[1].set_shape([])
+            b[0].set_shape([self.batch_size, 784])
+            b[1].set_shape([self.batch_size])
         ops = [{'images': b[0], 'labels': tf.cast(b[1], tf.int32)} for b in batches]
         return ops
 
@@ -628,7 +596,7 @@ class Coordinator(object):
                 n = len(curval)
                 curval = {i: curval[i] for i in range(n)}
             self.curval = curval
-            return self.curval.pop(j)
+        return self.curval.pop(j)
 
 
 class Item(object):

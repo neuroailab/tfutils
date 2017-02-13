@@ -18,6 +18,15 @@ logging.basicConfig()
 log = logging.getLogger('tfutils')
 
 
+def isstring(x):
+    try:
+        x + ''
+    except:
+        return False
+    else:
+        return True
+        
+
 def version_info(module):
     """Gets version of a standard python module
     """
