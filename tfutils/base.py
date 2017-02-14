@@ -452,7 +452,6 @@ class DBInterface(object):
                         if _k in valid_res[_vk]:
                             save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
 
-
             save_rec = sonify(rec)
             make_mongo_safe(save_rec)
 
@@ -989,7 +988,7 @@ def train_from_params(save_params,
         dbinterface.initialize()
 
         if dont_run:
-            return sess, queues, dbinterface, train_targets, global_step, validation_targets
+            return sess, queues, dbinterface, train_targets, global_step, valid_targets_dict
 
         res = train(sess,
                     queues,

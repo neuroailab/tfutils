@@ -25,7 +25,7 @@ def isstring(x):
         return False
     else:
         return True
-        
+
 
 def version_info(module):
     """Gets version of a standard python module

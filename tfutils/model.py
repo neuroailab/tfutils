@@ -29,15 +29,15 @@ class ConvNet(object):
     def graph(self):
         return tf.get_default_graph().as_graph_def()
 
-    def initializer(self, kind='xavier', stddev=.01,init_file = None,init_keys = None):
+    def initializer(self, kind='xavier', stddev=0.01, init_file=None, init_keys=None):
         if kind == 'xavier':
             init = tf.contrib.layers.initializers.xavier_initializer(seed=self.seed)
         elif kind == 'trunc_norm':
             init = tf.truncated_normal_initializer(mean=0, stddev=stddev, seed=self.seed)
         elif kind == 'from_file':
-            #If we are initializing a pretrained model from a file, load the key from this file
-            #Assumes a numpy .npz object
-            #init_keys is going to be a dictionary mapping {'weight': weight_key,'bias':bias_key}
+            # If we are initializing a pretrained model from a file, load the key from this file
+            # Assumes a numpy .npz object
+            # init_keys is going to be a dictionary mapping {'weight': weight_key,'bias':bias_key}
             params = np.load(init_file)
             init = {}
             init['weight'] = params[init_keys['weight']]
@@ -46,7 +46,6 @@ class ConvNet(object):
             raise ValueError('Please provide an appropriate initialization '
                              'method: xavier or trunc_norm')
         return init
-
 
     @tf.contrib.framework.add_arg_scope
     def conv(self,
@@ -128,7 +127,6 @@ class ConvNet(object):
            init_file=None,
            init_layer_keys=None):
 
-
         if in_layer is None:
             in_layer = self.output
         resh = tf.reshape(in_layer,
@@ -154,7 +152,7 @@ class ConvNet(object):
             biases = tf.get_variable(initializer=init_dict['bias'],
                                      dtype=tf.float32,
                                      name='bias')
-            
+
         fcm = tf.matmul(resh, kernel)
         self.output = tf.nn.bias_add(fcm, biases, name='fc')
         if activation is not None:
@@ -256,6 +254,7 @@ def mnist(inputs, train=True, **kwargs):
 
     return m
 
+
 def alexnet(inputs, train=True, norm=True, **kwargs):
     m = ConvNet(**kwargs)
     dropout = .5 if train else None
@@ -344,6 +343,7 @@ def mnist_tfutils(inputs, **kwargs):
 def alexnet_tfutils(inputs, **kwargs):
     m = alexnet(inputs['images'], **kwargs)
     return m.output, m.params
+
 
 def alexnet_3dworld_tfutils(inputs, **kwargs):
     m = alexnet_3dworld(inputs['images'], **kwargs)

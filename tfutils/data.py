@@ -18,6 +18,7 @@ logging.basicConfig()
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 
+
 class ParallelByFileProviderBase(object):
     def __init__(self,
                  source_paths,
@@ -31,12 +32,12 @@ class ParallelByFileProviderBase(object):
                  shuffle_seed=0):
         """
         - source (str): path where file(s) reside
-        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are 
+        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are
           the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
         - batch_size (int, default=256): size of batches to be returned
         - n_threads (int, default=4): number of threads to be used
         """
-        
+
         if not isinstance(source_paths, list):
             assert isstring(source_paths)
             source_paths = [source_paths]
@@ -54,7 +55,7 @@ class ParallelByFileProviderBase(object):
         self.datasources = self.get_data_paths(source_paths)
         assert len(self.datasources) == self.n_attrs
 
-        if self.n_attrs == 1:            
+        if self.n_attrs == 1:
             fq = tf.train.string_input_producer(self.datasources[0],
                                                 shuffle=shuffle,
                                                 seed=shuffle_seed)
@@ -95,7 +96,7 @@ class ParallelByFileProviderBase(object):
                             _op[self.trans_dict[(sp0, k)]] = _op.pop(k)
                 op.update(_op)
             self.input_ops.append(op)
-        self.apply_postprocessing()            
+        self.apply_postprocessing()
         return self.input_ops
 
     def get_data_paths(self, paths):
@@ -141,7 +142,7 @@ def parse_standard_tfmeta(paths):
             d.update(cPickle.load(open(mpath)))
         meta_list.append(d)
     return meta_list
-            
+
 
 def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
     if meta_dicts is None:
@@ -198,7 +199,7 @@ def add_standard_postprocessing(postprocess, meta_dict):
             postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
             postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
     return postprocess
-    
+
 
 class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
     def __init__(self,
@@ -210,24 +211,23 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
                  **kwargs):
         """
         """
-        parsed_meta_dicts = parse_standard_tfmeta(source_paths)        
+        parsed_meta_dicts = parse_standard_tfmeta(source_paths)
         meta_dicts = complete_metadata(source_paths, meta_dicts, parsed_meta_dicts)
         meta_dict, parser_list = merge_meta(source_paths, meta_dicts, trans_dict)
         postprocess = add_standard_postprocessing(postprocess, meta_dict)
-        super(TFRecordsDataProvider, self).__init__(source_paths,
-                                                    meta_dict,
-                                                    trans_dict=trans_dict,
-                                                    args=[(p, ) for p in parser_list],
-                                                    batch_size=batch_size,
-                                                    postprocess=postprocess,
-                                                    **kwargs)
+        super(TFRecordsParallelByFileProvider, self).__init__(source_paths,
+                                                              meta_dict,
+                                                              trans_dict=trans_dict,
+                                                              args=[(p, ) for p in parser_list],
+                                                              batch_size=batch_size,
+                                                              postprocess=postprocess,
+                                                              **kwargs)
 
-        
     def get_input_op(self, fq, parsers):
         reader = tf.TFRecordReader()
         _, serialized_data = reader.read_up_to(fq, self.batch_size)
         return tf.parse_example(serialized_data, parsers)
-            
+
 
 class ParallelBySliceProvider(object):
     def __init__(self,
@@ -273,8 +273,8 @@ class ParallelBySliceProvider(object):
             op = dict(zip(labels, op))
             ops.append(op)
         return ops
-    
-        
+
+
 class HDF5DataProvider(object):
     def __init__(self,
                  hdf5source,
@@ -313,7 +313,7 @@ class HDF5DataProvider(object):
 
         self.data = {}
         self.sizes = {}
-        
+
         for source in self.sourcelist:
             self.data[source] = self.file[source]
             if source in self.preprocess:
@@ -366,7 +366,7 @@ class HDF5DataProvider(object):
 
     def __iter__(self):
         return self
-    
+
     def next(self):
         b = self.get_next_batch()
         return [b[k] for k in self.sourcelist]
@@ -476,7 +476,7 @@ def get_queue(nodes,
     """
     if capacity is None:
         capacity = 2 * batch_size
-        
+
     names = []
     dtypes = []
     shapes = []
@@ -484,30 +484,30 @@ def get_queue(nodes,
     for name in nodes.keys():
         names.append(name)
         dtypes.append(nodes[name].dtype)
-        shapes.append(nodes[name].get_shape()[1: ])
+        shapes.append(nodes[name].get_shape()[1:])
 
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=capacity,
-                                           min_after_dequeue=capacity // 2,
-                                           dtypes=dtypes,
-                                           shapes=shapes,
-                                           names=names,
-                                           seed=seed)
+                                      min_after_dequeue=capacity // 2,
+                                      dtypes=dtypes,
+                                      shapes=shapes,
+                                      names=names,
+                                      seed=seed)
     elif queue_type == 'fifo':
         queue = tf.FIFOQueue(capacity=capacity,
-                                  dtypes=dtypes,
-                                  shapes=shapes,
-                                  names=names)
+                             dtypes=dtypes,
+                             shapes=shapes,
+                             names=names)
     elif queue_type == 'padding_fifo':
         queue = tf.PaddingFIFOQueue(capacity=capacity,
-                                         dtypes=dtypes,
-                                         shapes=shapes,
-                                         names=names)
+                                    dtypes=dtypes,
+                                    shapes=shapes,
+                                    names=names)
     elif queue_type == 'priority':
         queue = tf.PriorityQueue(capacity=capacity,
-                                      types=dtypes,
-                                      shapes=shapes,
-                                      names=names)
+                                 types=dtypes,
+                                 shapes=shapes,
+                                 names=names)
     else:
         Exception('Queue type %s not recognized' % queue_type)
 
@@ -615,10 +615,10 @@ class ImageNet(HDF5DataProvider):
 
         off = np.random.randint(0, 256 - self.crop_size, size=2)
 
-        if self.group=='train':
+        if self.group == 'train':
             off = np.random.randint(0, 256 - self.crop_size, size=2)
         else:
-            off = int((256 - self.crop_size)/2)
+            off = int((256 - self.crop_size) / 2)
             off = [off, off]
         images_batch = norm[:,
                             off[0]: off[0] + self.crop_size,
@@ -654,7 +654,7 @@ class Item(object):
     def __init__(self, coordinator, j):
         self.j = j
         self.coordinator = coordinator
-    
+
     def next(self):
         while True:
             try:
@@ -666,7 +666,7 @@ class Item(object):
 
 
 def random_cycle(ls, rng):
-    local_ls = ls[:] # defensive copy
+    local_ls = ls[:]
     while True:
         rng.shuffle(local_ls)
         for e in local_ls:

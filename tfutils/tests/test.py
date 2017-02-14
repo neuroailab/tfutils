@@ -81,15 +81,15 @@ def test_training():
                                                               'group': 'test',
                                                               'n_threads': 4},
                                               'queue_params': {'queue_type': 'fifo',
-                                                               'batch_size': 100},                                                                'num_steps': 10,
+                                                               'batch_size': 100},
+                                              'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
 
     # actually run the training
     base.train_from_params(**params)
     # test if results are as expected
     assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0'}).count() == 26
-    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0',
-                                                    'saved_filters': True}).distinct('step') == [0, 200, 400]
+    assert conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step') == [0, 200, 400]
 
     r = conn[testdbname][testcol+'.files'].find({'exp_id': 'training0', 'step': 0})[0]
     asserts_for_record(r, params, train=True)
@@ -120,12 +120,11 @@ def get_first_image_target(inputs, outputs, **ttarg_params):
     """A target for saving the first image of every batch.
       Used in test_training test below to test save_to_gfs option.
     """
-    return {'first_image' : inputs['images'][0]}
+    return {'first_image': inputs['images'][0]}
 
 
 def test_training_save():
-    """This test illustrates saving to the grid file system during training time. 
-
+    """This test illustrates saving to the grid file system during training time.
     """
     exp_id = 'training2'
     testcol_2 = 'testcol2'
@@ -146,7 +145,7 @@ def test_training_save():
                              'save_valid_freq': 3000,
                              'save_filters_freq': 30000,
                              'cache_filters_freq': 3000,
-                             'save_to_gfs' : ['first_image']
+                             'save_to_gfs': ['first_image']
                              }
     params['train_params'] = {'data_params': {'func': data.MNIST,
                                               'batch_size': 100,
@@ -155,7 +154,7 @@ def test_training_save():
                               'queue_params': {'queue_type': 'fifo',
                                                'batch_size': 100},
                               'num_steps': 500,
-                              'targets' : {'func' : get_first_image_target}
+                              'targets': {'func': get_first_image_target}
                               }
     params['learning_rate_params'] = {'learning_rate': 0.05,
                                       'decay_steps': num_batches_per_epoch,
@@ -165,13 +164,13 @@ def test_training_save():
     # actually run the training
     base.train_from_params(**params)
 
-    #check that the first image has been saved 
-    q = {'exp_id' : exp_id, 'train_results' : {'$exists' : True}}
+    # check that the first image has been saved
+    q = {'exp_id': exp_id, 'train_results': {'$exists': True}}
     coll = conn[testdbname][testcol_2 + '.files']
     train_steps = coll.find(q)
     assert train_steps.count() == 5, (train_steps.count(), 5)
     idx = train_steps[0]['_id']
-    fn = coll.find({'item_for' : idx})[0]['filename']
+    fn = coll.find({'item_for': idx})[0]['filename']
     fs = gridfs.GridFS(coll.database, testcol_2)
     fh = fs.get_last_version(fn)
     saved_data = cPickle.loads(fh.read())
@@ -179,11 +178,6 @@ def test_training_save():
     assert 'train_results' in saved_data and 'first_image' in saved_data['train_results']
     assert len(saved_data['train_results']['first_image']) == 100, (len(saved_data['train_results']['first_image']), 100)
     assert saved_data['train_results']['first_image'][0].shape == (28 * 28,), (saved_data['train_results']['first_image'][0].shape, (28 * 28,))
-
-
-
-
-
 
 
 def test_validation():
@@ -284,7 +278,8 @@ def test_feature_extraction():
                              'save_to_gfs': ['features', 'more_features']}
 
     targdict = {'func': get_extraction_target,
-                'to_extract': {'features': 'validation/valid1/hidden1/fc:0', 'more_features' : 'validation/valid1/hidden2/fc:0'}}
+                'to_extract': {'features': 'validation/valid1/hidden1/fc:0',
+                               'more_features': 'validation/valid1/hidden2/fc:0'}}
     targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': data.MNIST,
                                                               'batch_size': 100,
