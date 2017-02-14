@@ -5,6 +5,7 @@ import functools
 import itertools
 import copy
 import cPickle
+import logging
 
 import numpy as np
 import h5py
@@ -12,6 +13,10 @@ import tensorflow as tf
 from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
 from tfutils.utils import isstring
+
+logging.basicConfig()
+log = logging.getLogger('tfutils')
+log.setLevel('DEBUG')
 
 class ParallelByFileProviderBase(object):
     def __init__(self,
@@ -125,54 +130,90 @@ def get_parser(dtype):
     return tf.FixedLenFeature([], dtype)
 
 
-def parse_standard_tfmeta(paths, trans_dict=None):
-    d = {}
-    parser_list = []
+def parse_standard_tfmeta(paths):
+    meta_list = []
     for path in paths:
-        mpath = os.path.join(path, 'meta.pkl')
-        if os.path.isfile(mpath):
-            d0 = cPickle.load(open(mpath))
-            parsers = {k: get_parser(d0[k]['dtype']) for k in d0}
-            parser_list.append(parsers)
-            if trans_dict:
-                for k in d0:
-                    if (path, k) in trans_dict:
-                        d0[trans_dict[(path, k)]] = d0.pop(k)
-            assert set(d0.keys()).intersection(d.keys()) == set(), (d0.keys(), d.keys())
-            d.update(d0)
-    return d, parser_list
+        mpaths = filter(lambda x: x.startswith('meta') and x.endswith('.pkl'),
+                        os.listdir(path))
+        mpaths = [os.path.join(path, mp) for mp in mpaths]
+        d = {}
+        for mpath in mpaths:
+            d.update(cPickle.load(open(mpath)))
+        meta_list.append(d)
+    return meta_list
             
 
-class TFRecordsDataProvider(ParallelByFileProviderBase):
+def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
+    if meta_dicts is None:
+        meta_dicts = parsed_meta_dicts
+        log.info('Using all metadata from saved source')
+    else:
+        assert len(meta_dicts) == len(parsed_meta_dicts)
+        for (i, (md, pmd)) in enumerate(zip(meta_dicts, parsed_meta_dicts)):
+            if md is None:
+                meta_dicts[i] = pmd
+                log.info('Using saved meta %s for path %s' % (str(pmd), source_paths[i]))
+            else:
+                assert hasattr(md, 'keys')
+                for k in pmd:
+                    if k not in pmd:
+                        md[k] = pmd[k]
+                        log.info('Using saved meta for attribute %s for path %s' % (
+                            str(k), source_paths[i]))
+                    else:
+                        for _k in pmd[k]:
+                            if _k not in md[k]:
+                                log.info('Using saved meta for key %s attribute %s for path %' % (
+                                    str(k), str(_k), source_paths[i]))
+                                md[k][_k] = pmd[k][_k]
+
+    assert len(meta_dicts) == len(source_paths)
+    bad_mds = [path for path, md in zip(source_paths, meta_dicts) if len(md) == 0]
+    assert len(bad_mds) == 0, 'No metadata specifed for paths: %s' % str(bad_mds)
+    return meta_dicts
+
+
+def merge_meta(source_paths, meta_dicts, trans_dict):
+    meta_dict = {}
+    parser_list = []
+    for sp, md in zip(source_paths, meta_dicts):
+        parsers = {k: get_parser(md[k]['dtype']) for k in md}
+        parser_list.append(parsers)
+        if trans_dict:
+            for k in md:
+                if (sp, k) in trans_dict:
+                    md[trans_dict[(sp, k)]] = md.pop(k)
+        meta_dict.update(md)
+    return meta_dict, parser_list
+
+
+def add_standard_postprocessing(postprocess, meta_dict):
+    if postprocess is None:
+        postprocess = {}
+    for k in meta_dict:
+        if k not in postprocess:
+            postprocess[k] = []
+        dtype = meta_dict[k]['dtype']
+        if dtype not in [tf.float32, tf.int64]:
+            postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
+            postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
+    return postprocess
+    
+
+class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
     def __init__(self,
                  source_paths,
-                 meta_dict=None,
+                 meta_dicts=None,
                  trans_dict=None,
                  postprocess=None,
                  batch_size=256,
                  **kwargs):
         """
         """
-        parsed_meta_dict, parser_list = parse_standard_tfmeta(source_paths, trans_dict=trans_dict)
-        if meta_dict is None:
-            meta_dict = parsed_meta_dict
-        else:
-            for k in meta_dict:
-                assert k in parsed_meta_dict
-                for kv in parsed_meta_dict[k]:
-                    if kv not in meta_dict[k]:
-                        meta_dict[k][kv] = parsed_meta_dict[k][kv]
-
-        if postprocess is None:
-            postprocess = {}
-        for k in meta_dict:
-            if k not in postprocess:
-                postprocess[k] = []
-            dtype = meta_dict[k]['dtype']
-            if dtype not in [tf.float32, tf.int64]:
-                postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
-                postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
-
+        parsed_meta_dicts = parse_standard_tfmeta(source_paths)        
+        meta_dicts = complete_metadata(source_paths, meta_dicts, parsed_meta_dicts)
+        meta_dict, parser_list = merge_meta(source_paths, meta_dicts, trans_dict)
+        postprocess = add_standard_postprocessing(postprocess, meta_dict)
         super(TFRecordsDataProvider, self).__init__(source_paths,
                                                     meta_dict,
                                                     trans_dict=trans_dict,

@@ -40,7 +40,7 @@ def version_info(module):
             info = pkg_resources.get_distribution(pkgname)
         except pkg_resources.DistributionNotFound:
             version = None
-            log.warning('version information not found for %s' % module.__name__)
+            log.warning('version information not found for %s -- what package is this from?' % module.__name__)
         else:
             version = info.version
 
@@ -69,7 +69,7 @@ def git_info(repo):
     """information about a git repo
     """
     if repo.is_dirty():
-        log.warning('repo %s is dirty' % repo.git_dir)
+        log.warning('repo %s is dirty -- having committment issues?' % repo.git_dir)
         clean = False
     else:
         clean = True
