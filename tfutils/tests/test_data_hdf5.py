@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import
 
-import os, tempfile
-from collections import Counter
+import os
+import tempfile
 
 from numpy.testing import assert_equal
 import numpy as np
@@ -10,6 +10,7 @@ import tensorflow as tf
 
 from tfutils import data
 from tfutils import base
+
 
 def create_hdf5(total_size):
     tempf = tempfile.NamedTemporaryFile(suffix='.hdf5', dir='/tmp', delete=False)
@@ -24,14 +25,14 @@ def create_hdf5(total_size):
 
 def test_fifo_one_thread():
     batch_size = 100
-    data_batch_size = 10
+    data_batch_size = 20
     total_size = batch_size * 10
 
     tmp_path = create_hdf5(total_size)
 
     dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
-                                      kwargs = {'hdf5source': tmp_path,
-                                                'sourcelist': ['data', 'inds']},
+                                      kwargs={'hdf5source': tmp_path,
+                                              'sourcelist': ['data', 'inds']},
                                       batch_size=batch_size,
                                       n_threads=1)
 
@@ -41,15 +42,15 @@ def test_fifo_one_thread():
     for op in ops:
         enqueue_ops.append(queue.enqueue_many(op))
 
-    inputs = queue.dequeue_many(20)
-    
+    inputs = queue.dequeue_many(data_batch_size)
+
     sess = tf.Session()
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
     coord, threads = base.start_queues(sess)
 
     r = sess.run(inputs)
     r1 = sess.run(inputs)
-    
+
     base.stop_queues(sess, [queue], coord, threads)
     sess.close()
 
@@ -64,14 +65,13 @@ def test_fifo_one_thread():
 
 def test_fifo_two_threads_ops():
     batch_size = 100
-    data_batch_size = 10
     total_size = batch_size * 10
 
     tmp_path = create_hdf5(total_size)
 
     dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
-                                      kwargs = {'hdf5source': tmp_path,
-                                                'sourcelist': ['data', 'inds']},
+                                      kwargs={'hdf5source': tmp_path,
+                                              'sourcelist': ['data', 'inds']},
                                       batch_size=batch_size,
                                       n_threads=2)
 
@@ -81,7 +81,7 @@ def test_fifo_two_threads_ops():
 
     r = sess.run(ops)
     r1 = sess.run(ops)
-    
+
     sess.close()
     os.remove(tmp_path)
 
@@ -95,14 +95,14 @@ def test_fifo_two_threads_ops():
 
 def test_fifo_four_threads():
     batch_size = 100
-    data_batch_size = 10
+    data_batch_size = 20
     total_size = batch_size * 10
 
     tmp_path = create_hdf5(total_size)
 
     dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
-                                      kwargs = {'hdf5source': tmp_path,
-                                                'sourcelist': ['data', 'inds']},
+                                      kwargs={'hdf5source': tmp_path,
+                                              'sourcelist': ['data', 'inds']},
                                       batch_size=batch_size,
                                       n_threads=4)
 
@@ -112,8 +112,8 @@ def test_fifo_four_threads():
     for op in ops:
         enqueue_ops.append(queue.enqueue_many(op))
 
-    inputs = queue.dequeue_many(20)
-    
+    inputs = queue.dequeue_many(data_batch_size)
+
     sess = tf.Session()
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
     coord, threads = base.start_queues(sess)
@@ -134,14 +134,14 @@ def test_fifo_four_threads():
 
 def random_four_threads():
     batch_size = 100
-    data_batch_size = 10
+    data_batch_size = 200
     total_size = batch_size * 10
 
     tmp_path = create_hdf5(total_size)
 
     dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
-                                      kwargs = {'hdf5source': tmp_path,
-                                                'sourcelist': ['data', 'inds']},
+                                      kwargs={'hdf5source': tmp_path,
+                                              'sourcelist': ['data', 'inds']},
                                       batch_size=batch_size,
                                       n_threads=4)
 
@@ -151,8 +151,8 @@ def random_four_threads():
     for op in ops:
         enqueue_ops.append(queue.enqueue_many(op))
 
-    inputs = queue.dequeue_many(200)
-    
+    inputs = queue.dequeue_many(data_batch_size)
+
     sess = tf.Session()
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
     coord, threads = base.start_queues(sess)
@@ -169,8 +169,6 @@ def random_four_threads():
     out_inds = [o['inds'] for o in out]
     seen_inds = np.unique(np.concatenate(out_inds))
 
-    #assert len(seen_inds) > 400
-    #assert seen_inds.max() > 740
     return len(seen_inds), seen_inds.max()
 
 
