@@ -8,17 +8,17 @@ import tensorflow as tf
 dir_path = os.path.dirname(os.path.realpath(__file__))
 source_paths = [os.path.join(dir_path, 'tftestdata/images'),
                 os.path.join(dir_path, 'tftestdata/means')]
-trans_dict = {(source_paths[1], 'ids'): 'ids1'}
+trans_dicts = [None, {'ids': 'ids1'}]
 
 
 def test1():
     dp = d.TFRecordsParallelByFileProvider(source_paths,
-                                           trans_dict=trans_dict,
+                                           trans_dicts=trans_dicts,
                                            n_threads=2,
                                            batch_size=20,
                                            shuffle=True)
     sess = tf.Session()
-    ops = dp.init_threads()
+    ops = dp.init_ops()
     queue = b.get_queue(ops[0], queue_type='random')
     enqueue_ops = []
     for op in ops:
@@ -36,12 +36,12 @@ def test1():
 
 def test2():
     dp = d.TFRecordsParallelByFileProvider(source_paths,
-                                           trans_dict=trans_dict,
+                                           trans_dicts=trans_dicts,
                                            n_threads=1,
                                            batch_size=20,
                                            shuffle=False)
     sess = tf.Session()
-    ops = dp.init_threads()
+    ops = dp.init_ops()
     queue = b.get_queue(ops[0], queue_type='fifo')
     enqueue_ops = []
     for op in ops:

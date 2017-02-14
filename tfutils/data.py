@@ -19,50 +19,135 @@ log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 
 
-class ParallelByFileProviderBase(object):
+class DataProviderBase(object):
+    """Base classfor all data provider obejcts.   This class must be subclassed to have a 
+       functional data provider. 
+    """
+    def init_ops(self):
+        """
+        This method is required of all data providers.   It returns a list of tensorflow 
+        operations that provide data, and which will be enqueued by the functions in base.py
+        """
+        raise NotImplementedError()
+
+    
+class ParallelByFileProviderBase(DataProviderBase):
     def __init__(self,
                  source_paths,
-                 meta_dict,
-                 trans_dict=None,
-                 batch_size=256,
-                 n_threads=4,
-                 postprocess=None,
-                 args=None,
+                 n_threads=1,
                  shuffle=False,
-                 shuffle_seed=0):
+                 shuffle_seed=0,
+                 postprocess=None,
+                 read_args=None,
+                 read_kwargs=None,
+                 trans_dicts=None,
+                 **kwargs):
         """
-        - source (str): path where file(s) reside
-        - sourcedict (dict of tf.dtypes): dict of datatypes where the keys are
-          the keys in the tfrecords file to use as source dataarrays and the values are the tensorflow datatypes
-        - batch_size (int, default=256): size of batches to be returned
-        - n_threads (int, default=4): number of threads to be used
-        """
+        This is a base class for parallelizing data reading across large groups of (small-ish) 
+        files.  Different threads read data in different files, which can then be combined into
+        a single reading queue (the enqueing of tensorflow ops for each thread is handled
+        outside of this class).
 
-        if not isinstance(source_paths, list):
-            assert isstring(source_paths)
-            source_paths = [source_paths]
+        This provider supports the concept of "attribute groups", e.g. different sets of 
+        data can be put in different files.  For example, "images" could be put in one set 
+        of files, while "category_labels" could be put in a different set of files. 
+
+        To use this class, subclass it and define the get_input_ops method, which will define
+        the data-reading method specific to your application.  See docstring of the method below
+        for more details. 
+
+        Once instantiated, to get operations to enqueue, call the method init_threads (see below).
+        
+        Arguments are:
+        - source_paths (list of lists of strs): paths of files to be read.  Each element
+          of source_paths is a list of files containing batches of data for a group of 
+          data attributes.  Specifically, source_paths is of the form
+             [[path_11, path_12, path_13, ..., path_1n],
+              [path_21, path_22, path_23, ..., path_2n],
+              ...,
+              [path_m1, path_m2, path_m3, ..., path_mn]]
+
+          where m is the number of attribute groups, n is the number of data files, and
+          path_ij is the path of the j-th group of batches for the i-th group of data
+          attributes.   Parallelization occurs across the data batches, with data from 
+          corresponding batches in path_1j , path2j, etc... combined together to produce
+          a single overall data dictionary for the batch.   It is required that the number of
+          paths in each list be the same, and within corresponding paths, that the number of 
+          batches of data be the same; that is:
+                 for all j:
+                    num_batches in path_1j = num_batches in path_ij  for all 1 <= i <= m
+          Note that for different j, the number of batches can be different.
+
+        - n_threads (int, default=1): number of threads to be used to be 
+
+        - shuffle (bool, default=False): whether to shuffle the order of the paths 
+          anew on each epoch. 
+
+        - shuffle_seed (int, default=0): if shuffle=True, seed to use to initialize the 
+          random number generator used to generate the random shuffle order
+
+        - read_args (list of tuples or None):  if not None, list of positional arguments to 
+          pass to data readers, with one such list of arguments for each attribute group
+
+        - read_kwargs (list of dicts or None): if not None, list of keyword arguments to 
+          pass to data readers, with one such list of arguments for each attribute group
+
+        - postprocess (dict of callables): postprocessing operations to be applied on 
+          a per-attribute basis.  This is of the form:
+             {attr: [(func1, args1, kwargs1), (func2, args2, kwargs2) ...],
+              ... }
+          The operations func1, func2, etc are applied in the indicated order to the data
+          with attribute name attr, with the args and kwargs added:
+                  data[attr] = func1(data[attr], *args1, **kwargs1)
+                  data[attr] = func2(data[attr], *args2, **kwargs2)
+                . ... and so on
+          If a given attribute does not appear in this dictionary, no postprocessing is done.  
+
+        - trans_dicts (list of dict or None): attribute renaming mappings. If not None, 
+          this is of the form
+               [d_1, d_2, ..., d_m]
+          where each d  is either None or a dictionary of the form:
+               d_j = {attr_name1: new_attr_name1, attr_name2: new_attr_name2, ... }
+          In this case, the keys of d_j must be attribute names in the jth attribute group
+          and when produced, data from attr_name1 will be renamed to new_attr_name1 (and so on)
+          before being merged into the consolidated data dictionary for each batch.  If a 
+          given attribute produced by the j-th group does not appear in d_j, the original
+          attribute name is retained. 
+
+        - **kwargs: any other keyword arguments are simple attached to the object for use
+          by subclasses. 
+        """
+    
+        lens = map(len, source_paths)
+        assert all([lens[0] == l for l in lens[1:]]), lens
         self.source_paths = source_paths
         self.n_attrs = len(self.source_paths)
-        self.meta_dict = meta_dict
-        self.trans_dict = trans_dict
-        self.batch_size = batch_size
         self.n_threads = n_threads
         self.postprocess = {} if postprocess is None else postprocess
-        self.args = args
-        for source in self.postprocess:
-            assert source in self.meta_dict.keys(), 'postprocess has to be a subset of meta_dict'
-
-        self.datasources = self.get_data_paths(source_paths)
-        assert len(self.datasources) == self.n_attrs
+        if read_args is not None:
+            assert len(read_args) == self.n_attrs
+        else:
+            read_args = [()] * self.n_atturs
+        self.read_args = read_args
+        if read_kwargs is not None:
+            assert len(read_kwargs) == self.n_attrs
+        else:
+            read_kwargs = [{} for _ in range(self.n_attrs)]
+        self.read_kwargs = read_kwargs
+        if trans_dicts is not None:
+            assert len(trans_dicts) == len(source_paths)
+        self.trans_dicts = trans_dicts
+        for _k in kwargs:
+            setattr(self, _k, kwargs[_k])
 
         if self.n_attrs == 1:
-            fq = tf.train.string_input_producer(self.datasources[0],
+            fq = tf.train.string_input_producer(self.source_paths[0],
                                                 shuffle=shuffle,
                                                 seed=shuffle_seed)
             self.file_queues = [[fq]] * self.n_threads
         else:
             self.file_queues = []
-            tuples = zip(*self.datasources)
+            tuples = zip(*self.source_paths)
             if shuffle:
                 rng = np.random.RandomState(seed=shuffle_seed)
                 tuples = random_cycle(tuples, rng)
@@ -78,42 +163,45 @@ class ParallelByFileProviderBase(object):
                     fqs.append(fq)
                 self.file_queues.append(fqs)
 
-    def init_threads(self):
+    def init_ops(self):
         self.input_ops = []
         for thread_num in range(self.n_threads):
             op = {}
             for attr_num in range(self.n_attrs):
                 fq = self.file_queues[thread_num][attr_num]
-                if self.args is not None:
-                    args = self.args[attr_num]
-                else:
-                    args = ()
-                _op = self.get_input_op(fq, *args)
-                if self.trans_dict:
-                    sp = self.source_paths[attr_num]
-                    for (sp0, k) in self.trans_dict:
-                        if sp == sp0 and k in _op:
-                            _op[self.trans_dict[(sp0, k)]] = _op.pop(k)
+                args = self.read_args[attr_num]
+                kwargs = self.read_kwargs[attr_num]
+                _op = self.get_input_op(fq, *args, **kwargs)
+                if self.trans_dicts and self.trans_dicts[attr_num]:
+                    td = self.trans_dicts[attr_num]
+                    for k in td:
+                        if k in _op:
+                            _op[td[k]] = _op.pop(k)
                 op.update(_op)
             self.input_ops.append(op)
         self.apply_postprocessing()
         return self.input_ops
 
-    def get_data_paths(self, paths):
-        datasources = []
-        for path in paths:
-            if os.path.isdir(path):
-                tfrecord_pattern = os.path.join(path, '*.tfrecords')
-                datasource = tf.gfile.Glob(tfrecord_pattern)
-                datasource.sort()
-                datasources.append(datasource)
-            else:
-                datasources.append([path])
-        dl = map(len, datasources)
-        assert all([dl[0] == d for d in dl[1:]]), dl
-        return datasources
+    def get_input_op(self, fq, *args, **kwargs):
+        """
+        This is the main method that returns a tensorflow data reading operation. 
 
-    def get_input_op(self):
+        This method will get called n_threads * n_attrs times in the method init_ops (see above).
+        Specifically, it is called once for each thread id and each attribute group.  
+        
+        The arguments are:
+             fq:  filename queue object.  When run in a tf session, this object will act 
+                  as a queue of filenames.  When fq.dequeue() is called in a tf.Session, it
+                  will produce the next filename to begin reading from.   Note: it only makes
+                  sense to dequeue from fq if the current file being read has been completed.
+             *args: any position arguments to the reader.  these are specified on a 
+                  per-attribute-group basis (eg. across thread ids, calls for the same attribute
+                  group will get the same args). 
+             *kwargs: any keyward arguments to the reader.  like for *args, these are specified
+                  on a per-attribute-group basis. 
+
+        As an example of this method, see the TFRecordParallelByFileProvider.get_input_ops.  
+        """
         raise NotImplementedError()
 
     def apply_postprocessing(self):
@@ -124,6 +212,24 @@ class ParallelByFileProviderBase(object):
                 for func, args, kwargs in self.postprocess[source]:
                     op = func(op, *args, **kwargs)
                 ops[i][source] = op
+
+
+def get_data_paths(paths):
+    if not isinstance(paths, list):
+        assert isstring(paths)
+        paths = [paths]
+    datasources = []
+    for path in paths:
+        if os.path.isdir(path):
+            tfrecord_pattern = os.path.join(path, '*.tfrecords')
+            datasource = tf.gfile.Glob(tfrecord_pattern)
+            datasource.sort()
+            datasources.append(datasource)
+        else:
+            datasources.append([path])
+    dl = map(len, datasources)
+    assert all([dl[0] == d for d in dl[1:]]), dl
+    return datasources
 
 
 def get_parser(dtype):
@@ -174,16 +280,17 @@ def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
     return meta_dicts
 
 
-def merge_meta(source_paths, meta_dicts, trans_dict):
+def merge_meta(source_paths, meta_dicts, trans_dicts):
     meta_dict = {}
     parser_list = []
-    for sp, md in zip(source_paths, meta_dicts):
+    for ind, (sp, md) in enumerate(zip(source_paths, meta_dicts)):
         parsers = {k: get_parser(md[k]['dtype']) for k in md}
         parser_list.append(parsers)
-        if trans_dict:
+        if trans_dicts and trans_dicts[ind]:
+            td = trans_dicts[ind]
             for k in md:
-                if (sp, k) in trans_dict:
-                    md[trans_dict[(sp, k)]] = md.pop(k)
+                if k in td:
+                    md[td[k]] = md.pop(k)
         meta_dict.update(md)
     return meta_dict, parser_list
 
@@ -203,24 +310,79 @@ def add_standard_postprocessing(postprocess, meta_dict):
 
 class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
     def __init__(self,
-                 source_paths,
-                 meta_dicts=None,
-                 trans_dict=None,
-                 postprocess=None,
+                 source_dirs,
                  batch_size=256,
+                 meta_dicts=None,
+                 postprocess=None,
+                 trans_dicts=None,
                  **kwargs):
         """
+        Subclass of ParallelByFileProviderBase specific to TFRecords files.  
+
+        The argument source_dirs is a list of directories where files for each attribute
+        group reside (one element of source_dir for each attribute group).  The tfrecords files
+        in each directory will be detected and passed on to the ParallelByFileProviderBase. 
+
+        For each attribute in a tfrecords file, metadata about datatype and shape is needed.
+        This class will automatically add postprocessing operations that convert type from raw
+        tfrecords strings to the indicated dataypes, and reshape arrays to the indicated shapes.
+
+        This metadata can be supplied two ways.  First, this class supports a "standard form"
+        for reading metadata from on-disk pickle files.  Specifically, for each source_dir,
+        any files of the form
+              source_dir/meta[*].pkl
+        will be loaded as python pickle objects and assumed to be dictionaries of metadata
+        for the attributes in the files in source_dir. For example, your directory structure
+        could look like:
+            images_and_labels/
+               meta.pkl
+                   containing {"images": {"dtype": tf.uint8, "shape": (256, 256, 3)}.
+                               "labels": {"dtype": tf.int64, "shape": ()}}
+               file1.tfrecords  (containing records with "images" and "labels" keys)
+               file2.tfrecords
+                ....
+            normals/
+               meta.pkl
+                    containing {"normals": {"dtype": tf.uint8, "shape": (256, 256, 3)}}
+               file1.tfrecords (containing records with "normals" key)
+               file2.tfrecords
+                ....
+       
+        If no such metadata pickle files exist, metadata can be supplied by passing the meta_dicts
+        argument. 
+       
+        Arguments:
+            - source_dirs (string or list of strings): List of directory names in which
+              files reside.  All files inside each directory of the form '*.tfrecords' 
+              will be read, and the lists of files are sorted before passing to the 
+              ParallelByFileProviderBase class constructor.   For example:
+                  source_dirs = ['/path/to/my/images_and_labels/'
+                                 '/path/to/my/normals']
+            - batch_size (int, default=256): max size of batches to read (note that read_up_to 
+              operation might produce fewer than batch_size records).
+            - meta_dicts (list of dictionaries or None):  If not None, a list of the same length
+              as source_dirs, of dictionaries containing metadata for the attributes in the 
+              datafiles in the corresponding source_dir.  Example:
+                  meta_dicts = [{'images': {'dtype' ..., },
+                                 'labels': {'dtype' ... },}
+                                {'normals': {'dtype': ....}}]
+              
+             
+
         """
-        parsed_meta_dicts = parse_standard_tfmeta(source_paths)
-        meta_dicts = complete_metadata(source_paths, meta_dicts, parsed_meta_dicts)
-        meta_dict, parser_list = merge_meta(source_paths, meta_dicts, trans_dict)
-        postprocess = add_standard_postprocessing(postprocess, meta_dict)
+        self.source_dirs = source_dirs
+        self.batch_size = batch_size
+        parsed_meta_dicts = parse_standard_tfmeta(self.source_dirs)
+        self.meta_dicts = complete_metadata(self.source_dirs, meta_dicts, parsed_meta_dicts)
+        self.meta_dict, self.parser_list = merge_meta(self.source_dirs,
+                                                      self.meta_dicts,
+                                                      trans_dicts)
+        postprocess = add_standard_postprocessing(postprocess, self.meta_dict)
+        source_paths = get_data_paths(source_dirs)
         super(TFRecordsParallelByFileProvider, self).__init__(source_paths,
-                                                              meta_dict,
-                                                              trans_dict=trans_dict,
-                                                              args=[(p, ) for p in parser_list],
-                                                              batch_size=batch_size,
+                                                              read_args=[(p, ) for p in self.parser_list],
                                                               postprocess=postprocess,
+                                                              trans_dicts=trans_dicts,
                                                               **kwargs)
 
     def get_input_op(self, fq, parsers):
@@ -229,7 +391,11 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
         return tf.parse_example(serialized_data, parsers)
 
 
-class ParallelBySliceProvider(object):
+class ParallelBySliceProvider(DataProviderBase):
+    """
+    Data provider for handling parallelization by records within one large randomly-accessible file. 
+    See an example of usage in tfutils/tests/test_data_hdf5.py.
+    """
     def __init__(self,
                  basefunc,
                  kwargs,
@@ -242,7 +408,7 @@ class ParallelBySliceProvider(object):
         self.n_threads = n_threads
         self.batch_size = batch_size
 
-    def init_threads(self):
+    def init_ops(self):
         n = self.n_threads
         ops = []
         tester = self.func(batch_size=self.batch_size, **self.kwargs)
@@ -275,7 +441,7 @@ class ParallelBySliceProvider(object):
         return ops
 
 
-class HDF5DataProvider(object):
+class HDF5DataReader(object):
     def __init__(self,
                  hdf5source,
                  sourcelist,
@@ -551,7 +717,7 @@ class MNIST(object):
         feed_dict = {'images': batch[0], 'labels': batch[1].astype(np.int32)}
         return feed_dict
 
-    def init_threads(self):
+    def init_ops(self):
         func = functools.partial(self.data.next_batch, self.batch_size)
         batches = [tf.py_func(func, [], [tf.float32, tf.uint8]) for _ in range(self.n_threads)]
         for b in batches:
@@ -561,7 +727,7 @@ class MNIST(object):
         return ops
 
 
-class ImageNet(HDF5DataProvider):
+class ImageNet(HDF5DataReader):
 
     N_TRAIN = 1281167
     N_VAL = 50000

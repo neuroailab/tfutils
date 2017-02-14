@@ -3,98 +3,187 @@ from __future__ import division, print_function, absolute_import
 import os, tempfile
 from collections import Counter
 
+from numpy.testing import assert_equal
 import numpy as np
 import h5py
 import tensorflow as tf
 
 from tfutils import data
-
+from tfutils import base
 
 def create_hdf5(total_size):
     tempf = tempfile.NamedTemporaryFile(suffix='.hdf5', dir='/tmp', delete=False)
     tempf.close()
     with h5py.File(tempf.name, 'w') as f:
-        f.create_dataset('data', (total_size, ), dtype=np.int64)
-        f['data'][:] = np.arange(total_size)
+        f.create_dataset('data', (total_size, ), dtype=np.float)
+        f.create_dataset('inds', (total_size, ), dtype=np.int64)
+        f['data'][:] = np.sin(np.arange(total_size))
+        f['inds'][:] = np.arange(total_size)
     return tempf.name
 
 
-class DataHDF5(data.HDF5DataProvider):
-
-    def __init__(self, path=None, batch_size=5, total_size=100):
-        self.kind = 'hdf5 read (feed_dict)'
-        self.batch_size = batch_size
-        self.data_path = create_hdf5(total_size=total_size)
-
-        super(DataHDF5, self).__init__(self.data_path,
-                                       ['data'],
-                                       batch_size=self.batch_size,
-                                       pad=True)
-
-    def next(self):
-        batch = super(DataHDF5, self).next()
-        feed_dict = {'data': np.squeeze(batch['data'])}
-        return feed_dict
-
-    def cleanup(self):
-        os.remove(self.data_path)
-
-
-def test_queue_unique():
+def test_fifo_one_thread():
     batch_size = 100
     data_batch_size = 10
     total_size = batch_size * 10
 
-    # 2*total_size so that we don't go back to the start of the data
-    data_iter = DataHDF5(batch_size=data_batch_size, total_size=2*total_size)
+    tmp_path = create_hdf5(total_size)
 
-    queue = data.Queue(data_iter, batch_size=batch_size)
-    with h5py.File(data_iter.data_path) as f:
-        data_from_file = f['data'][:]
+    dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
+                                      kwargs = {'hdf5source': tmp_path,
+                                                'sourcelist': ['data', 'inds']},
+                                      batch_size=batch_size,
+                                      n_threads=1)
+
+    ops = dp.init_ops()
+    queue = base.get_queue(ops[0], queue_type='fifo')
+    enqueue_ops = []
+    for op in ops:
+        enqueue_ops.append(queue.enqueue_many(op))
+
+    inputs = queue.dequeue_many(20)
+    
+    sess = tf.Session()
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
+    coord, threads = base.start_queues(sess)
+
+    r = sess.run(inputs)
+    r1 = sess.run(inputs)
+    
+    base.stop_queues(sess, [queue], coord, threads)
+    sess.close()
+
+    os.remove(tmp_path)
+
+    assert_equal(r['data'], np.sin(np.arange(20)))
+    assert_equal(r['inds'], np.arange(20))
+
+    assert_equal(r1['data'], np.sin(np.arange(20, 40)))
+    assert_equal(r1['inds'], np.arange(20, 40))
+
+
+def test_fifo_two_threads_ops():
+    batch_size = 100
+    data_batch_size = 10
+    total_size = batch_size * 10
+
+    tmp_path = create_hdf5(total_size)
+
+    dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
+                                      kwargs = {'hdf5source': tmp_path,
+                                                'sourcelist': ['data', 'inds']},
+                                      batch_size=batch_size,
+                                      n_threads=2)
+
+    ops = dp.init_ops()
 
     sess = tf.Session()
-    queue.start_threads(sess)
-    data_from_queue = []
-    for i in range(total_size // batch_size):
-        batch = queue.batch['data'].eval(session=sess)
-        data_from_queue.extend(batch.tolist())
 
-    queue.stop_threads(sess)
+    r = sess.run(ops)
+    r1 = sess.run(ops)
+    
     sess.close()
-    data_iter.cleanup()
+    os.remove(tmp_path)
 
-    # Are values in order?
-    # assert np.all(data_from_file[:total_size] == data_from_queue)
-    # Are values unique?
-    assert np.all([v == 1 for k,v in Counter(data_from_queue).items()])
-
-
-def test_queue_size():
-    """
-    This test checks if queues are producing batches of correct size.
-    """
-    batch_size = 256
-    shape = [5, 5, 3]
-
-    # batch size of 1 (special case)
-    data_batch_size = 1
-    data_iter = [{'data': np.random.random(shape)} for i in range(1)]
-    queue = data.Queue(data_iter, data_batch_size=data_batch_size, batch_size=batch_size)
-    batch = queue.next()
-    assert list(batch['data'].shape) == shape
-    assert queue.nodes['data'].get_shape().as_list() == shape
-    assert queue.batch['data'].get_shape().as_list() == [batch_size] + shape
-
-    # batch size of 32 (general case)
-    data_batch_size = 32
-    data_iter = [{'data': np.random.random((data_batch_size, 5, 5, 3))} for i in range(1)]
-    queue = data.Queue(data_iter, data_batch_size=data_batch_size, batch_size=batch_size)
-    batch = queue.next()
-    assert batch['data'].shape == (data_batch_size, 5, 5, 3)
-    assert queue.nodes['data'].get_shape().as_list() == [data_batch_size] + shape
-    assert queue.batch['data'].get_shape().as_list() == [batch_size] + shape
+    inds0 = map(np.array, [_r['inds'] for _r in r])
+    inds1 = map(np.array, [_r['inds'] for _r in r1])
+    assert_equal(inds0[0], np.arange(100))
+    assert_equal(inds0[1], np.arange(500, 600))
+    assert_equal(inds1[0], np.arange(100, 200))
+    assert_equal(inds1[1], np.arange(600, 700))
 
 
-if __name__ == '__main__':
-    test_queue_unique()
-    test_queue_size()
+def test_fifo_four_threads():
+    batch_size = 100
+    data_batch_size = 10
+    total_size = batch_size * 10
+
+    tmp_path = create_hdf5(total_size)
+
+    dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
+                                      kwargs = {'hdf5source': tmp_path,
+                                                'sourcelist': ['data', 'inds']},
+                                      batch_size=batch_size,
+                                      n_threads=4)
+
+    ops = dp.init_ops()
+    queue = base.get_queue(ops[0], queue_type='fifo')
+    enqueue_ops = []
+    for op in ops:
+        enqueue_ops.append(queue.enqueue_many(op))
+
+    inputs = queue.dequeue_many(20)
+    
+    sess = tf.Session()
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
+    coord, threads = base.start_queues(sess)
+
+    out = []
+    for _ in range(100):
+        out.append(sess.run(inputs))
+
+    base.stop_queues(sess, [queue], coord, threads)
+    sess.close()
+
+    os.remove(tmp_path)
+
+    seen_inds = np.unique(np.concatenate([o['inds'] for o in out]))
+
+    assert_equal(seen_inds, np.arange(1000))
+
+
+def random_four_threads():
+    batch_size = 100
+    data_batch_size = 10
+    total_size = batch_size * 10
+
+    tmp_path = create_hdf5(total_size)
+
+    dp = data.ParallelBySliceProvider(basefunc=data.HDF5DataReader,
+                                      kwargs = {'hdf5source': tmp_path,
+                                                'sourcelist': ['data', 'inds']},
+                                      batch_size=batch_size,
+                                      n_threads=4)
+
+    ops = dp.init_ops()
+    queue = base.get_queue(ops[0], queue_type='random')
+    enqueue_ops = []
+    for op in ops:
+        enqueue_ops.append(queue.enqueue_many(op))
+
+    inputs = queue.dequeue_many(200)
+    
+    sess = tf.Session()
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
+    coord, threads = base.start_queues(sess)
+
+    out = []
+    for _ in range(3):
+        out.append(sess.run(inputs))
+
+    base.stop_queues(sess, [queue], coord, threads)
+    sess.close()
+
+    os.remove(tmp_path)
+
+    out_inds = [o['inds'] for o in out]
+    seen_inds = np.unique(np.concatenate(out_inds))
+
+    #assert len(seen_inds) > 400
+    #assert seen_inds.max() > 740
+    return len(seen_inds), seen_inds.max()
+
+
+def test_random_four_threads():
+    sl = []
+    m = []
+    for ind in range(50):
+        print(ind)
+        a, b = random_four_threads()
+        sl.append(a)
+        m.append(b)
+    sl = np.array(sl)
+    m = np.array(m)
+    assert sl.min() > 400
+    assert m.min() > 740
+    return sl, m
