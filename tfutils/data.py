@@ -21,7 +21,7 @@ log.setLevel('DEBUG')
 
 
 class DataProviderBase(object):
-    """Base classfor all data provider obejcts.   This class must be subclassed to have a
+    """Base class for all data provider objects.   This class must be subclassed to have a
        functional data provider.
     """
     def init_ops(self):
@@ -79,7 +79,7 @@ class ParallelByFileProviderBase(DataProviderBase):
                     num_batches in path_1j = num_batches in path_ij  for all 1 <= i <= m
           Note that for different j, the number of batches can be different.
 
-        - n_threads (int, default=1): number of threads to be used to be
+        - n_threads (int, default=1): number of threads to be used
 
         - shuffle (bool, default=False): whether to shuffle the order of the paths
           anew on each epoch.
@@ -304,7 +304,8 @@ def add_standard_postprocessing(postprocess, meta_dict):
         if k not in postprocess:
             postprocess[k] = []
         dtype = meta_dict[k]['dtype']
-        if dtype not in [tf.float32, tf.int64]:
+        #TODO Needs to be improved to be able to handle float_lists and int_lists
+        if dtype != tf.string:
             postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
             postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
     return postprocess
