@@ -11,10 +11,27 @@ source_paths = [os.path.join(dir_path, 'tftestdata/images'),
 trans_dicts = [None, {'ids': 'ids1'}]
 
 
+def test0():
+    dp = d.TFRecordsParallelByFileProvider(source_paths,
+                                           trans_dicts=trans_dicts,
+                                           n_threads=4,
+                                           batch_size=20,
+                                           shuffle=False)
+    sess = tf.Session()
+    tf.train.start_queue_runners(sess=sess)
+
+    N = 1000
+    for i in range(N):
+        res = sess.run([[fq.dequeue() for fq in fqs] for fqs in dp.file_queues])
+        x, y = res[0]
+        print('%d of %d' % (i, N))
+        assert x.split('/')[-1] == y.split('/')[-1]
+
+
 def test1():
     dp = d.TFRecordsParallelByFileProvider(source_paths,
                                            trans_dicts=trans_dicts,
-                                           n_threads=2,
+                                           n_threads=4,
                                            batch_size=20,
                                            shuffle=True)
     sess = tf.Session()
@@ -27,11 +44,11 @@ def test1():
     tf.train.start_queue_runners(sess=sess)
     inputs = queue.dequeue_many(20)
 
-    for i in range(100):
+    for i in range(1000):
         res = sess.run(inputs)
         assert res['images'].shape == (20, 32, 32, 3)
-        assert_allclose(res['images'].mean(1).mean(1).mean(1), res['means'], rtol=1e-05)
         assert_equal(res['ids'], res['ids1'])
+        assert_allclose(res['images'].mean(1).mean(1).mean(1), res['means'], rtol=1e-05)
 
 
 def test2():
@@ -51,7 +68,7 @@ def test2():
     inputs = queue.dequeue_many(31)
 
     testlist = np.arange(3100) % 1600
-    for i in range(100):
+    for i in range(1000):
         res = sess.run(inputs)
         assert res['images'].shape == (31, 32, 32, 3)
         assert_allclose(res['images'].mean(1).mean(1).mean(1), res['means'], rtol=1e-05)

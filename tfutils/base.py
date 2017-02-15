@@ -799,7 +799,7 @@ def train_from_params(save_params,
             Containing params for data sources and targets in training:
                 - train_params['data'] contains params for the data
                     - train_params['data']['func'] is the function that constructs the data
-                      provider.   This dataprovider must be an instance of a subclass of 
+                      provider.   This dataprovider must be an instance of a subclass of
                       tfutils.data.DataProviderBase.   Specifically, it must have a method
                       called "init_ops" -- see documentation in tfutils/data.py.
                     - remainder of train_params['data'] are kwargs passed to func
