@@ -66,11 +66,11 @@ def test2():
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
     tf.train.start_queue_runners(sess=sess)
     inputs = queue.dequeue_many(31)
-
-    testlist = np.arange(3100) % 1600
-    for i in range(1000):
+    N = 1000
+    testlist = np.arange(31 * N) % 1600
+    for i in range(N):
         res = sess.run(inputs)
         assert res['images'].shape == (31, 32, 32, 3)
         assert_allclose(res['images'].mean(1).mean(1).mean(1), res['means'], rtol=1e-05)
-        assert_equal(res['ids'], res['ids1'])
         assert_equal(res['ids'], testlist[31 * i: 31 * (i+1)])
+        assert_equal(res['ids'], res['ids1'])
