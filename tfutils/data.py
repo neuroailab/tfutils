@@ -305,7 +305,7 @@ def add_standard_postprocessing(postprocess, meta_dict):
             postprocess[k] = []
         dtype = meta_dict[k]['dtype']
         #TODO Needs to be improved to be able to handle float_lists and int_lists
-        if dtype != tf.string:
+        if dtype not in [tf.string, tf.int64, tf.float32]:
             postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
             postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
     return postprocess
