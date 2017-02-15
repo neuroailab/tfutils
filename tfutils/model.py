@@ -102,6 +102,9 @@ class ConvNet(object):
             if layer not in self.params:
                 self.params[layer] = OrderedDict()
             self.params[layer][kwargs['name']] = params
+
+            return self.output
+
         return wrapper
 
     def _val2list(self, value):
