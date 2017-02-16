@@ -80,18 +80,17 @@ def test2():
 def test3():
     """
     This test uses the data in tftestdata2/ to illustrate how to read out
-    something that has been written as a string but is "really" an integer. 
-    The data in tftestdata2/ids is just a single attribute, namely "ids", 
+    something that has been written as a string but is "really" an integer.
+    The data in tftestdata2/ids is just a single attribute, namely "ids",
     written out as a string but actually it really represents integers.
     """
     source_paths = [os.path.join(dir_path, 'tftestdata2/ids')]
-    postprocess = {'ids': [(tf.string_to_number, (tf.int32, ) , {})]}
+    postprocess = {'ids': [(tf.string_to_number, (tf.int32, ), {})]}
     dp = d.TFRecordsParallelByFileProvider(source_paths,
                                            n_threads=1,
                                            batch_size=20,
                                            shuffle=False,
-                                           postprocess=postprocess
-    )
+                                           postprocess=postprocess)
     sess = tf.Session()
     ops = dp.init_ops()
     queue = b.get_queue(ops[0], queue_type='fifo')
