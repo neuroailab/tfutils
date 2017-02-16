@@ -16,6 +16,10 @@ Each attribute will be split into a separate folder.
 Within each attribute folder there will be multiple 
 tfrecords files, each containing 4 batches of batch size 256 of data.
 
+Besides, one pickeled meta data file "meta.pkl", containing 
+the key, shape and data type of the attribute will be created in
+each attribute folder.
+
 Additionally each image will be resized to 256x256, which is not necessary
 but useful to do before writing the tfrecords file
 
