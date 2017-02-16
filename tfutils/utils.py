@@ -12,6 +12,7 @@ import numpy as np
 from bson.objectid import ObjectId
 import git
 
+from tensorflow.python import DType
 # from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
@@ -129,6 +130,8 @@ def sonify(arg, memo=None):
     if isinstance(arg, ObjectId):
         rval = arg
     elif isinstance(arg, datetime.datetime):
+        rval = arg
+    elif isinstance(arg, DType):
         rval = arg
     elif isinstance(arg, np.floating):
         rval = float(arg)
