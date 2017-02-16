@@ -254,30 +254,38 @@ def parse_standard_tfmeta(paths):
 
 def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
     if meta_dicts is None:
+        # if no meta_dicts is passed, just use the saved one for all source_paths
         meta_dicts = parsed_meta_dicts
         log.info('Using all metadata from saved source')
     else:
         assert len(meta_dicts) == len(parsed_meta_dicts)
         for (i, (md, pmd)) in enumerate(zip(meta_dicts, parsed_meta_dicts)):
+            # if no meta is passed for this particular source_path, used the saved one
             if md is None:
                 meta_dicts[i] = pmd
                 log.info('Using saved meta %s for path %s' % (str(pmd), source_paths[i]))
             else:
+                if isstring(md):
+                    md = {md: None}
+                    meta_dicts[i] = md
+                elif isinstance(md, list):
+                    md = {_m: None for _m in md}
+                    meta_dicts[i] = md
                 assert hasattr(md, 'keys')
-                for k in pmd:
-                    if k not in pmd:
-                        md[k] = pmd[k]
-                        log.info('Using saved meta for attribute %s for path %s' % (
-                            str(k), source_paths[i]))
-                    else:
-                        for _k in pmd[k]:
-                            if _k not in md[k]:
-                                log.info('Using saved meta for key %s attribute %s for path %' % (
-                                    str(k), str(_k), source_paths[i]))
-                                md[k][_k] = pmd[k][_k]
+                for k in md:
+                    assert k in pmd, pmd.keys()
+                    if md[k] is None:
+                        md[k] = {}
+                    # for all saved metadata keys, if that key is not present in the provide metadata,
+                    # add the key from the saved metadata
+                    for _k in pmd[k]:
+                        if _k not in md[k]:
+                            log.info('Using saved meta for key %s attribute %s for path %s' % (
+                                str(k), str(_k), source_paths[i]))
+                            md[k][_k] = pmd[k][_k]
 
     assert len(meta_dicts) == len(source_paths)
-    bad_mds = [path for path, md in zip(source_paths, meta_dicts) if len(md) == 0]
+    bad_mds = [path for path, _md in zip(source_paths, meta_dicts) if len(_md) == 0]
     assert len(bad_mds) == 0, 'No metadata specifed for paths: %s' % str(bad_mds)
     return meta_dicts
 
@@ -304,7 +312,6 @@ def add_standard_postprocessing(postprocess, meta_dict):
         if k not in postprocess:
             postprocess[k] = []
         dtype = meta_dict[k]['dtype']
-        #TODO Needs to be improved to be able to handle float_lists and int_lists
         if dtype not in [tf.string, tf.int64, tf.float32]:
             postprocess[k].insert(0, (tf.decode_raw, (meta_dict[k]['dtype'], ), {}))
             postprocess[k].insert(1, (tf.reshape, ([-1] + meta_dict[k]['shape'], ), {}))
@@ -363,12 +370,22 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
                                  '/path/to/my/normals']
             - batch_size (int, default=256): max size of batches to read (note that read_up_to
               operation might produce fewer than batch_size records).
-            - meta_dicts (list of dictionaries or None):  If not None, a list of the same length
-              as source_dirs, of dictionaries containing metadata for the attributes in the
-              datafiles in the corresponding source_dir.  Example:
+            - meta_dicts (list of dictionaries, lists strings or None):
+              If not None, a list of the same length as source_dirs.  Elements of meta_dicts
+              can be dictionaries, lists of strings, or strings.  If dictionaries, then this
+              containing metadata for the attributes in the datafiles in the corresponding
+              source_dir.  Example:
                   meta_dicts = [{'images': {'dtype' ..., },
                                  'labels': {'dtype' ... },}
                                 {'normals': {'dtype': ....}}]
+              If an element of meta_dicts is a list of strings, those are treated as the attributes
+              to be read from that attribute group (and others ignored).   If the element is a string
+              just that attribute is loaded.   For example:
+                  meta_dicts = ['images', ['ids', 'means'], ["segmentations"]]
+              indicates that the attribute "images" is loaded from the files in the first source_path,
+              the attributes "ids" and "means" are loaded for the second source_path, and the attribute
+              "segmentations" for the third.
+
         """
         self.source_dirs = source_dirs
         self.batch_size = batch_size
