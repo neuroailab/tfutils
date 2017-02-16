@@ -49,7 +49,7 @@ def get_shapes_and_dtypes(data):
             dtypes[k] = tf.uint8
         elif isinstance(data[k][0], np.bool_):
             shapes[k] = []
-            dtypes[k] = tf.int64
+            dtypes[k] = tf.string
         else:
             raise TypeError('Unknown data type', type(data[k][0]))
     return shapes, dtypes
