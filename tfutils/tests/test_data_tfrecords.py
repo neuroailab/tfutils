@@ -65,12 +65,45 @@ def test2():
         enqueue_ops.append(queue.enqueue_many(op))
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
     tf.train.start_queue_runners(sess=sess)
-    inputs = queue.dequeue_many(31)
+    K = 31
+    inputs = queue.dequeue_many(K)
     N = 1000
-    testlist = np.arange(31 * N) % 1600
+    testlist = np.arange(K * N) % 1600
     for i in range(N):
         res = sess.run(inputs)
-        assert res['images'].shape == (31, 32, 32, 3)
+        assert res['images'].shape == (K, 32, 32, 3)
         assert_allclose(res['images'].mean(1).mean(1).mean(1), res['means'], rtol=1e-05)
-        assert_equal(res['ids'], testlist[31 * i: 31 * (i+1)])
+        assert_equal(res['ids'], testlist[K * i: K * (i+1)])
         assert_equal(res['ids'], res['ids1'])
+
+
+def test3():
+    """
+    This test uses the data in tftestdata2/ to illustrate how to read out
+    something that has been written as a string but is "really" an integer. 
+    The data in tftestdata2/ids is just a single attribute, namely "ids", 
+    written out as a string but actually it really represents integers.
+    """
+    source_paths = [os.path.join(dir_path, 'tftestdata2/ids')]
+    postprocess = {'ids': [(tf.string_to_number, (tf.int32, ) , {})]}
+    dp = d.TFRecordsParallelByFileProvider(source_paths,
+                                           n_threads=1,
+                                           batch_size=20,
+                                           shuffle=False,
+                                           postprocess=postprocess
+    )
+    sess = tf.Session()
+    ops = dp.init_ops()
+    queue = b.get_queue(ops[0], queue_type='fifo')
+    enqueue_ops = []
+    for op in ops:
+        enqueue_ops.append(queue.enqueue_many(op))
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
+    tf.train.start_queue_runners(sess=sess)
+    K = 20
+    inputs = queue.dequeue_many(K)
+    N = 100
+    testlist = np.arange(K * N) % 160
+    for i in range(N):
+        res = sess.run(inputs)
+        assert_equal(res['ids'], testlist[K * i: K * (i+1)])
