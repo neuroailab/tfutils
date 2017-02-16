@@ -12,10 +12,20 @@ import numpy as np
 from bson.objectid import ObjectId
 import git
 
+from tensorflow.python import DType
 # from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
+
+
+def isstring(x):
+    try:
+        x + ''
+    except:
+        return False
+    else:
+        return True
 
 
 def version_info(module):
@@ -31,7 +41,7 @@ def version_info(module):
             info = pkg_resources.get_distribution(pkgname)
         except pkg_resources.DistributionNotFound:
             version = None
-            log.warning('version information not found for %s' % module.__name__)
+            log.warning('version information not found for %s -- what package is this from?' % module.__name__)
         else:
             version = info.version
 
@@ -60,7 +70,7 @@ def git_info(repo):
     """information about a git repo
     """
     if repo.is_dirty():
-        log.warning('repo %s is dirty' % repo.git_dir)
+        log.warning('repo %s is dirty -- having committment issues?' % repo.git_dir)
         clean = False
     else:
         clean = True
@@ -120,6 +130,8 @@ def sonify(arg, memo=None):
     if isinstance(arg, ObjectId):
         rval = arg
     elif isinstance(arg, datetime.datetime):
+        rval = arg
+    elif isinstance(arg, DType):
         rval = arg
     elif isinstance(arg, np.floating):
         rval = float(arg)
@@ -190,10 +202,10 @@ def get_loss(inputs,
     flag_with_out = True
     flag_with_tar = True
     for key_value in loss_per_case_func_params.keys():
-        if key_value=='_outputs':
+        if key_value == '_outputs':
             flag_with_out = False
             loss_func_kwargs[loss_per_case_func_params[key_value]] = outputs
-        elif key_value=='_targets_$all':
+        elif key_value == '_targets_$all':
             flag_with_tar = False
             loss_func_kwargs[loss_per_case_func_params[key_value]] = labels
         elif key_value.startswith('_targets_'):

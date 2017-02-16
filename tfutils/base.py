@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow.core.protobuf import saver_pb2
 
 from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from tfutils.data import Queue
+from tfutils.data import get_queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
 from tfutils.utils import (make_mongo_safe,
@@ -41,6 +41,11 @@ TODO:
       without having to load up lots of extraneous objects.
     - epoch and batch_num should be added to what is saved.   But how to do that with Queues?
 """
+
+if 'TFUTILS_HOME' in os.environ:
+    TFUTILS_HOME = os.environ['TFUTILS_HOME']
+else:
+    TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
                                   'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
@@ -195,7 +200,7 @@ class DBInterface(object):
         self.outrecs = []
 
         self.conn = pymongo.MongoClient(host=self.host, port=self.port)
-        _info = self.conn.server_info()
+        self.conn.server_info()
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
         recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
@@ -212,7 +217,7 @@ class DBInterface(object):
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
                                                  port=self.load_port)
-            _info = self.load_conn.server_info()
+            self.load_conn.server_info()
         else:
             self.load_conn = self.conn
         self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname],
@@ -229,8 +234,7 @@ class DBInterface(object):
             cache_dir = None
 
         if cache_dir is None:
-            self.cache_dir = os.path.join(os.environ['HOME'],
-                                          '.tfutils',
+            self.cache_dir = os.path.join(TFUTILS_HOME,
                                           '%s:%d' % (self.host, self.port),
                                           self.dbname,
                                           self.collname,
@@ -272,8 +276,10 @@ class DBInterface(object):
                 tf_saver.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
         if not self.do_restore or self.load_data is None:
-            init = tf.global_variables_initializer()
-            self.sess.run(init)
+            init_op_global = tf.global_variables_initializer()
+            self.sess.run(init_op_global)
+            init_op_local = tf.local_variables_initializer()
+            self.sess.run(init_op_local)
             log.info('Model variables initialized from scratch.')
 
     @property
@@ -391,7 +397,7 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer']
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer' and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
@@ -434,7 +440,9 @@ class DBInterface(object):
                     if 'train_results' not in save_to_gfs:
                         save_to_gfs['train_results'] = {}
                     if _k in train_res:
-                        save_to_gfs['train_results'][_k] = train_res.pop(_k)
+                        save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
+                        if len(save_to_gfs['train_results'][_k]) == 1:
+                            save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
                     if 'validation_results' not in save_to_gfs:
                         save_to_gfs['validation_results'] = {}
@@ -581,24 +589,22 @@ def run_targets_dict(sess,
     return results
 
 
-def start_queues(sess, queues):
+def start_queues(sess):
     """Helper function for starting queues before running processes.
     """
-    tf.train.start_queue_runners(sess=sess)
-    # start our custom queue runner's threads
-    if not hasattr(queues, '__iter__'):
-        queues = [queues]
-    for queue in queues:
-        queue.start_threads(sess)
+    coord = tf.train.Coordinator()
+    threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+    return coord, threads
 
 
-def stop_queues(sess, queues):
+def stop_queues(sess, queues, coord, threads):
     """Helper function for stopping queues cleanly.
     """
-    if not hasattr(queues, '__iter__'):
-        queues = [queues]
+    coord.request_stop()
+    coord.join(threads)
     for queue in queues:
-        queue.stop_threads(sess)
+        close_op = queue.close(cancel_pending_enqueues=True)
+        sess.run(close_op)
 
 
 def test(sess,
@@ -623,7 +629,7 @@ def test(sess,
             How frequently to save intermediate results captured during test
             None means no intermediate saving will be saved
     """
-    start_queues(sess, queues)
+    coord, threads = start_queues(sess)
     dbinterface.start_time_step = time.time()
     valid_results_summary = run_targets_dict(sess,
                                              valid_targets,
@@ -631,7 +637,7 @@ def test(sess,
                                              dbinterface=dbinterface,
                                              validation_only=True)
     dbinterface.sync_with_host()
-    stop_queues(sess, queues)
+    stop_queues(sess, queues, coord, threads)
     return valid_results_summary, dbinterface.outrecs
 
 
@@ -639,7 +645,8 @@ def test_from_params(load_params,
                      model_params,
                      validation_params,
                      log_device_placement=False,
-                     save_params=None):
+                     save_params=None,
+                     dont_run=False):
 
     """
     Main testing interface function.
@@ -681,6 +688,9 @@ def test_from_params(load_params,
                                   load_params=load_params,
                                   save_params=save_params)
         dbinterface.initialize()
+
+        if dont_run:
+            return sess, queues, dbinterface, valid_targets_dict
 
         save_intermediate_freq = save_params.get('save_intermediate_freq')
         res = test(sess,
@@ -728,7 +738,7 @@ def train(sess,
         return
 
     log.info('Training beginning ...')
-    start_queues(sess, queues)
+    coord, threads = start_queues(sess)
 
     if step == 0:
         dbinterface.start_time_step = time.time()
@@ -749,7 +759,7 @@ def train(sess,
         validation_res = run_targets_dict(sess, vtargs)
         dbinterface.save(train_res=train_results, valid_res=validation_res, validation_only=False)
 
-    stop_queues(sess, queues)
+    stop_queues(sess, queues, coord, threads)
     dbinterface.sync_with_host()
     return dbinterface.outrecs
 
@@ -762,7 +772,8 @@ def train_from_params(save_params,
                       optimizer_params=None,
                       validation_params=None,
                       log_device_placement=False,
-                      load_params=None
+                      load_params=None,
+                      dont_run=False
                       ):
     """
     Main training interface function.
@@ -787,8 +798,10 @@ def train_from_params(save_params,
         - train_params (dict)
             Containing params for data sources and targets in training:
                 - train_params['data'] contains params for the data
-                    - train_params['data']['func'] is the function that produces
-                      dictionary of data iterators
+                    - train_params['data']['func'] is the function that constructs the data
+                      provider.   This dataprovider must be an instance of a subclass of
+                      tfutils.data.DataProviderBase.   Specifically, it must have a method
+                      called "init_ops" -- see documentation in tfutils/data.py.
                     - remainder of train_params['data'] are kwargs passed to func
                 - train_params['targets'] (optional) contains params for additional train targets
                     - train_params['targets']['func'] is a function that produces
@@ -800,18 +813,18 @@ def train_from_params(save_params,
     :Kwargs:
         - loss_params (dict):
             Parameters for to utils.get_loss function for specifying loss
-                - loss_params['targets'] is a string or a list of strings, 
+                - loss_params['targets'] is a string or a list of strings,
                   contain the names of inputs nodes that will be sent into the loss function
                   Must be provided
                 - loss_params['loss_per_case_func'] is the function used to calculate the loss.
-                  Must be provided. 
+                  Must be provided.
                   The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
-                - loss_params['loss_per_case_func_params'] is a dict including  help information about 
+                - loss_params['loss_per_case_func_params'] is a dict including  help information about
                   how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
                   Default is {'_outputs': 'logits', '_targets_$all': 'labels'}
-                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for 
+                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for
                       loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
-                      where 'outputs' is the output of the network, inputs is the input nodes, 
+                      where 'outputs' is the output of the network, inputs is the input nodes,
                       and targets is loss_params['targets'].
                     - Key value can have three choices:
                       - '_outputs': the value of this key will be the name for 'outputs'.
@@ -913,10 +926,11 @@ def train_from_params(save_params,
                                       dtype=tf.int64,
                                       trainable=False)
 
-        train_params['data_params'], queue = get_data(queue_params=train_params.get('queue_params'),
-                                                      **train_params['data_params'])
+        queue_params = train_params.get('queue_params')
+        train_params['data_params'], train_inputs, queue = get_data(queue_params=queue_params,
+                                                                    **train_params['data_params'])
         queues = [queue]
-        train_inputs = queue.batch
+
         if 'num_steps' not in train_params:
             train_params['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
         if 'thres_loss' not in train_params:
@@ -953,7 +967,7 @@ def train_from_params(save_params,
             validation_params = {}
         valid_targets_dict, vqueues = get_valid_targets_dict(validation_params,
                                                              model_params,
-                                                             train_params.get('queue_params'),
+                                                             queue_params,
                                                              loss_params,
                                                              cfg_final=model_params['cfg_final'])
         queues.extend(vqueues)
@@ -974,6 +988,10 @@ def train_from_params(save_params,
         dbinterface = DBInterface(sess=sess, global_step=global_step, params=params,
                                   save_params=save_params, load_params=load_params)
         dbinterface.initialize()
+
+        if dont_run:
+            return sess, queues, dbinterface, train_targets, global_step, valid_targets_dict
+
         res = train(sess,
                     queues,
                     dbinterface,
@@ -1002,10 +1020,10 @@ def get_valid_targets_dict(validation_params,
         cfg_final = model_params['cfg_final']
     assert 'seed' in model_params
     for vtarg in validation_params:
-        _, queue = get_data(queue_params=validation_params[vtarg].get('queue_params', default_queue_params),
-                            **validation_params[vtarg]['data_params'])
+        queue_params = validation_params[vtarg].get('queue_params', default_queue_params)
+        _, vinputs, queue = get_data(queue_params=queue_params,
+                                     **validation_params[vtarg]['data_params'])
         queues.append(queue)
-        vinputs = queue.batch
         scope_name = 'validation/%s' % vtarg
         with tf.name_scope(scope_name):
             _mp, voutputs = get_model(vinputs, train=False, **model_params)
@@ -1047,10 +1065,23 @@ def get_validation_target(vinputs, voutputs,
 
 
 def get_data(func, queue_params=None, **data_params):
-    inputs = func(**data_params)
-    queue = Queue(inputs, **queue_params)
+    data_provider = func(**data_params)
+    input_ops = data_provider.init_ops()
+    assert len(input_ops) == data_params['n_threads'], (len(input_ops), data_params['n_threads'])
+    assert len(input_ops) > 0, len(input_ops)
+    batch_size = data_params['batch_size']
     data_params['func'] = func
-    return data_params, queue
+    enqueue_ops = []
+    queue = get_queue(input_ops[0], **queue_params)
+    for input_op in input_ops:
+        if batch_size == 1:
+            enqueue_ops.append(queue.enqueue(input_op))
+        else:
+            enqueue_ops.append(queue.enqueue_many(input_op))
+    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue,
+                                                                             enqueue_ops))
+    inputs = queue.dequeue_many(queue_params['batch_size'])
+    return data_params, inputs, queue
 
 
 def get_model(train_inputs, func, seed=0, train=False, **model_params):
@@ -1115,7 +1146,7 @@ def get_params():
 """
 Something like this could be used to create and save variables
 in a readable format.
-    def save_variables_to_readable_format()
+    def save_variables_to_readable_format():
         Vars = tf.all_variables()
         tmp = int(time.time())
         for v in Vars:
