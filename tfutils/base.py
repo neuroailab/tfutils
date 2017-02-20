@@ -994,6 +994,9 @@ def train_from_params(save_params,
         if dont_run:
             return sess, queues, dbinterface, train_targets, global_step, valid_targets_dict
 
+        if 'validate_first' not in train_params:
+            train_params['validate_first'] = True
+
         res = train(sess,
                     queues,
                     dbinterface,
