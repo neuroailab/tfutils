@@ -709,6 +709,7 @@ def train(sess,
           global_step,
           num_steps=float('inf'),
           thres_loss=DEFAULT_TRAIN_THRES_LOSS,
+          validate_first=True,
           validation_targets=None):
     """
     Actually runs the training evaluation loop.
@@ -742,7 +743,8 @@ def train(sess,
 
     if step == 0:
         dbinterface.start_time_step = time.time()
-        validation_res = run_targets_dict(sess, validation_targets,
+        if validate_first:
+            validation_res = run_targets_dict(sess, validation_targets,
                                           dbinterface=dbinterface)
     while step < num_steps:
         old_step = step
@@ -999,6 +1001,7 @@ def train_from_params(save_params,
                     global_step=global_step,
                     num_steps=train_params['num_steps'],
                     thres_loss=train_params['thres_loss'],
+                    validate_first=train_params['validate_first'],
                     validation_targets=valid_targets_dict)
         sess.close()
         return res

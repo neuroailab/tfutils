@@ -653,12 +653,15 @@ def get_queue(nodes,
               queue_type='fifo',
               batch_size=256,
               capacity=None,
+              min_after_dequeue=None,
               seed=0):
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
     if capacity is None:
         capacity = 2 * batch_size
+    if min_after_dequeue is None:
+        min_after_dequeue = capacity // 2
 
     names = []
     dtypes = []
@@ -671,7 +674,7 @@ def get_queue(nodes,
 
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=capacity,
-                                      min_after_dequeue=capacity // 2,
+                                      min_after_dequeue=min_after_dequeue,
                                       dtypes=dtypes,
                                       shapes=shapes,
                                       names=names,
