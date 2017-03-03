@@ -23,7 +23,7 @@ def test_ops():
     tf.train.start_queue_runners(sess=sess)
 
     N = 1000
-    for i in range(N):
+    for i in range(N):k
         res = sess.run([[fq.dequeue() for fq in fqs] for fqs in dp.file_queues])
         x, y = res[0]
         print('%d of %d' % (i, N))
@@ -50,7 +50,9 @@ def test_four_threads_random_and_shuffle():
     tf.train.start_queue_runners(sess=sess)
     inputs = queue.dequeue_many(20)
 
-    for i in range(1000):
+    N = 1000
+    for i in range(N):
+        print('%d of %d' % (i, N))
         res = sess.run(inputs)
         assert res['images'].shape == (20, 32, 32, 3)
         assert_equal(res['ids'], res['ids1'])
@@ -113,6 +115,7 @@ def test_postprocess():
     N = 100
     testlist = np.arange(K * N) % 160
     for i in range(N):
+        print('%d of %d' % (i, N))
         res = sess.run(inputs)
         assert_equal(res['ids'], testlist[K * i: K * (i+1)])
 
@@ -137,8 +140,9 @@ def test_item_selection():
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue, enqueue_ops))
     tf.train.start_queue_runners(sess=sess)
     inputs = queue.dequeue_many(20)
-
-    for i in range(1000):
+    N = 1000
+    for i in range(N):
+        print('%d of %d' % (i, N))
         res = sess.run(inputs)
         assert_equal(res['ids'], res['ids1'])
         assert set(res.keys()) == set(['ids', 'ids1', 'means'])

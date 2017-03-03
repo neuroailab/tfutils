@@ -31,7 +31,7 @@ class ConvNet(object):
 
     def initializer(self, kind='xavier', stddev=0.01, init_file=None, init_keys=None):
         if kind == 'xavier':
-            init = tf.contrib.layers.initializers.xavier_initializer(seed=self.seed)
+            init = tf.contrib.layers.xavier_initializer(seed=self.seed)
         elif kind == 'trunc_norm':
             init = tf.truncated_normal_initializer(mean=0, stddev=stddev, seed=self.seed)
         elif kind == 'from_file':
@@ -74,7 +74,8 @@ class ConvNet(object):
             ksize1, ksize2 = ksize
 
         if init != 'from_file':
-            kernel = tf.get_variable(initializer=self.initializer(init, stddev=stddev),
+            kernel = tf.get_variable(initializer=self.initializer(init,
+                                                                  stddev=stddev),
                                      shape=[ksize1, ksize2, in_shape, out_shape],
                                      dtype=tf.float32,
                                      regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
@@ -259,8 +260,11 @@ def alexnet(inputs, train=True, norm=True, **kwargs):
     m = ConvNet(**kwargs)
     dropout = .5 if train else None
 
-    with tf.contrib.framework.arg_scope([m.conv], init='xavier',
-                                        stddev=.01, bias=0, activation='relu'):
+    with tf.contrib.framework.arg_scope([m.conv],
+                                        init='xavier',
+                                        stddev=.01,
+                                        bias=0,
+                                        activation='relu'):
         with tf.variable_scope('conv1'):
             m.conv(96, 11, 4, padding='VALID', in_layer=inputs)
             if norm:
