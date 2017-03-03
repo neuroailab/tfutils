@@ -7,12 +7,127 @@ from contextlib import contextmanager
 import tensorflow as tf
 
 
+def initializer(kind='xavier', *args, **kwargs):
+    if kind == 'xavier':
+        init = tf.contrib.layers.xavier_initializer(*args, **kwargs)
+    else:
+        init = getattr(tf, kind + '_initializer')(*args, **kwargs)
+    return init
+
+
+def conv(inp,
+         out_depth,
+         ksize=[3,3],
+         strides=[1,1,1,1],
+         padding='SAME',
+         kernel_init='xavier',
+         kernel_init_kwargs=None,
+         bias=0,
+         weight_decay=None,
+         activation='relu',
+         batch_norm=True,
+         name='conv'
+         ):
+
+    # assert out_shape is not None
+    if weight_decay is None:
+        weight_decay = 0.
+    if isinstance(ksize, int):
+        ksize = [ksize, ksize]
+    if kernel_init_kwargs is None:
+        kernel_init_kwargs = {}
+    in_depth = inp.get_shape().as_list()[-1]
+
+    # weights
+    init = initializer(kernel_init, **kernel_init_kwargs)
+    kernel = tf.get_variable(initializer=init,
+                                shape=[ksize[0], ksize[1], in_depth, out_depth],
+                                dtype=tf.float32,
+                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                name='weights')
+    init = initializer(kind='constant', value=bias)
+    biases = tf.get_variable(initializer=init,
+                                shape=[out_depth],
+                                dtype=tf.float32,
+                                name='bias')
+    # ops
+    conv = tf.nn.conv2d(inp, kernel,
+                        strides=strides,
+                        padding=padding)
+    output = tf.nn.bias_add(conv, biases, name=name)
+
+    if activation is not None:
+        output = getattr(tf.nn, activation)(output, name=activation)
+    if batch_norm:
+        output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
+                            scale=None, variance_epsilon=1e-8, name='batch_norm')
+    return output
+
+
+def fc(inp,
+       out_depth,
+       kernel_init='xavier',
+       kernel_init_kwargs=None,
+       bias=1,
+       activation='relu',
+       dropout=.2,
+       batch_norm=True,
+       name='fc'
+       ):
+
+    # assert out_shape is not None
+    if kernel_init_kwargs is None:
+        kernel_init_kwargs = {}
+    resh = tf.reshape(inp, [inp.get_shape().as_list()[0], -1], name='reshape')
+    in_depth = resh.get_shape().as_list()[-1]
+
+    # weights
+    init = initializer(kernel_init, **kernel_init_kwargs)
+    kernel = tf.get_variable(initializer=init,
+                                shape=[in_depth, out_depth],
+                                dtype=tf.float32,
+                                name='weights')
+    init = initializer(kind='constant', value=bias)
+    biases = tf.get_variable(initializer=init,
+                                shape=[out_depth],
+                                dtype=tf.float32,
+                                name='bias')
+
+    # ops
+    fcm = tf.matmul(resh, kernel)
+    output = tf.nn.bias_add(fcm, biases, name=name)
+
+    if activation is not None:
+        output = getattr(tf.nn, activation)(output, name=activation)
+    if batch_norm:
+        output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
+                            scale=None, variance_epsilon=1e-8, name='batch_norm')
+    if dropout is not None:
+        output = tf.nn.dropout(output, dropout, name='dropout')
+    return output
+
+
+def global_pool(inp, kind='avg', name=None):
+    if kind not in ['max', 'avg']:
+        raise ValueError('Only global avg or max pool is allowed, but'
+                            'you requested {}.'.format(kind))
+    if name is None:
+        name = 'global_' + kind
+    h, w = inp.get_shape().as_list()[1:3]
+    output = getattr(tf.nn, kind)(inp,
+                                    ksize=[1,h,w,1],
+                                    strides=[1,1,1,1],
+                                    padding='VALID',
+                                    name=name)
+    return output
+
+
 class ConvNet(object):
 
     INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer', 'initializer']
-    CUSTOM_FUNC = ['conv', 'fc', 'global_pool']
+    CUSTOM_FUNC = [conv, fc, global_pool]
 
-    def __init__(self, seed=None):
+    def __init__(self, defaults=None, name='', seed=None):
         """
         A quick convolutional neural network constructor
 
@@ -23,15 +138,16 @@ class ConvNet(object):
         It also stores layers and their parameters easily accessible per
         tfutils' approach of saving everything.
 
-
-
         Kwargs:
             - seed (default: None)
                 Uses `tf.set_random_seed` method to set the random seed
         """
+        self.name = name
         tf.set_random_seed(seed)
         self.seed = seed
+        self.state = None
         self.output = None
+        self._defaults = defaults if defaults is not None else {}
         self.layers = OrderedDict()
         self.params = OrderedDict()
 
@@ -39,18 +155,18 @@ class ConvNet(object):
         attrs = object.__getattribute__(self, '__dict__')
         internal_func = object.__getattribute__(self, 'INTERNAL_FUNC')
         custom_func = object.__getattribute__(self, 'CUSTOM_FUNC')
+        custom_func_names = [f.__name__ for f in custom_func]
 
         if attr in attrs:  # is it an attribute?
             return attrs[attr]
         elif attr in internal_func:  # is it one of the internal functions?
             return object.__getattribute__(self, attr)
         else:
-            if attr in custom_func:  # is it one of the custom functions?
-                func = object.__getattribute__(self, attr)
-                self._func_varnames = inspect.getargspec(func).args[1:]  # skip self
+            if attr in custom_func_names:  # is it one of the custom functions?
+                func = custom_func[custom_func_names.index(attr)]
             else:
                 func = getattr(tf.nn, attr)  # ok, so it is a tf.nn function
-                self._func_varnames = inspect.getargspec(func).args
+            self._func_varnames = inspect.getargspec(func).args
             return self._func_wrapper(func)
 
     def _func_wrapper(self, func):
@@ -74,9 +190,11 @@ class ConvNet(object):
             inp = kwargs.pop('inp', self.output)
             layer = kwargs.pop('layer', None)
 
+            # convert args to kwargs
             for i, arg in enumerate(args):
                 kwargs[self._func_varnames[i+1]] = arg  # skip the first (inputs)
 
+            # update kwargs with default values defined by user
             if func.__name__ in self._defaults:
                 kwargs.update(self._defaults[func.__name__])
 
@@ -89,29 +207,29 @@ class ConvNet(object):
             if 'strides' in kwargs:
                 kwargs['strides'] = self._val2list(kwargs['strides'])
 
-            if layer is None:  # no new scope requested
-                self.output = func(inp, **kwargs)
-                layer = tf.get_variable_scope().name
-            else:
+            with tf.variable_scope(self.name):
                 with tf.variable_scope(layer):
                     self.output = func(inp, **kwargs)
                     self.layers[layer] = self.output
 
-            params = {'layer': layer}
+            if layer is None:  # no new scope requested
+                layer = tf.get_variable_scope().name
+
+            params = {'layer': layer, 'function': func}
             params.update(kwargs)
             if layer not in self.params:
                 self.params[layer] = OrderedDict()
             self.params[layer][kwargs['name']] = params
-
-            return self.output
 
         return wrapper
 
     def _val2list(self, value):
         if isinstance(value, int):
             out = [1, value, value, 1]
-        else:
+        elif len(value) == 2:
             out = [1, value[0], value[1], 1]
+        else:
+            out = value
         return out
 
     @contextmanager
@@ -136,119 +254,6 @@ class ConvNet(object):
             yield
         self.layers[name] = self.output
 
-    def initializer(self, kind='xavier', *args, **kwargs):
-        if kind == 'xavier':
-            init = tf.contrib.layers.initializers.xavier_initializer(*args, **kwargs)
-        else:
-            init = getattr(tf, kind + '_initializer')(*args, **kwargs)
-        return init
-
-    def conv(self,
-             inp,
-             out_depth,
-             ksize=[3,3],
-             strides=[1,1,1,1],
-             padding='SAME',
-             kernel_init='xavier',
-             kernel_init_kwargs=None,
-             bias=0,
-             weight_decay=None,
-             activation='relu',
-             batch_norm=True,
-             name='conv'
-             ):
-
-        # assert out_shape is not None
-        if weight_decay is None:
-            weight_decay = 0.
-        if isinstance(ksize, int):
-            ksize = [ksize, ksize]
-        if kernel_init_kwargs is None:
-            kernel_init_kwargs = {}
-        in_depth = inp.get_shape().as_list()[-1]
-
-        # weights
-        initializer = self.initializer(kernel_init, **kernel_init_kwargs)
-        kernel = tf.get_variable(initializer=initializer,
-                                 shape=[ksize[0], ksize[1], in_depth, out_depth],
-                                 dtype=tf.float32,
-                                 regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                                 name='weights')
-        initializer = self.initializer(kind='constant', value=bias)
-        biases = tf.get_variable(initializer=initializer,
-                                 shape=[out_depth],
-                                 dtype=tf.float32,
-                                 name='bias')
-        # ops
-        conv = tf.nn.conv2d(inp, kernel,
-                            strides=strides,
-                            padding=padding)
-        output = tf.nn.bias_add(conv, biases, name=name)
-
-        if activation is not None:
-            output = getattr(tf.nn, activation)(output, name=activation)
-        if batch_norm:
-            output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
-                                scale=None, variance_epsilon=1e-8, name='batch_norm')
-        return output
-
-    def fc(self,
-           inp,
-           out_depth,
-           kernel_init='xavier',
-           kernel_init_kwargs=None,
-           bias=1,
-           activation='relu',
-           dropout=.2,
-           batch_norm=True,
-           name='fc'
-           ):
-
-        # assert out_shape is not None
-        if kernel_init_kwargs is None:
-            kernel_init_kwargs = {}
-        resh = tf.reshape(inp, [inp.get_shape().as_list()[0], -1], name='reshape')
-        in_depth = resh.get_shape().as_list()[-1]
-
-        # weights
-        initializer = self.initializer(kernel_init, **kernel_init_kwargs)
-        kernel = tf.get_variable(initializer=initializer,
-                                 shape=[in_depth, out_depth],
-                                 dtype=tf.float32,
-                                 name='weights')
-        initializer = self.initializer(kind='constant', value=bias)
-        biases = tf.get_variable(initializer=initializer,
-                                 shape=[out_depth],
-                                 dtype=tf.float32,
-                                 name='bias')
-
-        # ops
-        fcm = tf.matmul(resh, kernel)
-        output = tf.nn.bias_add(fcm, biases, name=name)
-
-        if activation is not None:
-            output = getattr(tf.nn, activation)(output, name=activation)
-        if batch_norm:
-            output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
-                                scale=None, variance_epsilon=1e-8, name='batch_norm')
-        if dropout is not None:
-            output = tf.nn.dropout(output, dropout, name='dropout')
-        return output
-
-    def global_pool(self, inp, kind='avg', name=None):
-        if kind not in ['max', 'avg']:
-            raise ValueError('Only global avg or max pool is allowed, but'
-                             'you requested {}.'.format(kind))
-        if name is None:
-            name = 'global_' + kind
-        h, w = inp.get_shape().as_list()[1:3]
-        output = getattr(tf.nn, kind)(inp,
-                                      ksize=[1,h,w,1],
-                                      strides=[1,1,1,1],
-                                      padding='VALID',
-                                      name=name)
-        return output
-
 
 def mnist(inputs, train=True, seed=None):
     m = ConvNet(seed=seed)
@@ -263,31 +268,35 @@ def mnist(inputs, train=True, seed=None):
 
 
 def alexnet(inputs, train=True, norm=True, seed=None):
-    m = ConvNet(seed=seed)
+    defaults = {'conv': {'batch_norm': False},
+                'max_pool': {'padding': 'SAME'},
+                'fc': {'kernel_init': 'truncated_normal',
+                       'kernel_init_kwargs': {'stddev': .01}}}
+    m = ConvNet(defaults=defaults, seed=seed)
     dropout = .5 if train else None
-    with m.arg_scope({'conv': {'batch_norm': False},
-                      'max_pool': {'padding': 'SAME'},
-                      'fc': {'kernel_init': 'truncated_normal', 'kernel_init_kwargs': {'stddev': .01}}}):
 
-        m.conv(96, 11, 4, padding='VALID', inp=inputs, layer='conv1')
-        if norm:
-            m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
-        m.max_pool(3, 2, layer='conv1')
+    m.conv(96, 11, 4, padding='VALID', inp=inputs['images'], layer='conv1')
+    if norm:
+        m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
+    m.max_pool(3, 2, layer='conv1')
 
-        m.conv(256, 5, 1, layer='conv2')
-        if norm:
-            m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv2')
-        m.max_pool(3, 2, layer='conv2')
+    m.conv(256, 5, 1, layer='conv2')
+    if norm:
+        m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv2')
+    m.max_pool(3, 2, layer='conv2')
 
-        m.conv(384, 3, 1, layer='conv3')
-        m.conv(256, 3, 1, layer='conv4')
+    m.conv(384, 3, 1, layer='conv3')
+    m.conv(256, 3, 1, layer='conv4')
 
-        m.conv(256, 3, 1, layer='conv5')
-        m.max_pool(3, 2, layer='conv5')
+    m.conv(256, 3, 1, layer='conv5')
+    m.max_pool(3, 2, layer='conv5')
 
-        m.fc(4096, dropout=dropout, bias=.1, layer='fc6')
-        m.fc(4096, dropout=dropout, bias=.1, layer='fc7')
-        m.fc(1000, activation=None, dropout=None, bias=0, layer='fc8')
+    m.fc(4096, dropout=dropout, bias=.1, layer='fc6')
+    m.fc(4096, dropout=dropout, bias=.1, layer='fc7')
+    m.fc(1000, activation=None, dropout=None, bias=0, layer='fc8')
+
+    m.softmax = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=inputs['labels'], logits=m.output)
+    m.loss = tf.reduce_mean(m.softmax)
 
     return m
 
@@ -299,4 +308,4 @@ def mnist_tfutils(inputs, train=True, seed=None,**kwargs):
 
 def alexnet_tfutils(inputs, train=True, norm=True, seed=None, **kwargs):
     m = alexnet(inputs['images'], train=train, norm=norm, seed=seed)
-    return m.output, m.params
+    return {'images': m.output}, m.params
