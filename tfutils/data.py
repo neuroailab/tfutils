@@ -216,14 +216,17 @@ class ParallelByFileProviderBase(DataProviderBase):
                 ops[i][source] = op
 
 
-def get_data_paths(paths):
+DEFAULT_TFRECORDS_GLOB_PATTERN = '%.tfrecords'
+
+
+def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
     if not isinstance(paths, list):
         assert isstring(paths)
         paths = [paths]
     datasources = []
     for path in paths:
         if os.path.isdir(path):
-            tfrecord_pattern = os.path.join(path, '*.tfrecords')
+            tfrecord_pattern = os.path.join(path, file_pattern)
             datasource = tf.gfile.Glob(tfrecord_pattern)
             datasource.sort()
             datasources.append(datasource)
@@ -242,9 +245,18 @@ def get_parser(dtype):
 def parse_standard_tfmeta(paths):
     meta_list = []
     for path in paths:
-        mpaths = filter(lambda x: x.startswith('meta') and x.endswith('.pkl'),
-                        os.listdir(path))
-        mpaths = [os.path.join(path, mp) for mp in mpaths]
+        if isstring(path):
+            if path.startswith('meta') and path.endswith('.pkl'):
+                mpaths = [path]
+            else:
+                assert os.path.isdir(path)
+                mpaths = filter(lambda x: x.startswith('meta') and x.endswith('.pkl'),
+                                os.listdir(path))
+                mpaths = [os.path.join(path, mp) for mp in mpaths]
+        else:
+            # in this case, it's a list
+            assert isinstance(path, list)
+            mpaths = path
         d = {}
         for mpath in mpaths:
             d.update(cPickle.load(open(mpath)))
@@ -252,7 +264,7 @@ def parse_standard_tfmeta(paths):
     return meta_list
 
 
-def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
+def complete_metadata(meta_dicts, parsed_meta_dicts):
     if meta_dicts is None:
         # if no meta_dicts is passed, just use the saved one for all source_paths
         meta_dicts = parsed_meta_dicts
@@ -263,7 +275,7 @@ def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
             # if no meta is passed for this particular source_path, used the saved one
             if md is None:
                 meta_dicts[i] = pmd
-                log.info('Using saved meta %s for path %s' % (str(pmd), source_paths[i]))
+                log.info('Using saved meta %s for attribute group %d' % (str(pmd), i))
             else:
                 if isstring(md):
                     md = {md: None}
@@ -280,20 +292,19 @@ def complete_metadata(source_paths, meta_dicts, parsed_meta_dicts):
                     # add the key from the saved metadata
                     for _k in pmd[k]:
                         if _k not in md[k]:
-                            log.info('Using saved meta for key %s attribute %s for path %s' % (
-                                str(k), str(_k), source_paths[i]))
+                            log.info('Using saved meta for key %s attribute %s for attribute group %d' % (
+                                str(k), str(_k), i))
                             md[k][_k] = pmd[k][_k]
 
-    assert len(meta_dicts) == len(source_paths)
-    bad_mds = [path for path, _md in zip(source_paths, meta_dicts) if len(_md) == 0]
-    assert len(bad_mds) == 0, 'No metadata specifed for paths: %s' % str(bad_mds)
+    bad_mds = [i for i, _md in enumerate(meta_dicts) if len(_md) == 0]
+    assert len(bad_mds) == 0, 'No metadata specifed for attribute groups: %s' % str(bad_mds)
     return meta_dicts
 
 
-def merge_meta(source_paths, meta_dicts, trans_dicts):
+def merge_meta(meta_dicts, trans_dicts):
     meta_dict = {}
     parser_list = []
-    for ind, (sp, md) in enumerate(zip(source_paths, meta_dicts)):
+    for ind, md in enumerate(meta_dicts):
         parsers = {k: get_parser(md[k]['dtype']) for k in md}
         parser_list.append(parsers)
         if trans_dicts and trans_dicts[ind]:
@@ -325,6 +336,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
                  meta_dicts=None,
                  postprocess=None,
                  trans_dicts=None,
+                 file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN,
                  **kwargs):
         """
         Subclass of ParallelByFileProviderBase specific to TFRecords files.
@@ -385,17 +397,17 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
               indicates that the attribute "images" is loaded from the files in the first source_path,
               the attributes "ids" and "means" are loaded for the second source_path, and the attribute
               "segmentations" for the third.
+            - file_pattern (str, optional): patter for selecting files in glob format.
 
         """
         self.source_dirs = source_dirs
         self.batch_size = batch_size
         parsed_meta_dicts = parse_standard_tfmeta(self.source_dirs)
-        self.meta_dicts = complete_metadata(self.source_dirs, meta_dicts, parsed_meta_dicts)
-        self.meta_dict, self.parser_list = merge_meta(self.source_dirs,
-                                                      self.meta_dicts,
+        self.meta_dicts = complete_metadata(meta_dicts, parsed_meta_dicts)
+        self.meta_dict, self.parser_list = merge_meta(self.meta_dicts,
                                                       trans_dicts)
         postprocess = add_standard_postprocessing(postprocess, self.meta_dict)
-        source_paths = get_data_paths(source_dirs)
+        source_paths = get_data_paths(source_dirs, file_pattern)
         super(TFRecordsParallelByFileProvider, self).__init__(source_paths,
                                                               read_args=[(p, ) for p in self.parser_list],
                                                               postprocess=postprocess,
