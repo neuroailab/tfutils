@@ -216,7 +216,7 @@ class ParallelByFileProviderBase(DataProviderBase):
                 ops[i][source] = op
 
 
-DEFAULT_TFRECORDS_GLOB_PATTERN = '%.tfrecords'
+DEFAULT_TFRECORDS_GLOB_PATTERN = '*.tfrecords'
 
 
 def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
