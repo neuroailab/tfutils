@@ -41,15 +41,15 @@ def conv(inp,
     # weights
     init = initializer(kernel_init, **kernel_init_kwargs)
     kernel = tf.get_variable(initializer=init,
-                                shape=[ksize[0], ksize[1], in_depth, out_depth],
-                                dtype=tf.float32,
-                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                                name='weights')
+                             shape=[ksize[0], ksize[1], in_depth, out_depth],
+                             dtype=tf.float32,
+                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                             name='weights')
     init = initializer(kind='constant', value=bias)
     biases = tf.get_variable(initializer=init,
-                                shape=[out_depth],
-                                dtype=tf.float32,
-                                name='bias')
+                             shape=[out_depth],
+                             dtype=tf.float32,
+                             name='bias')
     # ops
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
@@ -84,14 +84,14 @@ def fc(inp,
     # weights
     init = initializer(kernel_init, **kernel_init_kwargs)
     kernel = tf.get_variable(initializer=init,
-                                shape=[in_depth, out_depth],
-                                dtype=tf.float32,
-                                name='weights')
+                             shape=[in_depth, out_depth],
+                             dtype=tf.float32,
+                             name='weights')
     init = initializer(kind='constant', value=bias)
     biases = tf.get_variable(initializer=init,
-                                shape=[out_depth],
-                                dtype=tf.float32,
-                                name='bias')
+                             shape=[out_depth],
+                             dtype=tf.float32,
+                             name='bias')
 
     # ops
     fcm = tf.matmul(resh, kernel)
@@ -139,15 +139,19 @@ class ConvNet(object):
         tfutils' approach of saving everything.
 
         Kwargs:
+            - defaults
+                Default kwargs values for functions. Complimentary to `arg_scope
+            - name (default: '')
+                If '', then the existing scope is used.
             - seed (default: None)
                 Uses `tf.set_random_seed` method to set the random seed
         """
+        self._defaults = defaults if defaults is not None else {}
         self.name = name
         tf.set_random_seed(seed)
         self.seed = seed
         self.state = None
         self.output = None
-        self._defaults = defaults if defaults is not None else {}
         self.layers = OrderedDict()
         self.params = OrderedDict()
 
@@ -176,7 +180,7 @@ class ConvNet(object):
         - Pops `inp` and `layer` from kwargs,
         - All args are turned into kwargs
         - Default values from arg_scope are set
-        - Sets the name to func.__name__ if not specified
+        - Sets the name in kwargs to func.__name__ if not specified
         - Expands `strides` from an int or list inputs for
           all functions and expands `ksize` for pool functions.
 
