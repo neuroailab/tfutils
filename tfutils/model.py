@@ -278,7 +278,7 @@ def alexnet(inputs, train=True, norm=True, seed=None):
                        'kernel_init_kwargs': {'stddev': .01}}}
     m = ConvNet(defaults=defaults, seed=seed)
     dropout = .5 if train else None
-
+    
     m.conv(96, 11, 4, padding='VALID', inp=inputs['images'], layer='conv1')
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
@@ -299,9 +299,6 @@ def alexnet(inputs, train=True, norm=True, seed=None):
     m.fc(4096, dropout=dropout, bias=.1, layer='fc7')
     m.fc(1000, activation=None, dropout=None, bias=0, layer='fc8')
 
-    m.softmax = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=inputs['labels'], logits=m.output)
-    m.loss = tf.reduce_mean(m.softmax)
-
     return m
 
 
@@ -310,6 +307,6 @@ def mnist_tfutils(inputs, train=True, seed=None,**kwargs):
     return m.output, m.params
 
 
-def alexnet_tfutils(inputs, train=True, norm=True, seed=None, **kwargs):
-    m = alexnet(inputs['images'], train=train, norm=norm, seed=seed)
-    return {'images': m.output}, m.params
+def alexnet_tfutils(inputs, **kwargs):
+    m = alexnet(inputs['images'], **kwargs)
+    return m.output, m.params
