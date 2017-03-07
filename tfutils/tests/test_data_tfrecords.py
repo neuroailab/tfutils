@@ -23,7 +23,7 @@ def test_ops():
     tf.train.start_queue_runners(sess=sess)
 
     N = 1000
-    for i in range(N):k
+    for i in range(N):
         res = sess.run([[fq.dequeue() for fq in fqs] for fqs in dp.file_queues])
         x, y = res[0]
         print('%d of %d' % (i, N))
