@@ -397,7 +397,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
               indicates that the attribute "images" is loaded from the files in the first source_path,
               the attributes "ids" and "means" are loaded for the second source_path, and the attribute
               "segmentations" for the third.
-            - file_pattern (str, optional): patter for selecting files in glob format.
+            - file_pattern (str, optional): pattern for selecting files in glob format.
 
         """
         self.source_dirs = source_dirs
