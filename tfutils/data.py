@@ -285,16 +285,16 @@ def complete_metadata(meta_dicts, parsed_meta_dicts):
                     meta_dicts[i] = md
                 assert hasattr(md, 'keys')
                 for k in md:
-                    assert k in pmd, pmd.keys()
                     if md[k] is None:
                         md[k] = {}
                     # for all saved metadata keys, if that key is not present in the provide metadata,
                     # add the key from the saved metadata
-                    for _k in pmd[k]:
-                        if _k not in md[k]:
-                            log.info('Using saved meta for key %s attribute %s for attribute group %d' % (
-                                str(k), str(_k), i))
-                            md[k][_k] = pmd[k][_k]
+                    if k in pmd:
+                        for _k in pmd[k]:
+                            if _k not in md[k]:
+                                log.info('Using saved meta for key %s attribute %s for attribute group %d' % (
+                                    str(k), str(_k), i))
+                                md[k][_k] = pmd[k][_k]
 
     bad_mds = [i for i, _md in enumerate(meta_dicts) if len(_md) == 0]
     assert len(bad_mds) == 0, 'No metadata specifed for attribute groups: %s' % str(bad_mds)
