@@ -70,8 +70,9 @@ def fc(inp,
        kernel_init_kwargs=None,
        bias=1,
        activation='relu',
-       dropout=.2,
        batch_norm=True,
+       dropout=None,
+       dropout_seed=None,
        name='fc'
        ):
 
@@ -103,7 +104,7 @@ def fc(inp,
         output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
                             scale=None, variance_epsilon=1e-8, name='batch_norm')
     if dropout is not None:
-        output = tf.nn.dropout(output, dropout, name='dropout')
+        output = tf.nn.dropout(output, dropout, seed=dropout_seed, name='dropout')
     return output
 
 
@@ -124,10 +125,10 @@ def global_pool(inp, kind='avg', name=None):
 
 class ConvNet(object):
 
-    INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer', 'initializer']
+    INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer', '_reuse_scope_name']
     CUSTOM_FUNC = [conv, fc, global_pool]
 
-    def __init__(self, defaults=None, name='', seed=None):
+    def __init__(self, defaults=None, name=None):
         """
         A quick convolutional neural network constructor
 
@@ -143,17 +144,14 @@ class ConvNet(object):
                 Default kwargs values for functions. Complimentary to `arg_scope
             - name (default: '')
                 If '', then the existing scope is used.
-            - seed (default: None)
-                Uses `tf.set_random_seed` method to set the random seed
         """
         self._defaults = defaults if defaults is not None else {}
         self.name = name
-        tf.set_random_seed(seed)
-        self.seed = seed
         self.state = None
         self.output = None
         self.layers = OrderedDict()
         self.params = OrderedDict()
+        self._scope_initialized = False
 
     def __getattribute__(self, attr):
         attrs = object.__getattribute__(self, '__dict__')
@@ -211,10 +209,22 @@ class ConvNet(object):
             if 'strides' in kwargs:
                 kwargs['strides'] = self._val2list(kwargs['strides'])
 
-            with tf.variable_scope(self.name):
-                with tf.variable_scope(layer):
-                    self.output = func(inp, **kwargs)
-                    self.layers[layer] = self.output
+            if self.name is None or self.name == '':
+                with self.layer(layer):
+                    output = func(inp, **kwargs)
+                    self.output = tf.identity(output, name='output')
+            else:
+                if self._scope_initialized:
+                    name = self._reuse_scope_name(self.name)
+                else:
+                    name = self.name
+                    self._scope_initialized = True
+                with tf.variable_scope(name):
+                    with self.layer(layer):
+                        output = func(inp, **kwargs)
+                        self.output = tf.identity(output, name='output')
+
+            self.layers[layer] = self.output
 
             if layer is None:  # no new scope requested
                 layer = tf.get_variable_scope().name
@@ -254,15 +264,27 @@ class ConvNet(object):
         """
         Sets the scope. Can be used with `with`.
         """
+        if name is None or name == '':
+            raise ValueError('Layer name cannot be None or an empty string')
+        if name in self.layers:
+            name = self._reuse_scope_name(name)
         with tf.variable_scope(name):
             yield
         self.layers[name] = self.output
 
+    def _reuse_scope_name(self, name):
+        graph = tf.get_default_graph()
+        if graph._name_stack is not None and graph._name_stack != '':
+            name = graph._name_stack + '/' + name + '/'  # this will reuse the already-created scope
+        else:
+            name += '/'
+        return name
 
-def mnist(inputs, train=True, seed=None):
-    m = ConvNet(seed=seed)
+
+def mnist(inputs, train=True, seed=0):
+    m = ConvNet()
     with m.arg_scope({'fc': {'kernel_init': 'truncated_normal',
-                             'kernel_init_kwargs': {'stddev': .01},
+                             'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
                              'dropout': None, 'batch_norm': False}}):
         m.fc(128, inp=inputs, layer='hidden1')
         m.fc(32, layer='hidden2')
@@ -271,15 +293,19 @@ def mnist(inputs, train=True, seed=None):
     return m
 
 
-def alexnet(inputs, train=True, norm=True, seed=None):
-    defaults = {'conv': {'batch_norm': False},
+def alexnet(inputs, train=True, norm=True, seed=0):
+    defaults = {'conv': {'batch_norm': False,
+                         'kernel_init': 'xavier',
+                         'kernel_init_kwargs': {'seed': seed}},
                 'max_pool': {'padding': 'SAME'},
-                'fc': {'kernel_init': 'truncated_normal',
-                       'kernel_init_kwargs': {'stddev': .01}}}
-    m = ConvNet(defaults=defaults, seed=seed)
+                'fc': {'batch_norm': False,
+                       'kernel_init': 'truncated_normal',
+                       'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
+                       'dropout_seed': 0}}
+    m = ConvNet(defaults=defaults)
     dropout = .5 if train else None
-    
-    m.conv(96, 11, 4, padding='VALID', inp=inputs['images'], layer='conv1')
+
+    m.conv(96, 11, 4, padding='VALID', inp=inputs, layer='conv1')
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
     m.max_pool(3, 2, layer='conv1')
@@ -290,7 +316,7 @@ def alexnet(inputs, train=True, norm=True, seed=None):
     m.max_pool(3, 2, layer='conv2')
 
     m.conv(384, 3, 1, layer='conv3')
-    m.conv(256, 3, 1, layer='conv4')
+    m.conv(384, 3, 1, layer='conv4')
 
     m.conv(256, 3, 1, layer='conv5')
     m.max_pool(3, 2, layer='conv5')
@@ -302,8 +328,8 @@ def alexnet(inputs, train=True, norm=True, seed=None):
     return m
 
 
-def mnist_tfutils(inputs, train=True, seed=None,**kwargs):
-    m = mnist(inputs['images'], train=train, seed=seed)
+def mnist_tfutils(inputs, train=True, **kwargs):
+    m = mnist(inputs['images'], train=train)
     return m.output, m.params
 
 
