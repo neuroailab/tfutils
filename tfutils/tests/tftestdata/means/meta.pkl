@@ -34,7 +34,4 @@ g10
 I1
 sbsg11
 (lp17
-I32
-aI32
-aI3
-ass.
+ss.

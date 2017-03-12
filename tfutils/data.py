@@ -237,9 +237,10 @@ def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
     return datasources
 
 
-def get_parser(dtype):
+def get_parser(shape, dtype):
     dtype = dtype if dtype in [tf.float32, tf.int64] else tf.string
-    return tf.FixedLenFeature([], dtype)
+    shape = shape if dtype in [tf.float32, tf.int64] else [1]
+    return tf.FixedLenFeature(shape, dtype)
 
 
 def parse_standard_tfmeta(paths):
@@ -305,7 +306,7 @@ def merge_meta(meta_dicts, trans_dicts):
     meta_dict = {}
     parser_list = []
     for ind, md in enumerate(meta_dicts):
-        parsers = {k: get_parser(md[k]['dtype']) for k in md}
+        parsers = {k: get_parser(md[k]['shape'], md[k]['dtype']) for k in md}
         parser_list.append(parsers)
         if trans_dicts and trans_dicts[ind]:
             td = trans_dicts[ind]
