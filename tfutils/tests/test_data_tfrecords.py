@@ -81,6 +81,7 @@ def test_fifo_one_thread_no_shuffle():
     N = 1000
     testlist = np.arange(K * N) % 1600
     for i in range(N):
+        print('%d of %d' % (i, N))
         res = sess.run(inputs)
         assert res['images'].shape == (K, 32, 32, 3)
         assert_allclose(res['images'].mean(1).mean(1).mean(1), res['means'], rtol=1e-05)
