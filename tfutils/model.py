@@ -73,8 +73,7 @@ def fc(inp,
        batch_norm=True,
        dropout=None,
        dropout_seed=None,
-       name='fc'
-       ):
+       name='fc'):
 
     # assert out_shape is not None
     if kernel_init_kwargs is None:
