@@ -265,22 +265,49 @@ class DBInterface(object):
         Fetches record then uses tf's saver.restore
         """
         # fetch record from database and get the filename info from record
-        tf_saver = self.tf_saver
+
         if self.do_restore:
+            #### temporary, ideally should only need to initialize variables not restored
+            init_op_global = tf.global_variables_initializer()
+            self.sess.run(init_op_global)
+            init_op_local = tf.local_variables_initializer()
+            self.sess.run(init_op_local)
+            ####
             if self.load_data is None:
                 self.load_rec()
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
+                # get variables to restore
+                restore_vars = self.get_restore_vars(cache_filename)
+                print('Restored Vars:\n',[restore_var.name for restore_var in restore_vars])
+                self.tfsaver_args = (restore_vars,) + self.tfsaver_args # add var_list to args
+                tf_saver = self.tf_saver
                 # tensorflow restore
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
                 tf_saver.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
+                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
             log.info('Model variables initialized from scratch.')
+
+    def get_restore_vars(self, save_file):
+        reader = tf.train.NewCheckpointReader(save_file)
+        saved_shapes = reader.get_variable_to_shape_map()
+        var_names = sorted([(var.name.split(':')[0],var) for var in tf.global_variables()
+                            if var.name.split(':')[0] in saved_shapes])
+        restore_vars = []
+        with tf.variable_scope('', reuse=True):
+            for saved_var_name, var in var_names:
+                #curr_var = tf.get_variable(saved_var_name)
+                curr_var = var
+                var_shape = curr_var.get_shape().as_list()
+                if var_shape == saved_shapes[saved_var_name]:
+                    restore_vars.append(curr_var)
+        return restore_vars
 
     @property
     def tf_saver(self):
