@@ -39,7 +39,7 @@ def version_info(module):
         pkgname = module.__name__.split('.')[0]
         try:
             info = pkg_resources.get_distribution(pkgname)
-        except (pkg_resources.DistributionNotFound, pkg_resources.RequirementParseError):
+        except (pkg_resources.DistributionNotFound):#, pkg_resources.RequirementParseError):
             version = None
             log.warning('version information not found for %s -- what package is this from?' % module.__name__)
         else:
