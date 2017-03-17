@@ -840,6 +840,26 @@ class ImageNet(HDF5DataReader):
     #     return feed_dict
 
 
+class ImageNetTF(TFRecordsParallelByFileProvider):
+
+    def __init__(self, source_dirs, crop_size=224, **kwargs):
+        """
+        ImageNet data provider for TFRecords
+        """
+        self.crop_size = crop_size
+        postprocess = {'images': [(self.postprocess_images, (), {})]}
+        super(ImageNetTF, self).__init__(source_dirs, postprocess=postprocess, **kwargs)
+
+    def postprocess_images(self, ims):
+        def _postprocess_images(im):
+            im = tf.decode_raw(im, np.uint8)
+            im = tf.image.convert_image_dtype(im, dtype=tf.float32)
+            im = tf.reshape(im, [256, 256, 3])
+            im = tf.random_crop(im, [self.crop_size, self.crop_size, 3])
+            return im
+        return tf.map_fn(lambda im: _postprocess_images(im), ims, dtype=tf.float32)
+
+
 class Coordinator(object):
     def __init__(self, itr, tid):
         self.curval = {}
