@@ -279,8 +279,8 @@ def test_feature_extraction():
                              'save_to_gfs': ['features', 'more_features']}
 
     targdict = {'func': get_extraction_target,
-                'to_extract': {'features': 'validation/valid1/hidden1/fc:0',
-                               'more_features': 'validation/valid1/hidden2/fc:0'}}
+                'to_extract': {'features': 'validation/valid1/hidden1/output:0',
+                               'more_features': 'validation/valid1/hidden2/output:0'}}
     targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': data.MNIST,
                                                               'batch_size': 100,
