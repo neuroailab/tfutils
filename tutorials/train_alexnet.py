@@ -5,22 +5,25 @@ import sys
 import numpy as np
 import tensorflow as tf
 
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 from tfutils import base, data, model, optimizer
 
-sys.path.insert(0, '..')
 
 host = os.uname()[1]
 if host.startswith('node') or host == 'openmind7':  # OpenMind
     DATA_PATH = '/om/user/qbilius/imagenet/data.raw'
-else:  # agents
-    # DATA_PATH = '/data/imagenet_dataset/hdf5_cached_from_om7/data.raw'
-    DATA_PATH = '/data/imagenet_dataset/imagenet2012.hdf5'
-    # DATA_PATH = '/home/qbilius/mh17/data/imagenet2012.hdf5'
-    RESTORE_VAR_FILE = '/home/qbilius/mh17/computed/alexnet_test/'
+elif 'gpu-1' in host or 'gpu-2' in host:
+    DATA_PATH = '/scratch/imagenet2012_tf'
+elif host.startswith('braintree'):
+    DATA_PATH = '/home/qbilius/data/imagenet2012_tf'
+else:
+    DATA_PATH = '/home/qbilius/data/imagenet2012_tf'
 
 
-def in_top_k(inputs, outputs, target):
-    return {'top1': tf.nn.in_top_k(outputs, inputs[target], 1),
+def loss_and_in_top_k(inputs, outputs, target):
+    return {'loss': tf.nn.sparse_softmax_cross_entropy_with_logits(logits=outputs, labels=inputs[target]),
+            'top1': tf.nn.in_top_k(outputs, inputs[target], 1),
             'top5': tf.nn.in_top_k(outputs, inputs[target], 5)}
 
 
@@ -42,12 +45,11 @@ def exponential_decay(global_step,
         lr = learning_rate  # just a constant.
     else:
         # Calculate the learning rate schedule.
-        lr = tf.train.exponential_decay(
-            learning_rate,  # Base learning rate.
-            global_step,  # Current index into the dataset.
-            decay_steps,  # Decay step
-            decay_factor,  # Decay rate.
-            staircase=True)
+        lr = tf.train.exponential_decay(learning_rate,  # Base learning rate.
+                                        global_step,  # Current index into the dataset.
+                                        decay_steps,  # Decay step
+                                        decay_factor,  # Decay rate.
+                                        staircase=True)
     return lr
 
 
@@ -58,23 +60,23 @@ IMAGE_SIZE_CROP = 224
 params = {
     'save_params': {
         'host': 'localhost',
-        'port': 31001,
+        'port': 29101,
         'dbname': 'alexnet-test',
         'collname': 'alexnet',
         'exp_id': 'trainval0',
 
-        'do_save': True,
-        'save_initial_filters': True,
+        'do_save': False,
+        'save_initial_filters': False,
         'save_metrics_freq': 5,  # keeps loss from every SAVE_LOSS_FREQ steps.
         'save_valid_freq': 3000,
         'save_filters_freq': 30000,
-        'cache_filters_freq': 3000,
+        'cache_filters_freq': 30000,
         # 'cache_dir': None,  # defaults to '~/.tfutils'
     },
 
     'load_params': {
         # 'host': 'localhost',
-        # 'port': 31001,
+        # 'port': 29101,
         # 'dbname': 'alexnet-test',
         # 'collname': 'alexnet',
         # 'exp_id': 'trainval0',
@@ -84,26 +86,28 @@ params = {
 
     'model_params': {
         'func': model.alexnet_tfutils,
-        'seed': 0,
-        'norm': False  # do you want local response normalization?
+        'seed': 0
     },
 
     'train_params': {
         'data_params': {
-            'func': data.ImageNet,
-            'data_path': DATA_PATH,
-            'group': 'train',
+            'func': data.ImageNetTF,
+            'source_dirs': [DATA_PATH],
             'crop_size': IMAGE_SIZE_CROP,
-            'batch_size': 1
+            'batch_size': BATCH_SIZE,
+            'file_pattern': 'train*.tfrecords',
+            'n_threads': 4
         },
         'queue_params': {
             'queue_type': 'fifo',
             'batch_size': BATCH_SIZE,
-            'n_threads': 4,
+            'capacity': None,
+            'min_after_dequeue': None,
             'seed': 0,
         },
         'thres_loss': 1000,
-        'num_steps': 90 * NUM_BATCHES_PER_EPOCH  # number of steps to train
+        'num_steps': 90 * NUM_BATCHES_PER_EPOCH,  # number of steps to train
+        'validate_first': True,
     },
 
     'loss_params': {
@@ -128,29 +132,55 @@ params = {
     },
 
     'validation_params': {
-        'topn': {
+        'topn_val': {
             'data_params': {
-                'func': data.ImageNet,
-                'data_path': DATA_PATH,  # path to image database
-                'group': 'val',
-                'crop_size': IMAGE_SIZE_CROP,  # size after cropping an image
+                'func': data.ImageNetTF,
+                'source_dirs': [DATA_PATH],
+                'crop_size': IMAGE_SIZE_CROP,
+                'batch_size': BATCH_SIZE,
+                'file_pattern': 'val*.tfrecords',
+                'n_threads': 4
             },
             'targets': {
-                'func': in_top_k,
+                'func': loss_and_in_top_k,
                 'target': 'labels',
             },
             'queue_params': {
                 'queue_type': 'fifo',
                 'batch_size': BATCH_SIZE,
-                'n_threads': 4,
+                'capacity': None,
+                'min_after_dequeue': None,
                 'seed': 0,
             },
             'num_steps': data.ImageNet.N_VAL // BATCH_SIZE + 1,
             'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
             'online_agg_func': online_agg
         },
+        'topn_train': {
+            'data_params': {
+                'func': data.ImageNetTF,
+                'source_dirs': [DATA_PATH],
+                'crop_size': IMAGE_SIZE_CROP,
+                'batch_size': BATCH_SIZE,
+                'file_pattern': 'train_val*.tfrecords',
+                'n_threads': 4
+            },
+            'targets': {
+                'func': loss_and_in_top_k,
+                'target': 'labels',
+            },
+            'queue_params': {
+                'queue_type': 'fifo',
+                'batch_size': BATCH_SIZE,
+                'capacity': None,
+                'min_after_dequeue': None,
+                'seed': 0,
+            },
+            'num_steps': data.ImageNet.N_VAL // BATCH_SIZE + 1,
+            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
+            'online_agg_func': online_agg
+        }
     },
-
     'log_device_placement': False,  # if variable placement has to be logged
 }
 
