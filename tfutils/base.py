@@ -655,6 +655,8 @@ def test_from_params(load_params,
 
     For documentation, see argument descriptions in train_from_params.
     """
+    if save_params is None:
+        save_params = {}
     with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
 
         # create session
