@@ -1005,6 +1005,10 @@ def train_from_params(save_params,
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
                                                 log_device_placement=log_device_placement))
+        print(sess.graph_def.ByteSize())
+        print('global variables')
+        print([var.name for var in tf.global_variables()])
+        print([op.values() for op in tf.get_default_graph().get_operations() if 'fc7' in op.name])
 
         params = {'save_params': save_params,
                   'load_params': load_params,
