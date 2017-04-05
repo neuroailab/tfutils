@@ -268,10 +268,10 @@ class DBInterface(object):
         tf_saver = self.tf_saver
         if self.do_restore:
             #### temporary, ideally should only need to initialize variables not restored
-            init_op_global = tf.global_variables_initializer()
-            self.sess.run(init_op_global)
-            init_op_local = tf.local_variables_initializer()
-            self.sess.run(init_op_local)
+            # init_op_global = tf.global_variables_initializer()
+            # self.sess.run(init_op_global)
+            # init_op_local = tf.local_variables_initializer()
+            # self.sess.run(init_op_local)
             ####
             if self.load_data is None:
                 self.load_rec()
@@ -285,6 +285,9 @@ class DBInterface(object):
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
                 tf_saver_restore.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
+                #TODO: initialize unrestored variables here, remove initializing all variables
+                sess.run(tf.variables_initializer(list(var for var in tf.global_variables()+tf.local_variables() \
+                                                       if var not in restore_vars))) # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
             init_op_global = tf.global_variables_initializer()
@@ -300,7 +303,7 @@ class DBInterface(object):
         var_names = sorted([(var.name.split(':')[0],var) for var in tf.global_variables()
                             if var.name.split(':')[0] in saved_shapes])
         restore_vars = []
-        with tf.variable_scope('', reuse=True):
+        with tf.variable_scope('', reuse=True): # might not be necessary
             for saved_var_name, var in var_names:
                 #curr_var = tf.get_variable(saved_var_name)
                 curr_var = var
