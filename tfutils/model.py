@@ -41,15 +41,16 @@ def conv(inp,
     # weights
     init = initializer(kernel_init, **kernel_init_kwargs)
     kernel = tf.get_variable(initializer=init,
-                             shape=[ksize[0], ksize[1], in_depth, out_depth],
-                             dtype=tf.float32,
-                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                             name='weights')
+                            shape=[ksize[0], ksize[1], in_depth, out_depth],
+                            dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                            name='weights')
     init = initializer(kind='constant', value=bias)
     biases = tf.get_variable(initializer=init,
-                             shape=[out_depth],
-                             dtype=tf.float32,
-                             name='bias')
+                            shape=[out_depth],
+                            dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                            name='bias')
     # ops
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
@@ -69,13 +70,15 @@ def fc(inp,
        kernel_init='xavier',
        kernel_init_kwargs=None,
        bias=1,
+       weight_decay=None,
        activation='relu',
        batch_norm=True,
        dropout=None,
        dropout_seed=None,
-       name='fc'
-       ):
+       name='fc'):
 
+    if weight_decay is None:
+        weight_decay = 0.
     # assert out_shape is not None
     if kernel_init_kwargs is None:
         kernel_init_kwargs = {}
@@ -85,14 +88,16 @@ def fc(inp,
     # weights
     init = initializer(kernel_init, **kernel_init_kwargs)
     kernel = tf.get_variable(initializer=init,
-                             shape=[in_depth, out_depth],
-                             dtype=tf.float32,
-                             name='weights')
+                            shape=[in_depth, out_depth],
+                            dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                            name='weights')
     init = initializer(kind='constant', value=bias)
     biases = tf.get_variable(initializer=init,
-                             shape=[out_depth],
-                             dtype=tf.float32,
-                             name='bias')
+                            shape=[out_depth],
+                            dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                            name='bias')
 
     # ops
     fcm = tf.matmul(resh, kernel)
@@ -113,19 +118,20 @@ def global_pool(inp, kind='avg', name=None):
         raise ValueError('Only global avg or max pool is allowed, but'
                             'you requested {}.'.format(kind))
     if name is None:
-        name = 'global_' + kind
+        name = 'global_{}_pool'.format(kind)
     h, w = inp.get_shape().as_list()[1:3]
-    output = getattr(tf.nn, kind)(inp,
+    out = getattr(tf.nn, kind + '_pool')(inp,
                                     ksize=[1,h,w,1],
                                     strides=[1,1,1,1],
-                                    padding='VALID',
-                                    name=name)
+                                    padding='VALID')
+    output = tf.reshape(out, [out.get_shape().as_list()[0], -1], name=name)
     return output
 
 
 class ConvNet(object):
 
-    INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer', '_reuse_scope_name']
+    INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer',
+                     '_reuse_scope_name', '__call__', '_get_func']
     CUSTOM_FUNC = [conv, fc, global_pool]
 
     def __init__(self, defaults=None, name=None):
@@ -149,6 +155,7 @@ class ConvNet(object):
         self.name = name
         self.state = None
         self.output = None
+        self._layer = None
         self.layers = OrderedDict()
         self.params = OrderedDict()
         self._scope_initialized = False
@@ -156,20 +163,23 @@ class ConvNet(object):
     def __getattribute__(self, attr):
         attrs = object.__getattribute__(self, '__dict__')
         internal_func = object.__getattribute__(self, 'INTERNAL_FUNC')
-        custom_func = object.__getattribute__(self, 'CUSTOM_FUNC')
-        custom_func_names = [f.__name__ for f in custom_func]
 
         if attr in attrs:  # is it an attribute?
             return attrs[attr]
         elif attr in internal_func:  # is it one of the internal functions?
             return object.__getattribute__(self, attr)
         else:
-            if attr in custom_func_names:  # is it one of the custom functions?
-                func = custom_func[custom_func_names.index(attr)]
-            else:
-                func = getattr(tf.nn, attr)  # ok, so it is a tf.nn function
-            self._func_varnames = inspect.getargspec(func).args
+            func = self._get_func(attr)
             return self._func_wrapper(func)
+
+    def _get_func(self, attr):
+        custom_func = object.__getattribute__(self, 'CUSTOM_FUNC')
+        custom_func_names = [f.__name__ for f in custom_func]
+        if attr in custom_func_names:  # is it one of the custom functions?
+            func = custom_func[custom_func_names.index(attr)]
+        else:
+            func = getattr(tf.nn, attr)  # ok, so it is a tf.nn function
+        return func
 
     def _func_wrapper(self, func):
         """
@@ -189,19 +199,30 @@ class ConvNet(object):
         """
         @wraps(func)
         def wrapper(*args, **kwargs):
-            inp = kwargs.pop('inp', self.output)
-            layer = kwargs.pop('layer', None)
+            kwargs['func_name'] = func.__name__
 
             # convert args to kwargs
+            varnames = inspect.getargspec(func).args
             for i, arg in enumerate(args):
-                kwargs[self._func_varnames[i+1]] = arg  # skip the first (inputs)
+                kwargs[varnames[i+1]] = arg  # skip the first (inputs)
+
+            layer = kwargs.pop('layer', self._layer)
+            if layer not in self.params:
+                self.params[layer] = OrderedDict()
 
             # update kwargs with default values defined by user
             if func.__name__ in self._defaults:
                 kwargs.update(self._defaults[func.__name__])
 
             if 'name' not in kwargs:
-                kwargs['name'] = func.__name__
+                fname = func.__name__
+                if fname in self.params[layer]:
+                    if fname in self.params[layer]:
+                        i = 1
+                        while fname + '_{}'.format(i) in self.params[layer]:
+                            i += 1
+                        fname += '_{}'.format(i)
+                kwargs['name'] = fname
 
             spec = ['avg_pool', 'max_pool', 'max_pool_with_argmax']
             if 'ksize' in kwargs and func.__name__ in spec:
@@ -209,33 +230,26 @@ class ConvNet(object):
             if 'strides' in kwargs:
                 kwargs['strides'] = self._val2list(kwargs['strides'])
 
-            if self.name is None or self.name == '':
-                with self.layer(layer):
-                    output = func(inp, **kwargs)
-                    self.output = tf.identity(output, name='output')
-            else:
-                if self._scope_initialized:
-                    name = self._reuse_scope_name(self.name)
-                else:
-                    name = self.name
-                    self._scope_initialized = True
-                with tf.variable_scope(name):
-                    with self.layer(layer):
-                        output = func(inp, **kwargs)
-                        self.output = tf.identity(output, name='output')
-
-            self.layers[layer] = self.output
-
-            if layer is None:  # no new scope requested
-                layer = tf.get_variable_scope().name
-
-            params = {'layer': layer, 'function': func}
-            params.update(kwargs)
-            if layer not in self.params:
-                self.params[layer] = OrderedDict()
-            self.params[layer][kwargs['name']] = params
+            self.params[layer][kwargs['name']] = kwargs
 
         return wrapper
+
+    def __call__(self, inp=None):
+        output = inp
+        for layer, params in self.params.items():
+            with tf.variable_scope(layer):
+                for func_name, kwargs in params.items():
+                    with tf.variable_scope(func_name):
+                        output = kwargs.get('inp', output)
+                        if output is None:
+                            raise ValueError('Layer {} function {} got None as input'.format(layer, func_name))
+                        kw = {k:v for k,v in kwargs.items() if k not in ['func_name', 'inp']}
+                        func = self._get_func(kwargs['func_name'])
+                        output = tf.identity(func(output, **kw), name='output')
+                self.layers[layer] = tf.identity(output, name='output')
+        self.output = output
+        return output
+
 
     def _val2list(self, value):
         if isinstance(value, int):
@@ -266,11 +280,8 @@ class ConvNet(object):
         """
         if name is None or name == '':
             raise ValueError('Layer name cannot be None or an empty string')
-        if name in self.layers:
-            name = self._reuse_scope_name(name)
-        with tf.variable_scope(name):
-            yield
-        self.layers[name] = self.output
+        self._layer = name
+        yield
 
     def _reuse_scope_name(self, name):
         graph = tf.get_default_graph()
@@ -281,31 +292,33 @@ class ConvNet(object):
         return name
 
 
-def mnist(inputs, train=True, seed=0):
+def mnist(train=True, seed=0):
     m = ConvNet()
     with m.arg_scope({'fc': {'kernel_init': 'truncated_normal',
                              'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
                              'dropout': None, 'batch_norm': False}}):
-        m.fc(128, inp=inputs, layer='hidden1')
+        m.fc(128, layer='hidden1')
         m.fc(32, layer='hidden2')
         m.fc(10, activation=None, layer='softmax_linear')
 
     return m
 
 
-def alexnet(inputs, train=True, norm=True, seed=0):
+def alexnet(train=True, norm=True, seed=0, **kwargs):
     defaults = {'conv': {'batch_norm': False,
                          'kernel_init': 'xavier',
                          'kernel_init_kwargs': {'seed': seed}},
+                         'weight_decay': .0005,
                 'max_pool': {'padding': 'SAME'},
                 'fc': {'batch_norm': False,
                        'kernel_init': 'truncated_normal',
                        'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
+                       'weight_decay': .0005,
                        'dropout_seed': 0}}
     m = ConvNet(defaults=defaults)
     dropout = .5 if train else None
 
-    m.conv(96, 11, 4, padding='VALID', inp=inputs, layer='conv1')
+    m.conv(96, 11, 4, padding='VALID', layer='conv1')
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
     m.max_pool(3, 2, layer='conv1')
@@ -329,10 +342,10 @@ def alexnet(inputs, train=True, norm=True, seed=0):
 
 
 def mnist_tfutils(inputs, train=True, **kwargs):
-    m = mnist(inputs['images'], train=train)
-    return m.output, m.params
+    m = mnist(train=train)
+    return m(inputs['images']), m.params
 
 
 def alexnet_tfutils(inputs, **kwargs):
-    m = alexnet(inputs['images'], **kwargs)
-    return m.output, m.params
+    m = alexnet(**kwargs)
+    return m(inputs['images']), m.params
