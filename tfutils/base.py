@@ -279,8 +279,10 @@ class DBInterface(object):
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
                 tf_saver_restore.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
-                self.sess.run(tf.variables_initializer(list(var for var in tf.global_variables()+tf.local_variables() \
-                                                       if var not in restore_vars))) # initialize variables not restored
+                all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
+                unrestored_vars = [var for var in all_variables \
+                                            if var not in restore_vars] # compute list of variables not restored
+                self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
             init_op_global = tf.global_variables_initializer()
@@ -290,6 +292,16 @@ class DBInterface(object):
             log.info('Model variables initialized from scratch.')
 
     def get_restore_vars(self, save_file):
+        """
+        Creates list of variables to restore from save_file
+
+        Extracts the subset of variables from tf.global_variables that match the
+        name and shape of variables saved in the checkpoint file, and returns these
+        as a list of variables to restore.
+
+        Args:
+            save_file: path of tf.train.Saver checkpoint
+        """
         reader = tf.train.NewCheckpointReader(save_file)
         saved_shapes = reader.get_variable_to_shape_map()
         log.info('Saved Vars:\n'+str(saved_shapes.keys()))
@@ -323,6 +335,7 @@ class DBInterface(object):
 
         Args:
             query: dict expressing MongoDB query
+
         """
         if collfs is None:
             collfs = self.collfs
