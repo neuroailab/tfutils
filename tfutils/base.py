@@ -335,7 +335,6 @@ class DBInterface(object):
 
         Args:
             query: dict expressing MongoDB query
-
         """
         if collfs is None:
             collfs = self.collfs
