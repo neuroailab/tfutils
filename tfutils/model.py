@@ -49,6 +49,7 @@ def conv(inp,
     biases = tf.get_variable(initializer=init,
                             shape=[out_depth],
                             dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='bias')
     # ops
     conv = tf.nn.conv2d(inp, kernel,
@@ -69,12 +70,15 @@ def fc(inp,
        kernel_init='xavier',
        kernel_init_kwargs=None,
        bias=1,
+       weight_decay=None,
        activation='relu',
        batch_norm=True,
        dropout=None,
        dropout_seed=None,
        name='fc'):
 
+    if weight_decay is None:
+        weight_decay = 0.
     # assert out_shape is not None
     if kernel_init_kwargs is None:
         kernel_init_kwargs = {}
@@ -86,11 +90,13 @@ def fc(inp,
     kernel = tf.get_variable(initializer=init,
                             shape=[in_depth, out_depth],
                             dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='weights')
     init = initializer(kind='constant', value=bias)
     biases = tf.get_variable(initializer=init,
                             shape=[out_depth],
                             dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='bias')
 
     # ops
@@ -302,10 +308,12 @@ def alexnet(train=True, norm=True, seed=0, **kwargs):
     defaults = {'conv': {'batch_norm': False,
                          'kernel_init': 'xavier',
                          'kernel_init_kwargs': {'seed': seed}},
+                         'weight_decay': .0005,
                 'max_pool': {'padding': 'SAME'},
                 'fc': {'batch_norm': False,
                        'kernel_init': 'truncated_normal',
                        'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
+                       'weight_decay': .0005,
                        'dropout_seed': 0}}
     m = ConvNet(defaults=defaults)
     dropout = .5 if train else None

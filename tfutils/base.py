@@ -15,6 +15,7 @@ from collections import OrderedDict
 
 import tqdm
 import pymongo
+from pymongo import errors as er
 from bson.objectid import ObjectId
 import gridfs
 import tensorflow as tf
@@ -318,7 +319,10 @@ class DBInterface(object):
         else:
             ckpt_record = None
 
-        count_recent = collfs_recent.find(query).count()
+        try: 
+            count_recent = collfs_recent.find(query).count()
+        except Exception as inst:
+            raise er.OperationFailure(inst.args[0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
         if count_recent > 0:  # get latest that matches query
             ckpt_record_recent = coll_recent.find(query,
                                                   sort=[('uploadDate', -1)])[0]

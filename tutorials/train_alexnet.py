@@ -35,6 +35,10 @@ def online_agg(agg_res, res, step):
     return agg_res
 
 
+def mean_loss_with_reg(loss):
+    return tf.reduce_mean(loss) + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+
+
 def exponential_decay(global_step,
                       learning_rate=.01,
                       decay_factor=.95,
@@ -81,7 +85,7 @@ params = {
         # 'collname': 'alexnet',
         # 'exp_id': 'trainval0',
         'do_restore': False,
-        'load_query': None
+        'query': None
     },
 
     'model_params': {
@@ -112,7 +116,7 @@ params = {
 
     'loss_params': {
         'targets': 'labels',
-        'agg_func': tf.reduce_mean,
+        'agg_func': mean_loss_with_reg,
         'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits
     },
 
