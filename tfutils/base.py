@@ -956,6 +956,10 @@ def train_from_params(save_params,
                                                     global_step,
                                                     optimizer_params)
 
+        if isinstance(loss, list):
+            loss = tf.stack(loss)
+            loss = tf.reduce_mean(loss)
+
         train_targets = {'loss': loss,
                          'learning_rate': learning_rate,
                          'optimizer': optimizer}
