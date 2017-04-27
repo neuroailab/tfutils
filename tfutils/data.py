@@ -219,7 +219,7 @@ class ParallelByFileProviderBase(DataProviderBase):
 DEFAULT_TFRECORDS_GLOB_PATTERN = '*.tfrecords'
 
 
-def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
+def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN, file_grab_func = None):
     if not isinstance(paths, list):
         assert isstring(paths)
         paths = [paths]
@@ -232,8 +232,11 @@ def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
     datasources = []
     for path, file_pattern in zip(paths, file_patterns):
         if os.path.isdir(path):
-            tfrecord_pattern = os.path.join(path, file_pattern)
-            datasource = tf.gfile.Glob(tfrecord_pattern)
+            if file_grab_func is None:
+              tfrecord_pattern = os.path.join(path, file_pattern)
+              datasource = tf.gfile.Glob(tfrecord_pattern)
+            else:
+              datasource = file_grab_func(path)
             datasource.sort()
             datasources.append(datasource)
         else:
@@ -344,6 +347,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
                  postprocess=None,
                  trans_dicts=None,
                  file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN,
+                 file_grab_func = None,
                  **kwargs):
         """
         Subclass of ParallelByFileProviderBase specific to TFRecords files.
@@ -405,6 +409,8 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
               the attributes "ids" and "means" are loaded for the second source_path, and the attribute
               "segmentations" for the third.
             - file_pattern (str, optional): pattern for selecting files in glob format.
+            - file_grab_func (func, optional): takes a path and returns files within that path to be included in source_paths.
+                      overrides file_pattern
 
         """
         self.source_dirs = source_dirs
@@ -414,7 +420,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
         self.meta_dict, self.parser_list = merge_meta(self.meta_dicts,
                                                       trans_dicts)
         postprocess = add_standard_postprocessing(postprocess, self.meta_dict)
-        source_paths = get_data_paths(source_dirs, file_pattern)
+        source_paths = get_data_paths(source_dirs, file_pattern = file_pattern, file_grab_func = file_grab_func)
         super(TFRecordsParallelByFileProvider, self).__init__(source_paths,
                                                               read_args=[(p, ) for p in self.parser_list],
                                                               postprocess=postprocess,
@@ -677,6 +683,8 @@ def get_queue(nodes,
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
+    print('queue seed: ' + str(seed))
+
     if capacity is None:
         capacity = 2 * batch_size
     if min_after_dequeue is None:
