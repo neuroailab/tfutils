@@ -1162,7 +1162,7 @@ def get_params():
     parser.add_argument('-p', '--params', type=json.loads, default=None)
     parser.add_argument('-g', '--gpu', default='0', type=str)
     args = vars(parser.parse_args())
-    os.environ['CUDA_VISIBLE_DEVICES'] = args['gpu']
+    #os.environ['CUDA_VISIBLE_DEVICES'] = args['gpu']
     for p in filter(lambda x: x.endswith('_func'), args):
         modname, objname = args[p].rsplit('.', 1)
         mod = importlib.import_module(modname)

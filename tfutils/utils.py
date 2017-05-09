@@ -278,6 +278,8 @@ def get_saver_pb2_v2_files(prefix):
 
 
 def identity_func(x):
+    if not hasattr(x, 'keys'):
+        x = {'result': x}
     return x
 
 
