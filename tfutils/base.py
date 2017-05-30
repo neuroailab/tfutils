@@ -272,16 +272,49 @@ class DBInterface(object):
                 self.load_rec()
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
+                # get variables to restore
+                restore_vars = self.get_restore_vars(cache_filename)
+                log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
+                tf_saver_restore = tf.train.Saver(restore_vars)
                 # tensorflow restore
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
-                tf_saver.restore(self.sess, cache_filename)
+                tf_saver_restore.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
+                all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
+                unrestored_vars = [var for var in all_variables \
+                                            if var not in restore_vars] # compute list of variables not restored
+                self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
+                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
             log.info('Model variables initialized from scratch.')
+
+    def get_restore_vars(self, save_file):
+        """
+        Creates list of variables to restore from save_file
+
+        Extracts the subset of variables from tf.global_variables that match the
+        name and shape of variables saved in the checkpoint file, and returns these
+        as a list of variables to restore.
+
+        Args:
+            save_file: path of tf.train.Saver checkpoint
+        """
+        reader = tf.train.NewCheckpointReader(save_file)
+        saved_shapes = reader.get_variable_to_shape_map()
+        log.info('Saved Vars:\n'+str(saved_shapes.keys()))
+        var_names = sorted([(var.name.split(':')[0],var) for var in tf.global_variables()
+                            if var.name.split(':')[0] in saved_shapes])
+        restore_vars = []
+        for saved_var_name, var in var_names:
+            curr_var = var
+            var_shape = curr_var.get_shape().as_list()
+            if var_shape == saved_shapes[saved_var_name]:
+                restore_vars.append(curr_var)
+        return restore_vars
 
     @property
     def tf_saver(self):
