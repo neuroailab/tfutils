@@ -245,7 +245,7 @@ def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
 
 def get_parser(shape, dtype):
     dtype = dtype if dtype in [tf.float32, tf.int64] else tf.string
-    shape = shape if dtype in [tf.float32, tf.int64] else [1]
+    shape = shape if dtype in [tf.float32, tf.int64] else []
     return tf.FixedLenFeature(shape, dtype)
 
 
