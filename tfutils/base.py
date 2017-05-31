@@ -211,9 +211,14 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
-            if self.sameloc:
-                raise Exception('Loading pointlessly')
-        load_query.update({'exp_id': self.load_exp_id})
+            if self.sameloc and (not save_params=={}): 
+                  raise Exception('Loading pointlessly')
+            else:
+                self.sameloc = False
+                
+        if 'exp_id' not in load_query:
+            load_query.update({'exp_id': self.load_exp_id})
+
         self.load_query = load_query
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
@@ -1140,7 +1145,10 @@ def get_data(func, queue_params=None, **data_params):
             enqueue_ops.append(queue.enqueue_many(input_op))
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue,
                                                                              enqueue_ops))
-    inputs = queue.dequeue_many(queue_params['batch_size'])
+    if queue_params['batch_size']==1:
+        inputs = queue.dequeue()
+    else:
+        inputs = queue.dequeue_many(queue_params['batch_size'])
     return data_params, inputs, queue
 
 
