@@ -170,9 +170,11 @@ class DBInterface(object):
         self.global_step = global_step
         self.tfsaver_args = tfsaver_args
         self.tfsaver_kwargs = tfsaver_kwargs
+        self.no_save = False
 
         if save_params is None:
             save_params = {}
+            self.no_save = True
         if load_params is None:
             load_params = {}
         location_variables = ['host', 'port', 'dbname', 'collname', 'exp_id']
@@ -188,6 +190,8 @@ class DBInterface(object):
             setattr(self, _k, sv)
             setattr(self, 'load_' + _k, lv)
         self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables])
+        if self.no_save:
+            self.sameloc = False
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
@@ -211,10 +215,8 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
-            if self.sameloc and (not save_params=={}): 
-                  raise Exception('Loading pointlessly')
-            else:
-                self.sameloc = False
+            if self.sameloc: 
+                raise Exception('Loading pointlessly')
                 
         if 'exp_id' not in load_query:
             load_query.update({'exp_id': self.load_exp_id})
@@ -411,6 +413,8 @@ class DBInterface(object):
         Actually saves record into DB and makes local filter caches
 
         """
+        if self.no_save:
+            raise Exception('No save parameters, no saving!')
         if train_res is None:
             train_res = {}
         if valid_res is None:
