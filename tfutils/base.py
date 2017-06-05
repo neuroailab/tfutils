@@ -151,7 +151,11 @@ class DBInterface(object):
                         Whether to restore from saved model
                     - load_query (dict)
                         mongodb query describing how to load from loading database
-            - sess (tesorflow.Session)
+                    - load_param_dict (dict)
+                        A dictionary whose keys are the names of the variables that are to be loaded
+                        from the checkpoint, and the values are the names of the variables of the model 
+                        that you want to restore with the value of the corresponding checkpoint variable.
+            - sess (tensorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
                 the MongoDB).
@@ -273,9 +277,22 @@ class DBInterface(object):
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
                 # get variables to restore
-                restore_vars = self.get_restore_vars(cache_filename)
-                log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
-                tf_saver_restore = tf.train.Saver(restore_vars)
+                if self.load_params['load_param_dict'] is None:
+                    restore_vars = self.get_restore_vars(cache_filename)
+                    log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
+                    tf_saver_restore = tf.train.Saver(restore_vars)
+                else:
+                    all_variables = tf.global_variables() + tf.local_variables()
+                    # associate values with actual variables
+                    load_var_dict = {}
+                    for key, value in self.load_params['load_param_dict'].items():
+                        for var in all_variables:
+                            if var.name.split(':')[0] == value:
+                               load_var_dict[key] = var
+                               break 
+                    restore_vars = list(load_var_dict.values()) 
+                    log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
+                    tf_saver_restore = tf.train.Saver(load_var_dict) 
                 # tensorflow restore
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
                 tf_saver_restore.restore(self.sess, cache_filename)
