@@ -170,9 +170,11 @@ class DBInterface(object):
         self.global_step = global_step
         self.tfsaver_args = tfsaver_args
         self.tfsaver_kwargs = tfsaver_kwargs
+        self.no_save = False
 
         if save_params is None:
             save_params = {}
+            self.no_save = True
         if load_params is None:
             load_params = {}
         location_variables = ['host', 'port', 'dbname', 'collname', 'exp_id']
@@ -188,6 +190,8 @@ class DBInterface(object):
             setattr(self, _k, sv)
             setattr(self, 'load_' + _k, lv)
         self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables])
+        if self.no_save:
+            self.sameloc = False
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
@@ -211,9 +215,12 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
-            if self.sameloc:
+            if self.sameloc: 
                 raise Exception('Loading pointlessly')
-        load_query.update({'exp_id': self.load_exp_id})
+                
+        if 'exp_id' not in load_query:
+            load_query.update({'exp_id': self.load_exp_id})
+
         self.load_query = load_query
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
@@ -406,6 +413,8 @@ class DBInterface(object):
         Actually saves record into DB and makes local filter caches
 
         """
+        if self.no_save:
+            raise Exception('No save parameters, no saving!')
         if train_res is None:
             train_res = {}
         if valid_res is None:
@@ -1140,7 +1149,10 @@ def get_data(func, queue_params=None, **data_params):
             enqueue_ops.append(queue.enqueue_many(input_op))
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue,
                                                                              enqueue_ops))
-    inputs = queue.dequeue_many(queue_params['batch_size'])
+    if queue_params['batch_size']==1:
+        inputs = queue.dequeue()
+    else:
+        inputs = queue.dequeue_many(queue_params['batch_size'])
     return data_params, inputs, queue
 
 
