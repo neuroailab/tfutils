@@ -12,7 +12,7 @@ from tfutils import base, data, model, optimizer
 
 host = os.uname()[1]
 if host.startswith('node') or host == 'openmind7':  # OpenMind
-    DATA_PATH = '/om/user/qbilius/imagenet/data.raw'
+    DATA_PATH = '/mnt/fs0/datasets/imagenet2012_tf'
 elif 'gpu-1' in host or 'gpu-2' in host:
     DATA_PATH = '/scratch/imagenet2012_tf'
 elif host.startswith('braintree'):
@@ -64,8 +64,8 @@ IMAGE_SIZE_CROP = 224
 params = {
     'save_params': {
         'host': 'localhost',
-        'port': 29101,
-        'dbname': 'alexnet-test',
+        'port': 27017,
+        'dbname': 'AlexNet-test',
         'collname': 'alexnet',
         'exp_id': 'trainval0',
 
@@ -166,7 +166,7 @@ params = {
                 'source_dirs': [DATA_PATH],
                 'crop_size': IMAGE_SIZE_CROP,
                 'batch_size': BATCH_SIZE,
-                'file_pattern': 'train_val*.tfrecords',
+                'file_pattern': 'trainval*.tfrecords',
                 'n_threads': 4
             },
             'targets': {

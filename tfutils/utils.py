@@ -188,7 +188,8 @@ def get_loss(inputs,
              loss_per_case_func_params={'_outputs': 'logits', '_targets_$all': 'labels'},
              agg_func=None,
              loss_func_kwargs=None,
-             agg_func_kwargs=None):
+             agg_func_kwargs=None,
+             **loss_params):
     if loss_func_kwargs is None:
         loss_func_kwargs = {}
     if not isinstance(targets, (list, tuple, np.ndarray)):
