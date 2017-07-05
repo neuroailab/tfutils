@@ -709,7 +709,7 @@ def stop_queues(sess, queues, coord, threads):
 def test(sess,
          queues,
          dbinterface,
-         valid_targets,
+         validation_targets,
          save_intermediate_freq=None):
 
     """
@@ -728,16 +728,35 @@ def test(sess,
             How frequently to save intermediate results captured during test
             None means no intermediate saving will be saved
     """
-    coord, threads = start_queues(sess)
-    dbinterface.start_time_step = time.time()
-    valid_results_summary = run_targets_dict(sess,
-                                             valid_targets,
-                                             save_intermediate_freq=save_intermediate_freq,
-                                             dbinterface=dbinterface,
-                                             validation_only=True)
-    dbinterface.sync_with_host()
-    stop_queues(sess, queues, coord, threads)
-    return valid_results_summary, dbinterface.outrecs
+
+    # Collect args in a dict of lists
+    test_args = {
+        'sess': sess,
+        'queues': queues,
+        'dbinterface': dbinterface,
+        'validation_targets': validation_targets,
+        'save_intermediate_freq': save_intermediate_freq}
+
+    _ttargs = [{key: value[i] for (key, value) in test_args.items()}
+               for i in range(len(sess))]
+
+    for ttarg in _ttargs:
+
+        ttarg['coord'], ttarg['threads'] = start_queues(ttarg['sess'])
+        ttarg['dbinterface'].start_time_step = time.time()
+        validation_summary = run_targets_dict(ttarg['sess'],
+                                              ttarg['validation_targets'],
+                                              save_intermediate_freq=ttarg['save_intermediate_freq'],
+                                              dbinterface=ttarg['dbinterface'],
+                                              validation_only=True)
+
+    res = []
+    for ttarg in _ttargs:
+        ttarg['dbinterface'].sync_with_host()
+        res.append(ttarg['dbinterface'].outrecs)
+        stop_queues(ttarg['sess'], ttarg['queues'], ttarg['coord'], ttarg['threads'])
+
+    return validation_summary, res
 
 
 def test_from_params(load_params,
@@ -756,55 +775,96 @@ def test_from_params(load_params,
 
     For documentation, see argument descriptions in train_from_params.
     """
-    if save_params is None:
-        save_params = {}
-    with tf.Graph().as_default():  # to have multiple graphs [ex: eval, train]
+
+    params, test_args = parse_params('test',
+                                     model_params,
+                                     dont_run=dont_run,
+                                     save_params=save_params,
+                                     load_params=load_params,
+                                     validation_params=validation_params,
+                                     log_device_placement=log_device_placement,
+                                     inter_op_parallelism_threads=inter_op_parallelism_threads)
+
+    with tf.Graph().as_default(), tf.device('/cpu:0'):
 
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
             log_device_placement=log_device_placement,
             inter_op_parallelism_threads=inter_op_parallelism_threads))
 
-        dbinterface = DBInterface(load_params=load_params)
-        dbinterface.load_rec()
-        ld = dbinterface.load_data
-        assert ld is not None, "No load data found for query, aborting"
-        ld = ld[0]
-        # TODO: have option to reconstitute model_params entirely from saved object ("revivification")
-        model_params['seed'] = ld['params']['model_params']['seed']
-        cfg_final = ld['params']['model_params']['cfg_final']
-        train_queue_params = ld['params']['train_params']['queue_params']
-        # params = {'train_params': {'queue_params': train_queue_params}}
-        valid_targets_dict, queues = get_valid_targets_dict(validation_params,
-                                                            model_params,
-                                                            None,
-                                                            queue_params=train_queue_params,
-                                                            cfg_final=cfg_final)
+        # For convenience, use list of dicts instead of dict of lists
+        _params = [{key: value[i] for (key, value) in params.items()}
+                   for i in range(len(params['model_params']))]
+        _ttargs = [{key: value[i] for (key, value) in test_args.items()}
+                   for i in range(len(params['model_params']))]
 
-        model_params['cfg_final'] = cfg_final
-        load_params['do_restore'] = True
-        params = {'load_params': load_params,
-                  'save_params': save_params,
-                  'model_params': model_params,
-                  'validation_params': validation_params,
-                  'log_device_placement': log_device_placement,
-                  'inter_op_parallelism_threads': inter_op_parallelism_threads}
+        # Build a graph for each distinct model.
+        for param, ttarg in zip(_params, _ttargs):
+            with tf.variable_scope(param['model_params']['prefix']):
 
-        dbinterface = DBInterface(sess=sess,
-                                  params=params,
-                                  load_params=load_params,
-                                  save_params=save_params)
-        dbinterface.initialize()
+                ttarg['dbinterface'] = DBInterface(load_params=param['load_params'])
+                ttarg['dbinterface'].load_rec()
+                ld = ttarg['dbinterface'].load_data
+                assert ld is not None, "No load data found for query, aborting"
+                ld = ld[0]
+                # TODO: have option to reconstitute model_params entirely from saved object ("revivification")
+                param['model_params']['seed'] = ld['params']['model_params']['seed']
+                cfg_final = ld['params']['model_params']['cfg_final']
+                train_queue_params = ld['params']['train_params']['queue_params']
+# ------------------------------------------------------------------------------
+
+                # valid_targets_dict = OrderedDict()
+                # queues = []
+                # model_params = copy.deepcopy(param['model_params'])
+                # model_params.pop('train', None)  # hackety-hack
+                # if cfg_final is None:
+                #     assert 'cfg_final' in model_params
+                #     cfg_final = model_params['cfg_final']
+                # assert 'seed' in model_params
+
+                # for vtarg in param['validation_params']:
+                #     queue_params = param['validation_params'][vtarg].get('queue_params', train_queue_params)
+                #     _, queue, vinputs = get_data(queue_params=queue_params,
+                #                                  **param['validation_params'][vtarg]['data_params'])
+                #     queues.extend(queue)
+                #     scope_name = 'validation/%s' % vtarg
+                #     with tf.name_scope(scope_name):
+                #         _mp, voutputs = get_model(vinputs, train=False, **model_params)
+                #         # _mp, voutputs = get_distributed_model(vinputs, train=False, **model_params)
+                #         check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
+                #         tf.get_variable_scope().reuse_variables()
+
+                #     param['validation_params'][vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
+                #                                                                                 **param['validation_params'][vtarg])
+                # ttarg['validation_targets'], ttarg['queues'] = valid_targets_dict, queues
+
+                (ttarg['validation_targets'],
+                 ttarg['queues']) = get_valid_targets_dict(loss_params=None,
+                                                           cfg_final=cfg_final,
+                                                           queue_params=train_queue_params,
+                                                           **param)
+# ------------------------------------------------------------------------------
+                param['load_params']['do_restore'] = True
+                param['model_params']['cfg_final'] = cfg_final
+
+                ttarg['dbinterface'] = DBInterface(sess=sess,
+                                                   params=param,
+                                                   load_params=param['load_params'],
+                                                   save_params=param['save_params'])
+                ttarg['dbinterface'].initialize()
+                ttarg['sess'] = sess
+                ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
+
+        # Convert back to a dictionary of lists
+        params = {key: [param[key] for param in _params]
+                  for key in _params[0].keys()}
+        test_args = {key: [ttarg[key] for ttarg in _ttargs]
+                     for key in _ttargs[0].keys()}
 
         if dont_run:
-            return sess, queues, dbinterface, valid_targets_dict
+            return test_args
 
-        save_intermediate_freq = save_params.get('save_intermediate_freq')
-        res = test(sess,
-                   queues,
-                   dbinterface,
-                   valid_targets_dict,
-                   save_intermediate_freq=save_intermediate_freq)
+        res = test(**test_args)
         sess.close()
         return res
 
@@ -915,7 +975,7 @@ def train(sess,
         stop_queues(trarg['sess'], trarg['queues'], trarg['coord'], trarg['threads'])
         trarg['dbinterface'].sync_with_host()
         res.append(trarg['dbinterface'].outrecs)
-    _trargs[0]['sess'].close()
+
     return res
 
 
@@ -1066,7 +1126,9 @@ def train_from_params(save_params,
         if dont_run:
             return train_args
 
-        return train(**train_args)
+        res = train(**train_args)
+        sess.close()
+        return res
 
 
 def get_valid_targets_dict(validation_params,
@@ -1093,6 +1155,7 @@ def get_valid_targets_dict(validation_params,
         scope_name = 'validation/%s' % vtarg
         with tf.name_scope(scope_name):
             _mp, voutputs = get_model(vinputs, train=False, **model_params)
+            # _mp, voutputs = get_distributed_model(vinputs, train=False, **model_params)
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
@@ -1187,6 +1250,7 @@ def get_graph(inputs, param, trarg, mode='train'):
                                               param['optimizer_params'])
         tower_losses = []
         tower_grads = []
+
         devices = param['model_params']['devices']
         inputs = split_input(inputs, param['model_params']['num_gpus'])
 
@@ -1213,9 +1277,6 @@ def get_graph(inputs, param, trarg, mode='train'):
                 tower_grads.append(grad)
 
     # Accumulate and average gradients on the host.
-    # with tf.device('/cpu:0'), tf.variable_scope(param['model_params']['prefix']):
-    # with tf.device('/cpu:0'):
-
     loss = tf.reduce_mean(tf.stack(tower_losses))
     average_grads = average_gradients(tower_grads)
     optimizer = optimizer_base.apply_gradients(average_grads,
@@ -1234,6 +1295,31 @@ def get_model(input, func, seed=0, train=False, **model_params):
                               **model_params)
     model_params['func'] = func
     model_params['cfg_final'] = cfg_final
+    return model_params, outputs
+
+
+def get_distributed_model(inputs, func, seed=0, train=False, **model_params):
+
+    model_params['seed'] = seed
+    model_params['train'] = train
+
+    with tf.variable_scope(tf.get_variable_scope()):
+
+        devices = model_params['devices']
+        inputs = split_input(input, model_params['num_gpus'])
+
+        outputs = []
+        params = []
+
+        for device, input in zip(devices, inputs):
+            with tf.device(device), tf.name_scope('gpu_' + device[-1]):
+                output, param = func(input, **model_params)
+                outputs.append(output)
+                params.append(param)
+                tf.get_variable_scope().reuse_variables(param)
+
+    model_params['func'] = func
+    model_params['cfg_final'] = params
     return model_params, outputs
 
 
@@ -1339,15 +1425,19 @@ def parse_params(mode,
 
     params = OrderedDict({
         'model_params': model_params,
-        'train_params': train_params,
-        'validation_params': validation_params,
-        'save_params': save_params,
         'load_params': load_params,
-        'loss_params': loss_params,
-        'optimizer_params': optimizer_params,
-        'learning_rate_params': learning_rate_params,
+        'save_params': save_params,
+        'validation_params': validation_params,
+        'dont_run': dont_run,
         'log_device_placement': log_device_placement,
         'inter_op_parallelism_threads': inter_op_parallelism_threads})
+
+    if mode == 'train':
+        params.update({
+            'train_params': train_params,
+            'loss_params': loss_params,
+            'optimizer_params': optimizer_params,
+            'learning_rate_params': learning_rate_params})
 
     # Ensure params is a dict of lists, using defaults when necessary.
     for name, param_list in params.items():
@@ -1359,18 +1449,20 @@ def parse_params(mode,
             param_list += (num_models - 1) * copy.deepcopy(param_list)
 
         for model_num, param in enumerate(param_list):
+
             if name == 'model_params':
-                if 'train' not in param:
-                    param['train'] = True
                 if 'prefix' not in param:
                     param['prefix'] = 'model_{}'.format(model_num)
                 if 'devices' not in param:
-                    param['devices'] = [DEFAULT_DEVICES.pop()]
+                    param['devices'] = [DEFAULT_DEVICES.pop(-1)]
                 if all([isinstance(d, int) for d in param['devices']]):
                     param['devices'] = map('/gpu:{}'.format, param['devices'])
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
                 assert param['num_gpus'] == len(param['devices'])
+                if mode == 'train':
+                    if 'train' not in param:
+                        param['train'] = True
 
             if name == 'train_params':
                 if 'num_steps' not in param:
@@ -1390,18 +1482,25 @@ def parse_params(mode,
     assert len(np.unique(list_lens)) == 1, 'All param lists should have be same length!'
 
     # Prepare args to be passed to `base.train`.
-    train_args = {
+    run_args = {
         'sess': num_models * [None],
         'queues': num_models * [None],
         'dbinterface': num_models * [None],
-        'global_step': num_models * [None],
-        'train_targets': [dict() for _ in range(num_models)],
-        'validation_targets': [dict() for _ in range(num_models)],
-        'num_steps': [p['num_steps'] for p in params['train_params']],
-        'thres_loss': [p['thres_loss'] for p in params['train_params']],
-        'train_loop': [p['train_loop']['func'] for p in params['train_params']],
-        'validate_first': [p['validate_first'] for p in params['train_params']]}
-    pass
+        'validation_targets': [dict() for _ in range(num_models)]}
+
+    if mode == 'test':
+        run_args.update({
+            'save_intermediate_freq': num_models * [None]})
+    else:
+        run_args.update({
+            'global_step': num_models * [None],
+            'train_targets': [dict() for _ in range(num_models)],
+            'num_steps': [p['num_steps'] for p in params['train_params']],
+            'thres_loss': [p['thres_loss'] for p in params['train_params']],
+            'train_loop': [p['train_loop']['func'] for p in params['train_params']],
+            'validate_first': [p['validate_first'] for p in params['train_params']]})
+
+    return params, run_args
 
 
 """
