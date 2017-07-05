@@ -99,115 +99,6 @@ def test_training():
     DEBUG['count0'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
     DEBUG['distinct_filters0'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
 
-    # assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 26
-    # assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step') == [0, 200, 400]
-
-    r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 0})[0]
-    asserts_for_record(r, params, train=True)
-    r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 20})[0]
-    asserts_for_record(r, params, train=True)
-
-    # run another 500 steps of training on the same experiment id.
-    params['train_params']['num_steps'] = 1000
-    base.train_from_params(**params)
-    # test if results are as expected
-    # assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 51
-    # assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0',
-                                                      # 'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
-    # assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
-
-    DEBUG['count1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
-    DEBUG['distinct_filters1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
-    DEBUG['distinct_exp_id'] = conn['tfutils-test']['testcol.files'].distinct('exp_id')
-
-    r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 1000})[0]
-
-    asserts_for_record(r, params, train=True)
-
-    # run 500 more steps but save to a new experiment id.
-    params['train_params']['num_steps'] = 1500
-    params['load_params'] = {'exp_id': 'training0'}
-    params['save_params']['exp_id'] = 'training1'
-    base.train_from_params(**params)
-    # assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training1',
-                                                      # 'saved_filters': True}).distinct('step') == [1200, 1400]
-    DEBUG['distinct_filters2'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training1', 'saved_filters': True}).distinct('step')
-    print(DEBUG)
-    return DEBUG
-# OrderedDict([('count0', 26),
-#              ('distinct_filters0', [0, 200, 400]),
-#              ('count1', 51),
-#              ('distinct_filters1', [0, 200, 400, 600, 800, 1000]),
-#              ('distinct_exp_id', [u'training0']),
-#              ('distinct_filters2', [1200, 1400])])
-
-
-def custom_train_loop(sess, train_targets, **loop_params):
-    print('TESTING CUSTOM TRAINING LOOP ...')
-    # loss = train_targets['loss']
-    # print('THE LOSS IS {}'.format(loss))
-    return sess.run(train_targets)
-
-
-def test_custom_training():
-    """This test illustrates how basic training is performed using the
-       tfutils.base.train_from_params function.  This is the first in a sequence of
-       interconnected tests. It creates a pretrained model that is used by
-       the next few tests (test_validation and test_feature_extraction).
-
-       As can be seen by looking at how the test checks for correctness, after the
-       training is run, results of training, including (intermittently) the full variables
-       needed to re-initialize the tensorflow model, are stored in a MongoDB.
-
-       Also see docstring of the tfutils.base.train_from_params function for more detailed
-       information about usage.
-    """
-
-    testcol = 'testcol_custom'
-    conn = pm.MongoClient(host=testhost,
-                          port=testport)
-
-    # delete old collection if it exists
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
-
-    # set up the parameters
-    params = {}
-    #  everything is list except 'train_params'
-    params['model_params'] = {'func': model.mnist_tfutils}
-    params['save_params'] = {'host': testhost,
-                             'port': testport,
-                             'dbname': testdbname,
-                             'collname': testcol,
-                             'exp_id': 'training0',
-                             'save_valid_freq': 20,
-                             'save_filters_freq': 200,
-                             'cache_filters_freq': 100,
-                             }
-    params['train_params'] = {'data_params': {'func': data.MNIST,
-                                              'batch_size': 100,
-                                              'group': 'train',
-                                              'n_threads': 4},
-                              'queue_params': {'queue_type': 'fifo',
-                                               'batch_size': 100},
-                              'num_steps': 500
-                              }
-    params['learning_rate_params'] = {'learning_rate': 0.05,
-                                      'decay_steps': num_batches_per_epoch,
-                                      'decay_rate': 0.95,
-                                      'staircase': True}
-    params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
-                                                              'batch_size': 100,
-                                                              'group': 'test',
-                                                              'n_threads': 4},
-                                              'queue_params': {'queue_type': 'fifo',
-                                                               'batch_size': 100},
-                                              'num_steps': 10,
-                                              'agg_func': utils.mean_dict}}
-
-    # actually run the training
-    base.train_from_params(**params)
-    # test if results are as expected
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 26
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step') == [0, 200, 400]
 
@@ -224,7 +115,13 @@ def test_custom_training():
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0',
                                                       'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
     assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
+
+    DEBUG['count1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
+    DEBUG['distinct_filters1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
+    DEBUG['distinct_exp_id'] = conn['tfutils-test']['testcol.files'].distinct('exp_id')
+
     r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 1000})[0]
+
     asserts_for_record(r, params, train=True)
 
     # run 500 more steps but save to a new experiment id.
@@ -234,6 +131,9 @@ def test_custom_training():
     base.train_from_params(**params)
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training1',
                                                       'saved_filters': True}).distinct('step') == [1200, 1400]
+    DEBUG['distinct_filters2'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training1', 'saved_filters': True}).distinct('step')
+    print(DEBUG)
+    return DEBUG
 
 
 def test_parallel_training():
@@ -326,7 +226,7 @@ def test_parallel_training():
 
     DEBUG = OrderedDict()
     # actually run the training
-    base.train_from_params_old(**params)
+    base.train_from_params(**params)
 
     # test if results are as expected
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 26 * num_models
@@ -342,7 +242,7 @@ def test_parallel_training():
 
     # run another 500 steps of training on the same experiment id.
     params['train_params']['num_steps'] = 1000
-    base.train_from_params_old(**params)
+    base.train_from_params(**params)
 
     # test if results are as expected
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 51 * num_models
@@ -362,19 +262,108 @@ def test_parallel_training():
     params['load_params'] = {'exp_id': 'training0'}
     [p.update({'exp_id': 'training1'}) for p in params['save_params']]
 
-    base.train_from_params_old(**params)
+    base.train_from_params(**params)
 
     DEBUG['distinct_filters2'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training1', 'saved_filters': True}).distinct('step')
     print(DEBUG)
     return DEBUG
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training1',
                                                       'saved_filters': True}).distinct('step') == [1200, 1400]
-# OrderedDict([('count0', 52),
-#              ('distinct_filters0', [0, 200, 400]),
-#              ('count1', 102),
-#              ('distinct_filters1', [0, 200, 400, 600, 800, 1000]),
-#              ('distinct_exp_id', [u'training0']),
-#              ('distinct_filters2', [1200, 1400])])
+
+
+def custom_train_loop(sess, train_targets, **loop_params):
+    print('TESTING CUSTOM TRAINING LOOP ...')
+    # loss = train_targets['loss']
+    # print('THE LOSS IS {}'.format(loss))
+    return sess.run(train_targets)
+
+
+def test_custom_training():
+    """This test illustrates how basic training is performed using the
+       tfutils.base.train_from_params function.  This is the first in a sequence of
+       interconnected tests. It creates a pretrained model that is used by
+       the next few tests (test_validation and test_feature_extraction).
+
+       As can be seen by looking at how the test checks for correctness, after the
+       training is run, results of training, including (intermittently) the full variables
+       needed to re-initialize the tensorflow model, are stored in a MongoDB.
+
+       Also see docstring of the tfutils.base.train_from_params function for more detailed
+       information about usage.
+    """
+
+    testcol = 'testcol_custom'
+    conn = pm.MongoClient(host=testhost,
+                          port=testport)
+
+    # delete old collection if it exists
+    coll = conn[testdbname][testcol + '.files']
+    coll.drop()
+
+    # set up the parameters
+    params = {}
+    #  everything is list except 'train_params'
+    params['model_params'] = {'func': model.mnist_tfutils}
+    params['save_params'] = {'host': testhost,
+                             'port': testport,
+                             'dbname': testdbname,
+                             'collname': testcol,
+                             'exp_id': 'training0',
+                             'save_valid_freq': 20,
+                             'save_filters_freq': 200,
+                             'cache_filters_freq': 100,
+                             }
+    params['train_params'] = {'data_params': {'func': data.MNIST,
+                                              'batch_size': 100,
+                                              'group': 'train',
+                                              'n_threads': 4},
+                              'train_loop': {'func': custom_train_loop},
+                              'queue_params': {'queue_type': 'fifo',
+                                               'batch_size': 100},
+                              'num_steps': 500
+                              }
+    params['learning_rate_params'] = {'learning_rate': 0.05,
+                                      'decay_steps': num_batches_per_epoch,
+                                      'decay_rate': 0.95,
+                                      'staircase': True}
+    params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
+                                                              'batch_size': 100,
+                                                              'group': 'test',
+                                                              'n_threads': 4},
+                                              'queue_params': {'queue_type': 'fifo',
+                                                               'batch_size': 100},
+                                              'num_steps': 10,
+                                              'agg_func': utils.mean_dict}}
+
+    # actually run the training
+    base.train_from_params(**params)
+    # test if results are as expected
+    assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 26
+    assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step') == [0, 200, 400]
+
+    r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 0})[0]
+    asserts_for_record(r, params, train=True)
+    r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 20})[0]
+    asserts_for_record(r, params, train=True)
+
+    # run another 500 steps of training on the same experiment id.
+    params['train_params']['num_steps'] = 1000
+    base.train_from_params(**params)
+    # test if results are as expected
+    assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 51
+    assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0',
+                                                      'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
+    assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
+    r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 1000})[0]
+    asserts_for_record(r, params, train=True)
+
+    # run 500 more steps but save to a new experiment id.
+    params['train_params']['num_steps'] = 1500
+    params['load_params'] = {'exp_id': 'training0'}
+    params['save_params']['exp_id'] = 'training1'
+    base.train_from_params(**params)
+    assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training1',
+                                                      'saved_filters': True}).distinct('step') == [1200, 1400]
 
 
 def custom_parallel_train_loop(sess, train_targets, **loop_params):
@@ -827,3 +816,70 @@ def asserts_for_record(r, params, train=False):
     else:
         assert 'train' not in r['params']['model_params']
         assert 'train_params' not in r['params']
+
+
+def generate_test_params(model_params,
+                         custom_train_loop=None,
+                         custom_valid_loop=None,
+                         custom_train_targets=None,
+                         custom_valid_targets=None):
+
+    # set up the parameters
+    params = {}
+
+    params['model_params'] = model_params
+    params['save_params'] = {'host': testhost,
+                             'port': testport,
+                             'dbname': testdbname,
+                             'collname': testcol,
+                             'exp_id': 'training0',
+                             'save_valid_freq': 20,
+                             'save_filters_freq': 200,
+                             'cache_filters_freq': 100,
+                             }
+    params['train_params'] = {'data_params': {'func': data.MNIST,
+                                              'batch_size': 100,
+                                              'group': 'train',
+                                              'n_threads': 4},
+                              'queue_params': {'queue_type': 'fifo',
+                                               'batch_size': 100},
+                              'num_steps': 500
+                              }
+    params['learning_rate_params'] = {'learning_rate': 0.05,
+                                      'decay_steps': num_batches_per_epoch,
+                                      'decay_rate': 0.95,
+                                      'staircase': True}
+    params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
+                                                              'batch_size': 100,
+                                                              'group': 'test',
+                                                              'n_threads': 4},
+                                              'queue_params': {'queue_type': 'fifo',
+                                                               'batch_size': 100},
+                                              'num_steps': 10,
+                                              'agg_func': utils.mean_dict}}
+    if custom_train_loop is not None:
+        params['train_params']['train_loop'] = custom_train_loop
+    if custom_train_targets is not None:
+        params['train_params']['targets'] = custom_train_targets
+    if custom_valid_loop is not None:
+        params['validation_params']['valid0']['valid_loop'] = custom_valid_loop
+    if custom_valid_targets is not None:
+        params['validation_params']['valid0']['targets'] = custom_valid_targets
+
+    return params
+
+# test_training()
+# OrderedDict([('count0', 26),
+#              ('distinct_filters0', [0, 200, 400]),
+#              ('count1', 51),
+#              ('distinct_filters1', [0, 200, 400, 600, 800, 1000]),
+#              ('distinct_exp_id', [u'training0']),
+#              ('distinct_filters2', [1200, 1400])])
+
+# test_parallel_training()
+# OrderedDict([('count0', 52),
+#              ('distinct_filters0', [0, 200, 400]),
+#              ('count1', 102),
+#              ('distinct_filters1', [0, 200, 400, 600, 800, 1000]),
+#              ('distinct_exp_id', [u'training0']),
+#              ('distinct_filters2', [1200, 1400])])
