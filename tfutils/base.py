@@ -68,7 +68,7 @@ DEFAULT_SAVE_PARAMS = frozendict({'save_metrics_freq': 100,
                                   'do_save': True})
 
 
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'load_param_dict': None})
 
 
 class DBInterface(object):
