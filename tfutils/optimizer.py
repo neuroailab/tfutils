@@ -16,7 +16,7 @@ class ClipOptimizer(object):
                    for grad, var in gvs if grad is not None]
         return gvs
 
-    def minimize(self, loss, global_step):
-        grads_and_vars = self.compute_gradients(loss)
+    def minimize(self, loss, global_step, var_list = None):
+        grads_and_vars = self.compute_gradients(loss, var_list = var_list)
         return self._optimizer.apply_gradients(grads_and_vars,
                                                global_step=global_step)

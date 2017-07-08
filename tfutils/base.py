@@ -460,12 +460,13 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer' and k not in self.save_to_gfs]
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if 'optimizer' not in k and k != 'msg' and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
-            if 'optimizer' in train_res:
-                del train_res['optimizer']
+            for k in train_res:
+                if 'optimizer' in k:
+                    del train_res[k]
             if 'train_results' not in rec:
                 rec['train_results'] = []
             rec['train_results'].append(train_res)
@@ -1207,6 +1208,7 @@ def get_optimizer(learning_rate,
                   loss,
                   global_step,
                   optimizer_params,
+                  var_list = None,
                   default_optimizer_params=DEFAULT_OPTIMIZER_PARAMS,
                   default_optimizer_func=ClipOptimizer):
     if optimizer_params is None:
@@ -1214,7 +1216,7 @@ def get_optimizer(learning_rate,
     func = optimizer_params.pop('func', default_optimizer_func)
     optimizer_base = func(learning_rate=learning_rate,
                           **optimizer_params)
-    optimizer = optimizer_base.minimize(loss, global_step)
+    optimizer = optimizer_base.minimize(loss, global_step, var_list = var_list)
     optimizer_params['func'] = func
     return optimizer_params, optimizer
 
