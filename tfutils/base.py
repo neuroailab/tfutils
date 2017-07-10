@@ -155,6 +155,8 @@ class DBInterface(object):
                         A dictionary whose keys are the names of the variables that are to be loaded
                         from the checkpoint, and the values are the names of the variables of the model 
                         that you want to restore with the value of the corresponding checkpoint variable.
+                    - load_step (bool)
+                        Whether to restore global_step
             - sess (tensorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
@@ -201,7 +203,7 @@ class DBInterface(object):
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
-        for _k in ['do_restore']:
+        for _k in ['do_restore', 'load_param_dict', 'load_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -284,9 +286,9 @@ class DBInterface(object):
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
                 # get variables to restore
-                if self.load_params['load_param_dict'] is None:
+                if self.load_param_dict is None:
                     restore_vars = self.get_restore_vars(cache_filename)
-                    if self.load_params['load_step'] is False:
+                    if self.load_step is False:
                         restore_vars = [restore_var for restore_var in restore_vars if 'global_step' not in restore_var.name] 
                     log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
                     tf_saver_restore = tf.train.Saver(restore_vars)
@@ -294,12 +296,12 @@ class DBInterface(object):
                     all_variables = tf.global_variables() + tf.local_variables()
                     # associate values with actual variables
                     load_var_dict = {}
-                    for key, value in self.load_params['load_param_dict'].items():
+                    for key, value in self.load_param_dict.items():
                         for var in all_variables:
                             if var.name.split(':')[0] == value:
                                load_var_dict[key] = var
                                break 
-                    if self.load_params['load_step'] is False:
+                    if self.load_step is False:
                         load_var_dict = {k:v for k,v in load_var_dict.items() if 'global_step' not in v.name}
                     restore_vars = list(load_var_dict.values()) 
                     log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
