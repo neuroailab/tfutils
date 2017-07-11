@@ -501,9 +501,10 @@ class DBInterface(object):
             save_to_gfs = {}
             for _k in self.save_to_gfs:
                 if train_res:
+                    all_train_keys = set([k for r in rec['train_results'] for k in r])
                     if 'train_results' not in save_to_gfs:
                         save_to_gfs['train_results'] = {}
-                    if _k in train_res:
+                    if _k in all_train_keys:
                         save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
                         if len(save_to_gfs['train_results'][_k]) == 1:
                             save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
