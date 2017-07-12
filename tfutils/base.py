@@ -31,7 +31,10 @@ from tfutils.utils import (make_mongo_safe,
                            sonify,
                            get_saver_pb2_v2_files,
                            verify_pb2_v2_files,
-                           frozendict)
+                           frozendict,
+                           format_devices,
+                           suppress_stdout,
+                           Suppress)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -50,9 +53,11 @@ if 'TFUTILS_HOME' in os.environ:
 else:
     TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
 
+DEFAULT_HOST = '/cpu:0'
+
 DEFAULT_DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2', '/gpu:3']
 
-DEFAULT_LOOP_PARAMS = frozendict({})
+DEFAULT_LOOP_PARAMS = frozendict()
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
                                   'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
@@ -60,10 +65,6 @@ DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
 
 DEFAULT_OPTIMIZER_PARAMS = frozendict({'optimizer_class': tf.train.MomentumOptimizer,
                                        'momentum': 0.9})
-
-DEFAULT_TRAIN_NUM_STEPS = None
-
-DEFAULT_TRAIN_THRES_LOSS = 100
 
 DEFAULT_SAVE_PARAMS = frozendict({'save_metrics_freq': 100,
                                   'save_valid_freq': 3000,
@@ -78,8 +79,18 @@ DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True})
 
-DEFAULT_PARAMS = frozendict({
+DEFAULT_MODEL_SEED = 0
+DEFAULT_MODEL_TRAIN = False
+DEFAuLT_DONT_RUN = False
+DEFAULT_SKIP_CHECK = False
+DEFAULT_LOG_DEVICE_PLACEMENT = False
+DEFAULT_INTER_OP_PARALLELISM_THREADS = 40
+DEFAULT_TRAIN_NUM_STEPS = None
+DEFAULT_TRAIN_THRES_LOSS = 100
+
+DEFAuLT_DONT_RUNDEFAULT_PARAMS = frozendict({
     'dont_run': False,
+    'skip_check': False,
     'model_params': {},
     'train_params': {},
     'validation_params': {},
@@ -182,10 +193,13 @@ class DBInterface(object):
                 is required if being using in a training context.
             - *tfsaver_args, **tsaver_kwargs
                 Additional arguments to be passed onto base Saver class constructor
-        """
 
+        """
         self.params = params
-        self.sonified_params = sonify(self.params)
+        self._skip_check = params.get('skip_check', False)
+        if self._skip_check:
+            log.warning('Skipping version check and info...')
+        self.sonified_params = sonify(self.params, skip=self._skip_check)
         self.save_params = save_params
         self.load_params = load_params
         self.sess = sess
@@ -209,9 +223,11 @@ class DBInterface(object):
                 lv = save_params[_k]
             setattr(self, _k, sv)
             setattr(self, 'load_' + _k, lv)
-        self.sameloc = all([getattr(self, _k) == getattr(self, 'load_' + _k) for _k in location_variables])
+        self.sameloc = all([getattr(self, _k) == getattr(
+            self, 'load_' + _k) for _k in location_variables])
         if 'query' in load_params and not load_params['query'] is None and 'exp_id' in load_params['query']:
-            self.sameloc = self.sameloc & (load_params['query']['exp_id'] == self.exp_id)
+            self.sameloc = self.sameloc & (
+                load_params['query']['exp_id'] == self.exp_id)
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
@@ -234,12 +250,14 @@ class DBInterface(object):
 
             self.conn_rec = pymongo.MongoClient(host=tmp_host, port=tmp_port)
             self.conn_rec.server_info()
-            self.collfs_rec = gridfs.GridFS(self.conn_rec[self.dbname], self.collname)
+            self.collfs_rec = gridfs.GridFS(
+                self.conn_rec[self.dbname], self.collname)
         else:
             self.conn_rec = None
             self.collfs_rec = None
 
-        recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
+        recent_name = '_'.join(
+            [self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
 
         self.load_data = None
@@ -251,7 +269,7 @@ class DBInterface(object):
                 raise Exception('Loading pointlessly')
             else:
                 self.sameloc = False
-                #print('Set sameloc to False!')
+                # print('Set sameloc to False!')
 
         if 'exp_id' not in load_query:
             load_query.update({'exp_id': self.load_exp_id})
@@ -269,7 +287,8 @@ class DBInterface(object):
                                      self.load_collname,
                                      self.load_exp_id,
                                      '__RECENT'])
-        self.load_collfs_recent = gridfs.GridFS(self.load_conn[load_recent_name])
+        self.load_collfs_recent = gridfs.GridFS(
+            self.load_conn[load_recent_name])
 
         if 'cache_dir' in save_params:
             cache_dir = save_params['cache_dir']
@@ -300,13 +319,12 @@ class DBInterface(object):
                                      collfs=self.load_collfs,
                                      collfs_recent=self.load_collfs_recent)
             if load is None:
-                raise Exception('You specified load parameters but no record was found with the given spec.')
+                raise Exception(
+                    'You specified load parameters but no record was found with the given spec.')
         self.load_data = load
 
     def initialize(self, no_scratch=False):
-        """
-        Fetches record then uses tf's saver.restore
-        """
+        """Fetch record then uses tf's saver.restore."""
         # fetch record from database and get the filename info from record
         tf_saver = self.tf_saver
         if self.do_restore:
@@ -316,17 +334,22 @@ class DBInterface(object):
                 rec, cache_filename = self.load_data
                 # get variables to restore
                 restore_vars = self.get_restore_vars(cache_filename)
-                log.info('Restored Vars:\n' + str([restore_var.name for restore_var in restore_vars]))
+                log.info('Restored Vars:\n' +
+                         str([restore_var.name for restore_var in restore_vars]))
                 tf_saver_restore = tf.train.Saver(restore_vars)
                 # tensorflow restore
-                log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
+                log.info('Restoring variables from record %s (step %d)...' %
+                         (str(rec['_id']), rec['step']))
                 tf_saver_restore.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
-                all_variables = tf.global_variables() + tf.local_variables()  # get list of all variables
+                # get list of all variables
+                all_variables = tf.global_variables() + tf.local_variables()
                 unrestored_vars = [var for var in all_variables
                                    if var not in restore_vars]            # compute list of variables not restored
-                self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
-                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
+                # initialize variables not restored
+                self.sess.run(tf.variables_initializer(unrestored_vars))
+                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(
+                    tf.report_uninitialized_variables())
         if (not self.do_restore or self.load_data is None) and not no_scratch:
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
@@ -335,8 +358,7 @@ class DBInterface(object):
             log.info('Model variables initialized from scratch.')
 
     def get_restore_vars(self, save_file):
-        """
-        Creates list of variables to restore from save_file
+        """Create list of variables to restore from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
         name and shape of variables saved in the checkpoint file, and returns these
@@ -347,8 +369,8 @@ class DBInterface(object):
         """
         reader = tf.train.NewCheckpointReader(save_file)
         saved_shapes = reader.get_variable_to_shape_map()
-        log.info('Saved Vars:\n'+str(saved_shapes.keys()))
-        var_names = sorted([(var.name.split(':')[0],var) for var in tf.global_variables()
+        log.info('Saved Vars:\n' + str(saved_shapes.keys()))
+        var_names = sorted([(var.name.split(':')[0], var) for var in tf.global_variables()
                             if var.name.split(':')[0] in saved_shapes])
         restore_vars = []
         for saved_var_name, var in var_names:
@@ -361,7 +383,8 @@ class DBInterface(object):
     @property
     def tf_saver(self):
         if not hasattr(self, '_tf_saver'):
-            self._tf_saver = tf.train.Saver(*self.tfsaver_args, **self.tfsaver_kwargs)
+            self._tf_saver = tf.train.Saver(
+                *self.tfsaver_args, **self.tfsaver_kwargs)
         return self._tf_saver
 
     def load_from_db(self,
@@ -369,8 +392,7 @@ class DBInterface(object):
                      cache_filters=False,
                      collfs=None,
                      collfs_recent=None):
-        """
-        Loads checkpoint from the database
+        """Load checkpoint from the database.
 
         Checks the recent and regular checkpoint fs to find the latest one
         matching the query. Returns the GridOut obj corresponding to the
@@ -394,10 +416,11 @@ class DBInterface(object):
         else:
             ckpt_record = None
 
-        try: 
+        try:
             count_recent = collfs_recent.find(query).count()
         except Exception as inst:
-            raise er.OperationFailure(inst.args[0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
+            raise er.OperationFailure(inst.args[
+                                      0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
         if count_recent > 0:  # get latest that matches query
             ckpt_record_recent = coll_recent.find(query,
                                                   sort=[('uploadDate', -1)])[0]
@@ -407,7 +430,8 @@ class DBInterface(object):
                 ckpt_record = ckpt_record_recent
 
         if count + count_recent == 0:  # no matches for query
-            log.warning('No matching checkpoint for query "{}"'.format(repr(query)))
+            log.warning(
+                'No matching checkpoint for query "{}"'.format(repr(query)))
             return
 
         database = loading_from._Collection__database
@@ -419,7 +443,8 @@ class DBInterface(object):
 
             # check if there is no local copy
             if not os.path.isfile(cache_filename):
-                log.info('No cache file at %s, loading from DB' % cache_filename)
+                log.info('No cache file at %s, loading from DB' %
+                         cache_filename)
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
@@ -438,16 +463,14 @@ class DBInterface(object):
                 if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
                     cache_filename = os.path.splitext(cache_filename)[0]
                     verify_pb2_v2_files(cache_filename, ckpt_record)
-                log.info('Cache file found at %s, using that to load' % cache_filename)
+                log.info('Cache file found at %s, using that to load' %
+                         cache_filename)
         else:
             cache_filename = None
         return ckpt_record, cache_filename
 
     def save(self, train_res=None, valid_res=None, step=None, validation_only=False):
-        """
-        Actually saves record into DB and makes local filter caches
-
-        """
+        """Actually save record into DB and makes local filter caches."""
         if train_res is None:
             train_res = {}
         if valid_res is None:
@@ -474,9 +497,11 @@ class DBInterface(object):
         rec['step'] = step
 
         if len(train_res) > 0:
-            # TODO: also include error rate of the train set to monitor overfitting
+            # TODO: also include error rate of the train set to monitor
+            # overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if k != 'optimizer' and k not in self.save_to_gfs]
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items(
+            ) if k != 'optimizer' and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
@@ -491,7 +516,8 @@ class DBInterface(object):
             rec['validation_results'] = valid_res
             message = 'Validation -- '
             message += ', '.join('{}: {}'.format(k,
-                                                 {_k: _v for _k, _v in v.items() if _k not in self.save_to_gfs}
+                                                 {_k: _v for _k, _v in v.items(
+                                                 ) if _k not in self.save_to_gfs}
                                                  ) for k, v in valid_res.items())
             log.info(message)
 
@@ -519,9 +545,11 @@ class DBInterface(object):
                     if 'train_results' not in save_to_gfs:
                         save_to_gfs['train_results'] = {}
                     if _k in train_res:
-                        save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
+                        save_to_gfs['train_results'][_k] = [
+                            r.pop(_k) for r in rec['train_results'] if _k in r]
                         if len(save_to_gfs['train_results'][_k]) == 1:
-                            save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
+                            save_to_gfs['train_results'][
+                                _k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
                     if 'validation_results' not in save_to_gfs:
                         save_to_gfs['validation_results'] = {}
@@ -529,9 +557,10 @@ class DBInterface(object):
                         if _vk not in save_to_gfs['validation_results']:
                             save_to_gfs['validation_results'][_vk] = {}
                         if _k in valid_res[_vk]:
-                            save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
+                            save_to_gfs['validation_results'][
+                                _vk][_k] = valid_res[_vk].pop(_k)
 
-            save_rec = sonify(rec)
+            save_rec = sonify(rec, skip=self._skip_check)
             make_mongo_safe(save_rec)
 
             thread = threading.Thread(target=self._save_thread,
@@ -562,7 +591,8 @@ class DBInterface(object):
             if save_to_gfs:
                 idval = str(outrec)
                 save_to_gfs_path = idval + "_fileitems"
-                self.collfs_rec.put(cPickle.dumps(save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
+                self.collfs_rec.put(cPickle.dumps(
+                    save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
 
         if save_filters_permanent or save_filters_tmp:
             save_rec['saved_filters'] = True
@@ -602,7 +632,8 @@ class DBInterface(object):
         if save_to_gfs:
             idval = str(outrec)
             save_to_gfs_path = idval + "_fileitems"
-            self.collfs.put(cPickle.dumps(save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
+            self.collfs.put(cPickle.dumps(save_to_gfs),
+                            filename=save_to_gfs_path, item_for=outrec)
 
         sys.stdout.flush()  # flush the stdout buffer
         self.outrecs.append(outrec)
@@ -629,8 +660,7 @@ def run_targets(sess,
                 agg_func,
                 save_intermediate_freq=None,
                 validation_only=False):
-    """TODO:  this code resembles train() function, possible want to unify
-    """
+    """TODO:  this code resembles train() function, possible want to unify."""
     agg_res = None
 
     if save_intermediate_freq is not None:
@@ -663,9 +693,7 @@ def run_targets_dict(sess,
                      save_intermediate_freq=None,
                      dbinterface=None,
                      validation_only=False):
-    """
-    Helper function for actually computing validation results.
-    """
+    """Helper function for actually computing validation results."""
     results = {}
     for target_name in targets:
         num_steps = targets[target_name]['num_steps']
@@ -689,16 +717,14 @@ def run_targets_dict(sess,
 
 
 def start_queues(sess):
-    """Helper function for starting queues before running processes.
-    """
+    """Helper function for starting queues before running processes."""
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
     return coord, threads
 
 
 def stop_queues(sess, queues, coord, threads):
-    """Helper function for stopping queues cleanly.
-    """
+    """Helper function for stopping queues cleanly."""
     coord.request_stop()
     coord.join(threads)
     for queue in queues:
@@ -711,7 +737,6 @@ def test(sess,
          dbinterface,
          validation_targets,
          save_intermediate_freq=None):
-
     """
     Actually runs the testing evaluation loop.
 
@@ -728,7 +753,6 @@ def test(sess,
             How frequently to save intermediate results captured during test
             None means no intermediate saving will be saved
     """
-
     # Collect args in a dict of lists
     test_args = {
         'sess': sess,
@@ -746,7 +770,8 @@ def test(sess,
         ttarg['dbinterface'].start_time_step = time.time()
         validation_summary = run_targets_dict(ttarg['sess'],
                                               ttarg['validation_targets'],
-                                              save_intermediate_freq=ttarg['save_intermediate_freq'],
+                                              save_intermediate_freq=ttarg[
+                                                  'save_intermediate_freq'],
                                               dbinterface=ttarg['dbinterface'],
                                               validation_only=True)
 
@@ -754,7 +779,8 @@ def test(sess,
     for ttarg in _ttargs:
         ttarg['dbinterface'].sync_with_host()
         res.append(ttarg['dbinterface'].outrecs)
-        stop_queues(ttarg['sess'], ttarg['queues'], ttarg['coord'], ttarg['threads'])
+        stop_queues(ttarg['sess'], ttarg['queues'],
+                    ttarg['coord'], ttarg['threads'])
 
     return validation_summary, res
 
@@ -765,20 +791,21 @@ def test_from_params(load_params,
                      log_device_placement=False,
                      save_params=None,
                      dont_run=False,
+                     skip_check=False,
                      inter_op_parallelism_threads=40,
                      ):
-
     """
     Main testing interface function.
 
     Same as train_from_parameters; but just performs testing without training.
 
     For documentation, see argument descriptions in train_from_params.
-    """
 
+    """
     params, test_args = parse_params('test',
                                      model_params,
                                      dont_run=dont_run,
+                                     skip_check=skip_check,
                                      save_params=save_params,
                                      load_params=load_params,
                                      validation_params=validation_params,
@@ -789,8 +816,8 @@ def test_from_params(load_params,
 
         # create session
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-            log_device_placement=log_device_placement,
-            inter_op_parallelism_threads=inter_op_parallelism_threads))
+                                                log_device_placement=log_device_placement,
+                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
 
         # For convenience, use list of dicts instead of dict of lists
         _params = [{key: value[i] for (key, value) in params.items()}
@@ -802,58 +829,36 @@ def test_from_params(load_params,
         for param, ttarg in zip(_params, _ttargs):
             with tf.variable_scope(param['model_params']['prefix']):
 
-                ttarg['dbinterface'] = DBInterface(load_params=param['load_params'])
+                ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
                 ttarg['dbinterface'].load_rec()
                 ld = ttarg['dbinterface'].load_data
                 assert ld is not None, "No load data found for query, aborting"
                 ld = ld[0]
-                # TODO: have option to reconstitute model_params entirely from saved object ("revivification")
-                param['model_params']['seed'] = ld['params']['model_params']['seed']
+                # TODO: have option to reconstitute model_params entirely from
+                # saved object ("revivification")
+                param['model_params']['seed'] = ld[
+                    'params']['model_params']['seed']
                 cfg_final = ld['params']['model_params']['cfg_final']
-                train_queue_params = ld['params']['train_params']['queue_params']
-# ------------------------------------------------------------------------------
-
-                # valid_targets_dict = OrderedDict()
-                # queues = []
-                # model_params = copy.deepcopy(param['model_params'])
-                # model_params.pop('train', None)  # hackety-hack
-                # if cfg_final is None:
-                #     assert 'cfg_final' in model_params
-                #     cfg_final = model_params['cfg_final']
-                # assert 'seed' in model_params
-
-                # for vtarg in param['validation_params']:
-                #     queue_params = param['validation_params'][vtarg].get('queue_params', train_queue_params)
-                #     _, queue, vinputs = get_data(queue_params=queue_params,
-                #                                  **param['validation_params'][vtarg]['data_params'])
-                #     queues.extend(queue)
-                #     scope_name = 'validation/%s' % vtarg
-                #     with tf.name_scope(scope_name):
-                #         _mp, voutputs = get_model(vinputs, train=False, **model_params)
-                #         # _mp, voutputs = get_distributed_model(vinputs, train=False, **model_params)
-                #         check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
-                #         tf.get_variable_scope().reuse_variables()
-
-                #     param['validation_params'][vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
-                #                                                                                 **param['validation_params'][vtarg])
-                # ttarg['validation_targets'], ttarg['queues'] = valid_targets_dict, queues
+                train_queue_params = ld['params'][
+                    'train_params']['queue_params']
 
                 (ttarg['validation_targets'],
                  ttarg['queues']) = get_valid_targets_dict(loss_params=None,
                                                            cfg_final=cfg_final,
                                                            queue_params=train_queue_params,
                                                            **param)
-# ------------------------------------------------------------------------------
                 param['load_params']['do_restore'] = True
                 param['model_params']['cfg_final'] = cfg_final
 
                 ttarg['dbinterface'] = DBInterface(sess=sess,
                                                    params=param,
-                                                   load_params=param['load_params'],
+                                                   load_params=param[
+                                                       'load_params'],
                                                    save_params=param['save_params'])
                 ttarg['dbinterface'].initialize()
                 ttarg['sess'] = sess
-                ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
+                ttarg['save_intermediate_freq'] = param[
+                    'save_params'].get('save_intermediate_freq')
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]
@@ -900,8 +905,8 @@ def train(sess,
             Objects on which validation will be computed
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
-    """
 
+    """
     # Collect args in a dict of lists
     train_args = {
         'sess': sess,
@@ -926,7 +931,8 @@ def train(sess,
     for (trarg, step) in zip(_trargs, steps):
 
         if step >= trarg['num_steps']:
-            log.info('Training cancelled since step ({}) is >= num_steps ({})'.format(step, trarg['num_steps']))
+            log.info('Training cancelled since step ({}) is >= num_steps ({})'.
+                     format(step, trarg['num_steps']))
             return
 
         log.info('Training beginning ...')
@@ -960,7 +966,8 @@ def train(sess,
                 raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_results['loss'],
                                                                                      trarg['thres_loss']))
 
-            vtargs = trarg['validation_targets'] if step % trarg['dbinterface'].save_valid_freq == 0 else {}
+            vtargs = trarg['validation_targets'] if step % trarg[
+                'dbinterface'].save_valid_freq == 0 else {}
             validation_res = run_targets_dict(trarg['sess'], vtargs)
 
             trarg['dbinterface'].save(train_res=train_results,
@@ -972,10 +979,12 @@ def train(sess,
     # Save and close the session
     res = []
     for trarg in _trargs:
-        stop_queues(trarg['sess'], trarg['queues'], trarg['coord'], trarg['threads'])
+        stop_queues(trarg['sess'], trarg['queues'],
+                    trarg['coord'], trarg['threads'])
         trarg['dbinterface'].sync_with_host()
         res.append(trarg['dbinterface'].outrecs)
 
+    _trargs[0]['sess'].close()
     return res
 
 
@@ -986,84 +995,174 @@ def train_from_params(save_params,
                       learning_rate_params=None,
                       optimizer_params=None,
                       validation_params=None,
-                      postsess_params=None,
                       log_device_placement=False,
                       load_params=None,
                       dont_run=False,
+                      skip_check=False,
                       inter_op_parallelism_threads=40,
                       ):
+    """
+    Main training interface function.
 
-    model_params = [model_params] if not isinstance(model_params,
-                                                    list) else model_params
-    num_models = len(model_params)
-    list_lens = [num_models]
+    :Args:
+        - saver_params (dict)
+            Dictionary of arguments for creating saver object (see Saver class)
 
-    params = OrderedDict({
-        'model_params': model_params,
-        'train_params': train_params,
-        'validation_params': validation_params,
-        'save_params': save_params,
-        'load_params': load_params,
-        'loss_params': loss_params,
-        'optimizer_params': optimizer_params,
-        'learning_rate_params': learning_rate_params,
-        'log_device_placement': log_device_placement,
-        'inter_op_parallelism_threads': inter_op_parallelism_threads})
+        - model_params (dict)
+            Containing function that produces model and arguments to that function.
+                - model_params['func'] is the function producing the model.
+                  The function's signature is:
+                    - Must accept:
+                        - "inputs" -- data object
+                        - "train" -- boolean if training is happening
+                        - "seed" -- seed for use in random generation of final config
+                    - Must return:
+                        - train output tensorflow nodes
+                        - final configuration used in model
+                - Remaining itmes in model_params are dictionary of arguments massed to func.
 
-    # Ensure params is a dict of lists, using defaults when necessary.
-    for name, param_list in params.items():
-        if not param_list:
-            param_list = DEFAULT_PARAMS[name]
-        if not isinstance(param_list, list):
-            param_list = [copy.deepcopy(param_list) for _ in range(num_models)]
-        if len(param_list) != num_models and len(param_list) == 1:
-            param_list += (num_models - 1) * copy.deepcopy(param_list)
+        - train_params (dict)
+            Containing params for data sources and targets in training:
+                - train_params['data'] contains params for the data
+                    - train_params['data']['func'] is the function that constructs the data
+                      provider.   This dataprovider must be an instance of a subclass of
+                      tfutils.data.DataProviderBase.   Specifically, it must have a method
+                      called "init_ops" -- see documentation in tfutils/data.py.
+                    - remainder of train_params['data'] are kwargs passed to func
+                - train_params['targets'] (optional) contains params for additional train targets
+                    - train_params['targets']['func'] is a function that produces
+                      tensorflow nodes as training targets
+                    - remainder of train_parms['targets'] are arguments to func
+                - train_params['queue_params'] is an optional dict of
+                      params used to specify creation for the queue, passed to the
+                      Queue.__init__ method.   Default is {}.
+    :Kwargs:
+        - loss_params (dict):
+            Parameters for to utils.get_loss function for specifying loss
+                - loss_params['targets'] is a string or a list of strings,
+                  contain the names of inputs nodes that will be sent into the loss function
+                  Must be provided
+                - loss_params['loss_per_case_func'] is the function used to calculate the loss.
+                  Must be provided.
+                  The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
+                - loss_params['loss_per_case_func_params'] is a dict including  help information about
+                  how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
+                  Default is {'_outputs': 'logits', '_targets_$all': 'labels'}
+                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for
+                      loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
+                      where 'outputs' is the output of the network, inputs is the input nodes,
+                      and targets is loss_params['targets'].
+                    - Key value can have three choices:
+                      - '_outputs': the value of this key will be the name for 'outputs'.
+                      - '_targets_$all': name for '[inputs[t] for t in targets]'.
+                      - '_target_somename': name for 'inputs[somename]' is somename is inside targets.
+                    - Parameters not mentioned by the key values will still be sent to the function as positional parameters.
+                - loss_params['agg_func'] is the aggregate function, default is None
+                - loss_params['loss_func_kwargs']. Keyword parameters sent to loss_params['loss_per_case_func']. Default is None.
+                - loss_params['agg_func_kwargs']. Keyword parameters sent to loss_params['agg_func']. Default is None.
 
-        for model_num, param in enumerate(param_list):
-            if name == 'model_params':
-                if 'train' not in param:
-                    param['train'] = True
-                if 'prefix' not in param:
-                    param['prefix'] = 'model_{}'.format(model_num)
-                if 'devices' not in param:
-                    param['devices'] = [DEFAULT_DEVICES.pop()]
-                if all([isinstance(d, int) for d in param['devices']]):
-                    param['devices'] = map('/gpu:{}'.format, param['devices'])
-                if 'num_gpus' not in param:
-                    param['num_gpus'] = len(param['devices'])
-                assert param['num_gpus'] == len(param['devices'])
+        - learning_rate_params (dict)
+            Parameters for specifying learning_rate:
+                - learning_rate_params['func'] is a function producing
+                  tensorflow node acting as learning rate.
+                  This function must accept argument "global_step".
+                - remainder of learning_rate_params are arguments to func.
 
-            if name == 'train_params':
-                if 'num_steps' not in param:
-                    param['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
-                if 'thres_loss' not in param:
-                    param['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
-                if 'train_loop' not in param:
-                    param['train_loop'] = {'func': None}
-                if 'validate_first' not in param:
-                    param['validate_first'] = True
+        - optimizer_params (dict)
+            Parameters for creating optimizer:
+                - optimizer_params['func'] is a function producing a
+                  tensorflow optimizer object (like a subclass of tf.train.Optimizer)
+                  - Must accept:
+                        "learning_rate" -- the result of the learning_rate_func call
+                  - Must return object with a method called "minimize" with
+                    the same call signature as tensorflow.train.Optimizer.minimize --- that is:
+                        - Must accept:
+                            - "loss" -- result of loss_func call
+                            - "global_step" -- global step used for determine learning rate,
+                        - Must return:
+                            - tensorflow node which computes gradients and applies
+                              them, and must increment "global_step"
+                - Remainder of optimizer_params (aside form "func") are arguments
+                  to the optimizer func
 
-        params[name] = param_list
+        - validation_params (dict)
+            Dictionary of validation sources. The structure if this dictionary is:
 
-        list_lens.append(len(param_list))
-        assert isinstance(param_list, list), '{} should also be a list'.format(name)
-        assert len(param_list) == num_models, '{} should have length'.format(num_models)
-    assert len(np.unique(list_lens)) == 1, 'All param lists should have be same length!'
+                {
+                    <validation_target_name_1>: {
+                        'data': {
+                            'func': (callable) data source function for this validation,
+                            <kwarg1>: <value1> for 'func',
+                            ...
+                            },
+                        'targets': {
+                            'func': (callable) returning targets,
+                            <kwarg1>: <value1> for 'func',
+                            ...
+                            }
+                        'queue_params': (optional, dict) params for creating queue for
+                                this validation. NB: if this is NOT specified, queue params
+                                for this validation default to those used in constructing
+                                the training data queue.
+                        'num_steps': (int) number of batches of validation source to compute
+                        'agg_func': (optional, callable) how to aggregate validation results
+                                across batches after computation. Signature is:
+                                    - one input argument: the list of validation batch results
+                                    - one output: aggregated version
+                                Default is utils.identity_func
+                        'online_agg_func': (optional, callable) how to aggregate validation results
+                                on a per-batch basis. Siganture is:
+                                    - three input arguments: (current aggregate, new result, step)
+                                    - one output: new aggregated result
+                                One first step, current aggregate passed in is None.
+                                The final result is passed to the "agg_func".
+                                Default is utils.append_and_return
+                    },
+                    <validation_target_name_2>: ...
+                }
 
-    # Prepare args to be passed to `base.train`.
-    train_args = {
-        'sess': num_models * [None],
-        'queues': num_models * [None],
-        'dbinterface': num_models * [None],
-        'global_step': num_models * [None],
-        'train_targets': [dict() for _ in range(num_models)],
-        'validation_targets': [dict() for _ in range(num_models)],
-        'num_steps': [p['num_steps'] for p in params['train_params']],
-        'thres_loss': [p['thres_loss'] for p in params['train_params']],
-        'train_loop': [p['train_loop']['func'] for p in params['train_params']],
-        'validate_first': [p['validate_first'] for p in params['train_params']]}
+            For each validation_target_name key, the targets are computed and then added to
+            the output dictionary to be computed every so often -- unlike train_targets which
+            are computed on each time step, these are computed on a basic controlled by the
+            valid_save_freq specific in the saver_params.
 
-    with tf.Graph().as_default(), tf.device('/cpu:0'):
+        - queue_params (dict, defualt: None)
+            Dictionary of arguments to Queue object (see
+            tfutils.data.Queue documentation)
+
+        - thres_loss (float, default: 100)
+            If loss exceeds this during training, HiLossError is thrown
+
+        - num_steps (int or None, default: None)
+            How many total steps of the optimization are run.  If None, train is run until process is cancelled.
+
+      - load_params (dict)
+            Dictionary of arguments for loading model, if different from saver
+            (see Saver class)
+
+        - log_device_placement (bool, default: False)
+            Whether to log device placement in tensorflow session
+
+        - inter_op_parallelism_threads (int, default: 40)
+            Inter op thread pool size (has to be set large enough to avoid deadlock
+            when using multiple queues)
+
+    """
+    params, train_args = parse_params('train',
+                                      model_params,
+                                      dont_run=dont_run,
+                                      skip_check=skip_check,
+                                      load_params=load_params,
+                                      loss_params=loss_params,
+                                      save_params=save_params,
+                                      train_params=train_params,
+                                      optimizer_params=optimizer_params,
+                                      validation_params=validation_params,
+                                      learning_rate_params=learning_rate_params,
+                                      log_device_placement=log_device_placement,
+                                      inter_op_parallelism_threads=inter_op_parallelism_threads)
+
+    with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
         # For convenience, use list of dicts instead of dict of lists
         _params = [{key: value[i] for (key, value) in params.items()}
@@ -1096,9 +1195,13 @@ def train_from_params(save_params,
                 queues.extend(vqueue)
 
         # Create session.
+
+        # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        gpu_options = tf.GPUOptions(allow_growth=True)
         sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                          log_device_placement=param['log_device_placement'],
-                          inter_op_parallelism_threads=param['inter_op_parallelism_threads']))
+                                                gpu_options=gpu_options,
+                                                log_device_placement=log_device_placement,
+                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
 
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
@@ -1108,6 +1211,7 @@ def train_from_params(save_params,
 
         for param, trarg in zip(_params, _trargs):
 
+            # trarg['dbinterface'] = DBInterface(sess=sess,
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
                                                global_step=trarg['global_step'],
@@ -1126,9 +1230,7 @@ def train_from_params(save_params,
         if dont_run:
             return train_args
 
-        res = train(**train_args)
-        sess.close()
-        return res
+        return train(**train_args)
 
 
 def get_valid_targets_dict(validation_params,
@@ -1138,7 +1240,10 @@ def get_valid_targets_dict(validation_params,
                            cfg_final=None,
                            **params):
     """Helper function for creating validation target operations.
-       NB: this function may modify validation_params"""
+
+    NB: this function may modify validation_params.
+
+    """
     valid_targets_dict = OrderedDict()
     queues = []
     model_params = copy.deepcopy(model_params)
@@ -1148,14 +1253,19 @@ def get_valid_targets_dict(validation_params,
         cfg_final = model_params['cfg_final']
     assert 'seed' in model_params
     for vtarg in validation_params:
-        queue_params = validation_params[vtarg].get('queue_params', queue_params)
+        queue_params = validation_params[
+            vtarg].get('queue_params', queue_params)
         _, queue, vinputs = get_data(queue_params=queue_params,
                                      **validation_params[vtarg]['data_params'])
         queues.extend(queue)
         scope_name = 'validation/%s' % vtarg
         with tf.name_scope(scope_name):
             _mp, voutputs = get_model(vinputs, train=False, **model_params)
-            # _mp, voutputs = get_distributed_model(vinputs, train=False, **model_params)
+            # param = {'model_params': model_params}
+            # trarg = {'train_targets': {}}
+            # param, trarg = get_graph(vinputs, param, trarg, train=False)
+            # _mp = param['model_params']
+            # voutputs = trarg['train_targets']['output']
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
@@ -1165,7 +1275,7 @@ def get_valid_targets_dict(validation_params,
 
 
 def check_model_equivalence(m1, m2, name):
-    """TODO: fill this in to make it stronger"""
+    """TODO: fill this in to make it stronger."""
     assert set(m1.keys()) == set(m2.keys()), (m1.keys(), m2.keys())
 
 
@@ -1177,13 +1287,15 @@ def get_validation_target(vinputs, voutputs,
                           agg_func=utils.identity_func,
                           online_agg_func=utils.append_and_return,
                           **validation_params):
-    target_params = validation_params.get('targets', dict(default_target_params))
+    target_params = validation_params.get(
+        'targets', dict(default_target_params))
     target_func = target_params.pop('func', default_target_func)
     vtargets = target_func(vinputs, voutputs, **target_params)
     target_params['func'] = target_func
     validation_params['targets'] = target_params
 
-    valid_loop_params = validation_params.get('valid_loop', dict(default_loop_params))
+    valid_loop_params = validation_params.get(
+        'valid_loop', dict(default_loop_params))
     valid_loop_func = valid_loop_params.pop('func', default_loop_func)
     valid_loop = valid_loop_func
     valid_loop_params['func'] = valid_loop_func
@@ -1207,7 +1319,8 @@ def get_validation_target(vinputs, voutputs,
 def get_data(func, queue_params=None, **data_params):
     data_provider = func(**data_params)
     input_ops = data_provider.init_ops()
-    assert len(input_ops) == data_params['n_threads'], (len(input_ops), data_params['n_threads'])
+    assert len(input_ops) == data_params[
+        'n_threads'], (len(input_ops), data_params['n_threads'])
     assert len(input_ops) > 0, len(input_ops)
     batch_size = data_params['batch_size']
     data_params['func'] = func
@@ -1232,13 +1345,15 @@ def split_input(inputs, num_gpus=1):
     if num_gpus == 1:
         return [inputs]
 
-    temp_args = {v: tf.split(inputs[v], axis=0, num_or_size_splits=num_gpus) for v in inputs}
-    list_of_args = [{now_arg: temp_args[now_arg][ind] for now_arg in temp_args} for ind in xrange(num_gpus)]
+    temp_args = {v: tf.split(
+        inputs[v], axis=0, num_or_size_splits=num_gpus) for v in inputs}
+    list_of_args = [{now_arg: temp_args[now_arg][ind]
+                     for now_arg in temp_args} for ind in xrange(num_gpus)]
 
     return list_of_args
 
 
-def get_graph(inputs, param, trarg, mode='train'):
+def get_graph(inputs, param, trarg, train=True):
 
     with tf.variable_scope(tf.get_variable_scope()):
 
@@ -1248,18 +1363,24 @@ def get_graph(inputs, param, trarg, mode='train'):
         (param['optimizer_params'],
          optimizer_base) = get_optimizer_base(learning_rate,
                                               param['optimizer_params'])
+        tower_outputs = []
         tower_losses = []
         tower_grads = []
 
         devices = param['model_params']['devices']
-        inputs = split_input(inputs, param['model_params']['num_gpus'])
+        num_gpus = param['model_params']['num_gpus']
+        inputs = split_input(inputs, num_gpus)
 
         # Distribute graph across desired devices.
         for device, input in zip(devices, inputs):
             with tf.device(device), tf.name_scope('gpu_' + device[-1]):
 
-                param['model_params'], output = get_model(input,
-                                                          **param['model_params'])
+                # get_model should have ability to return dict, which may contain
+                # loss and optimizer keys
+                (param['model_params'],
+                 output) = get_model(input, **param['model_params'])
+                tower_outputs.append(output)
+                print('tower_outputs len: {}'.format(len(tower_outputs)))
 
                 if param['train_params'].get('targets') is not None:
                     ttargs = copy.deepcopy(param['train_params']['targets'])
@@ -1276,7 +1397,11 @@ def get_graph(inputs, param, trarg, mode='train'):
                 tower_losses.append(loss)
                 tower_grads.append(grad)
 
-    # Accumulate and average gradients on the host.
+    # On the host, gather outputs.
+    output = concat_output(tower_outputs, num_gpus)
+    # trarg['train_targets'].update({'output': output})
+
+    # Accumulate and average gradients.
     loss = tf.reduce_mean(tf.stack(tower_losses))
     average_grads = average_gradients(tower_grads)
     optimizer = optimizer_base.apply_gradients(average_grads,
@@ -1298,29 +1423,100 @@ def get_model(input, func, seed=0, train=False, **model_params):
     return model_params, outputs
 
 
-def get_distributed_model(inputs, func, seed=0, train=False, **model_params):
+def concat_output(output, num_gpus):
+    if num_gpus > 1:
+        assert len(output) == num_gpus, 'Output shape is not right'
+        print('output type: {}'.format(type(output)))
+        print('output len: {}'.format(len(output)))
+        print('element type: {}'.format(type(output[0])))
+        curr_output = [tf.concat(values=[output[u][v] for u in xrange(num_gpus)], axis=0) for v in xrange(len(output))]
+    else:
+        curr_output = output[0]
 
-    model_params['seed'] = seed
-    model_params['train'] = train
+    return curr_output
 
+
+def get_distributed_model(inputs,
+                          model_params,
+                          param=None,
+                          trarg=None):
+    """Return model and any other targets (loss + optimizer) specified."""
     with tf.variable_scope(tf.get_variable_scope()):
 
+        tower_outputs = []
         devices = model_params['devices']
-        inputs = split_input(input, model_params['num_gpus'])
+        num_gpus = model_params['num_gpus']
+        inputs = split_input(inputs, num_gpus)
 
-        outputs = []
-        params = []
+        if model_params['train']:
+            (param['learning_rate_params'],
+             learning_rate) = get_learning_rate(trarg['global_step'],
+                                                **param['learning_rate_params'])
+            (param['optimizer_params'],
+             optimizer_base) = get_optimizer_base(learning_rate,
+                                                  param['optimizer_params'])
+            tower_losses = []
+            tower_grads = []
 
+        # Distribute graph across desired devices.
         for device, input in zip(devices, inputs):
             with tf.device(device), tf.name_scope('gpu_' + device[-1]):
-                output, param = func(input, **model_params)
-                outputs.append(output)
-                params.append(param)
-                tf.get_variable_scope().reuse_variables(param)
 
-    model_params['func'] = func
-    model_params['cfg_final'] = params
-    return model_params, outputs
+                (param['model_params'], output) = get_model(input, **model_params)
+                tower_outputs.append(output)
+
+                if param['train_params'].get('targets') is not None:
+                    ttargs = copy.deepcopy(param['train_params']['targets'])
+                    ttargs_func = ttargs.pop('func')
+                    ttarg = ttargs_func(input, output, **ttargs)
+                    trarg['train_targets'].update(ttarg)
+
+                (param['loss_params'],
+                 loss) = get_loss(input, output, **param['loss_params'])
+
+                tf.get_variable_scope().reuse_variables()
+
+                grad = optimizer_base.compute_gradients(loss)
+                tower_losses.append(loss)
+                tower_grads.append(grad)
+
+    # On the host, gather outputs.
+    output = concat_output(tower_outputs, num_gpus)
+    # trarg['train_targets'].update({'output': output})
+
+    # Accumulate and average gradients.
+    loss = tf.reduce_mean(tf.stack(tower_losses))
+    average_grads = average_gradients(tower_grads)
+    optimizer = optimizer_base.apply_gradients(average_grads,
+                                               trarg['global_step'])
+
+    trarg['train_targets'].update({'loss': loss,
+                                   'optimizer': optimizer,
+                                   'learning_rate': learning_rate})
+    return param, trarg
+
+# def get_distributed_model(inputs, func, seed=0, train=False, **model_params):
+    # model_params['seed'] = 0
+    # model_params['train'] = False
+
+    # with tf.variable_scope(tf.get_variable_scope()):
+
+    #     devices = model_params['devices']
+    #     inputs = split_input(input, model_params['num_gpus'])
+
+    #     outputs = []
+    #     params = []
+
+    #     for device, input in zip(devices, inputs):
+    #         with tf.device(device), tf.name_scope('gpu_' + device[-1]):
+    #             output, param = func(input, **model_params)
+    #             outputs.append(output)
+    #             params.append(param)
+    #             tf.get_variable_scope().reuse_variables(param)
+
+    # model_params['func'] = func
+    # model_params['cfg_final'] = params
+    # return model_params, outputs, params, trargs
 
 
 def get_loss(train_inputs,
@@ -1406,6 +1602,8 @@ def get_params():
 
 def parse_params(mode,
                  model_params,
+                 dont_run=False,
+                 skip_check=False,
                  save_params=None,
                  train_params=None,
                  loss_params=None,
@@ -1414,34 +1612,41 @@ def parse_params(mode,
                  validation_params=None,
                  learning_rate_params=None,
                  log_device_placement=False,
-                 dont_run=False,
                  inter_op_parallelism_threads=40,
                  ):
+    """Ensure the params dictionary has the correct structure.
 
+    Each *_params arg must be a list of dictionaries where the ith element
+    corresponds to parameters of the ith distinct model. Thus, the length of
+    all *_params must be the same and reflect the number of distinct models
+    to be evaluated.
+
+    """
     model_params = [model_params] if not isinstance(model_params,
                                                     list) else model_params
     num_models = len(model_params)
     list_lens = [num_models]
 
-    params = OrderedDict({
-        'model_params': model_params,
+    params = {
+        'dont_run': dont_run,
+        'skip_check': skip_check,
         'load_params': load_params,
         'save_params': save_params,
+        'model_params': model_params,
         'validation_params': validation_params,
-        'dont_run': dont_run,
         'log_device_placement': log_device_placement,
-        'inter_op_parallelism_threads': inter_op_parallelism_threads})
+        'inter_op_parallelism_threads': inter_op_parallelism_threads}
 
     if mode == 'train':
         params.update({
-            'train_params': train_params,
             'loss_params': loss_params,
+            'train_params': train_params,
             'optimizer_params': optimizer_params,
             'learning_rate_params': learning_rate_params})
 
     # Ensure params is a dict of lists, using defaults when necessary.
     for name, param_list in params.items():
-        if not param_list:
+        if not param_list and not isinstance(param_list, bool):
             param_list = DEFAULT_PARAMS[name]
         if not isinstance(param_list, list):
             param_list = [copy.deepcopy(param_list) for _ in range(num_models)]
@@ -1451,18 +1656,24 @@ def parse_params(mode,
         for model_num, param in enumerate(param_list):
 
             if name == 'model_params':
+                if 'seed' not in param:
+                    parma['seed'] = DEFAULT_MODEL_SEED
                 if 'prefix' not in param:
                     param['prefix'] = 'model_{}'.format(model_num)
+                if 'train' not in param:
+                    if mode == 'train':
+                        param['train'] = True
+                    else:
+                        param['train'] = False
+
+                # Parse device specification
                 if 'devices' not in param:
-                    param['devices'] = [DEFAULT_DEVICES.pop(-1)]
-                if all([isinstance(d, int) for d in param['devices']]):
-                    param['devices'] = map('/gpu:{}'.format, param['devices'])
+                    param['devices'] = [DEFAULT_DEVICES.pop(0)]
+                param['devices'] = format_devices(param['devices'])
+
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
                 assert param['num_gpus'] == len(param['devices'])
-                if mode == 'train':
-                    if 'train' not in param:
-                        param['train'] = True
 
             if name == 'train_params':
                 if 'num_steps' not in param:
@@ -1477,11 +1688,24 @@ def parse_params(mode,
         params[name] = param_list
 
         list_lens.append(len(param_list))
-        assert isinstance(param_list, list), '{} should also be a list'.format(name)
+        assert isinstance(
+            param_list, list), '{} should also be a list'.format(name)
         assert len(param_list) == num_models, '{} should have length'.format(num_models)
-    assert len(np.unique(list_lens)) == 1, 'All param lists should have be same length!'
+    assert len(np.unique(list_lens)
+               ) == 1, 'All param lists should have be same length!'
 
-    # Prepare args to be passed to `base.train`.
+    # Append the model_prefix to non-unique exp_ids.
+    for key in ['save_params', 'load_params']:
+        unique_exp_ids = set(s.get('exp_id') for s in params[key])
+        if None not in unique_exp_ids:
+            if len(unique_exp_ids) == 1 and num_models != 1:
+                for i, (p, mp) in enumerate(zip(params[key],
+                                                params['model_params'])):
+                    p.update({'exp_id': p.get('exp_id') + '_' + mp['prefix']})
+
+            assert len(set(s['exp_id'] for s in params[key])) == num_models
+
+    # Prepare run_args to be passed to `base.(train|test)(**run_args)`.
     run_args = {
         'sess': num_models * [None],
         'queues': num_models * [None],

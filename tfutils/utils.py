@@ -1,3 +1,4 @@
+import sys
 import collections
 import logging
 import json
@@ -49,7 +50,7 @@ def version_info(module):
 
 
 def version_check_and_info(module):
-    """returns either git information or standard module version if not a git repo
+    """Return either git info or standard module version if not a git repo.
 
     Args: - module (module): python module object to get info for.
     Returns: dictionary of info
@@ -67,8 +68,7 @@ def version_check_and_info(module):
 
 
 def git_info(repo):
-    """information about a git repo
-    """
+    """Return information about a git repo."""
     if repo.is_dirty():
         log.warning('repo %s is dirty -- having committment issues?' % repo.git_dir)
         clean = False
@@ -105,8 +105,7 @@ def git_info(repo):
 
 
 def make_mongo_safe(_d):
-    """Makes a json-izable actually safe for insertion into Mongo.
-    """
+    """Make a json-izable actually safe for insertion into Mongo."""
     klist = _d.keys()[:]
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
@@ -118,10 +117,8 @@ def make_mongo_safe(_d):
             _d[_k.replace('.', '___')] = _d.pop(_k)
 
 
-def sonify(arg, memo=None):
-    """when possible, returns version of argument that can be
-       serialized trivally to json format
-    """
+def sonify(arg, memo=None, skip=False):
+    """Return version of arg that can be trivally serialized to json format."""
     if memo is None:
         memo = {}
     if id(arg) in memo:
@@ -138,18 +135,19 @@ def sonify(arg, memo=None):
     elif isinstance(arg, np.integer):
         rval = int(arg)
     elif isinstance(arg, (list, tuple)):
-        rval = type(arg)([sonify(ai, memo) for ai in arg])
+        rval = type(arg)([sonify(ai, memo, skip) for ai in arg])
     elif isinstance(arg, collections.OrderedDict):
-        rval = collections.OrderedDict([(sonify(k, memo), sonify(v, memo))
+        rval = collections.OrderedDict([(sonify(k, memo, skip),
+                                         sonify(v, memo, skip))
                                         for k, v in arg.items()])
     elif isinstance(arg, dict):
-        rval = dict([(sonify(k, memo), sonify(v, memo))
+        rval = dict([(sonify(k, memo, skip), sonify(v, memo, skip))
                      for k, v in arg.items()])
     elif isinstance(arg, (basestring, float, int, type(None))):
         rval = arg
     elif isinstance(arg, np.ndarray):
         if arg.ndim == 0:
-            rval = sonify(arg.sum())
+            rval = sonify(arg.sum(), skip=skip)
         else:
             rval = map(sonify, arg)  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
@@ -159,10 +157,13 @@ def sonify(arg, memo=None):
         mod = inspect.getmodule(arg)
         modname = mod.__name__
         objname = arg.__name__
-        rval = version_check_and_info(mod)
+        if not skip:
+            rval = version_check_and_info(mod)
+        else:
+            rval = {}
         rval.update({'objname': objname,
                      'modname': modname})
-        rval = sonify(rval)
+        rval = sonify(rval, skip=skip)
     else:
         raise TypeError('sonify', arg)
 
@@ -171,14 +172,71 @@ def sonify(arg, memo=None):
 
 
 def jsonize(x):
-    """returns version of x that can be serialized trivally to json format
-    """
+    """Return version of x that can be serialized trivally to json format."""
     try:
         json.dumps(x)
     except TypeError:
         return sonify(x)
     else:
         return x
+
+
+def format_devices(devices):
+    """Return list of proper device (gpu) strings.
+
+    If `devices` is not a list, it is converted into one.
+    For each inproperly formatted element:
+        - an int n is mapped to '/gpu:{}'.format(n)
+        - the first digit d of a string is mapped to '/gpu:{}'.format(d)
+        - all other elements raise a TypeError
+
+    """
+    def format_device(device):
+        gpu = '/gpu:{}'
+        if isinstance(device, int):
+            gpu = gpu.format(device)
+        else:
+            m = re.search(r'/gpu:\d+$', device)
+            n = re.search(r'\d+', device)
+            if m is not None:
+                gpu = m.group()
+            elif n is not None:
+                gpu = gpu.format(n.group())
+            else:
+                raise TypeError('Invalid device specification: {}'.format(device))
+        return gpu
+
+    devices = [devices] if not isinstance(devices, list) else devices
+    return sorted(list(set(map(format_device, devices))))
+
+
+def suppress_stdout(func):
+    """Wrapper that suppresses the stdout of a function `func`."""
+    class DummyFile(object):
+        def write(self, x):
+            pass
+
+    def wrapper(*args, **kwargs):
+        stdout = sys.stdout
+        sys.stdout = DummyFile()
+        out = func(*args, **kwargs)
+        sys.stdout = stdout
+        return out
+
+    return wrapper
+
+
+class Suppress(object):
+    def __new__(cls, obj):
+        return obj
+        # cls.__class__ = obj.__class__
+
+    def __init__(self, obj):
+        # for name, value in inspect.getmembers(obj, callable):
+            # if not name.startswith('_'):
+        for name, value in obj.__dict__.items():
+            if callable(value):
+                setattr(self, name, suppress_stdout(value))
 
 
 def get_loss(inputs,
