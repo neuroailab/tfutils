@@ -12,6 +12,7 @@ import tarfile
 import cPickle
 import threading
 from collections import OrderedDict
+import numpy as np
 
 import tqdm
 import pymongo
