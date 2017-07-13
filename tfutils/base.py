@@ -158,8 +158,8 @@ class DBInterface(object):
                         that you want to restore with the value of the corresponding checkpoint variable.
                     - load_step (bool)
                         Whether to restore global_step
-                    - from_ckpt (bool)
-                        Whether to load from a TensorFlow checkpoint (instead of from the db) 
+                    - from_ckpt (string)
+                        Path to load from a TensorFlow checkpoint (instead of from the db) 
             - sess (tensorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
@@ -296,41 +296,41 @@ class DBInterface(object):
                 self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
             else:
+                if self.load_data is None:
+                    self.load_rec()
+                if self.load_data is not None:
+                    rec, cache_filename = self.load_data
+                    # get variables to restore
+                    if self.load_param_dict is None:
+                        restore_vars = self.get_restore_vars(cache_filename)
+                        if self.load_step is False:
+                            restore_vars = [restore_var for restore_var in restore_vars if 'global_step' not in restore_var.name] 
+                        log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
+                        tf_saver_restore = tf.train.Saver(restore_vars)
+                    else:
+                        all_variables = tf.global_variables() + tf.local_variables()
+                        # associate values with actual variables
+                        load_var_dict = {}
+                        for key, value in self.load_param_dict.items():
+                            for var in all_variables:
+                                if var.name.split(':')[0] == value:
+                                   load_var_dict[key] = var
+                                   break 
+                        if self.load_step is False:
+                            load_var_dict = {k:v for k,v in load_var_dict.items() if 'global_step' not in v.name}
+                        restore_vars = list(load_var_dict.values()) 
+                        log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
+                        tf_saver_restore = tf.train.Saver(load_var_dict) 
+                    # tensorflow restore
+                    log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
+                    tf_saver_restore.restore(self.sess, cache_filename)
+                    log.info('... done restoring.')
+                    all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
+                    unrestored_vars = [var for var in all_variables \
+                                                if var not in restore_vars] # compute list of variables not restored
+                    self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
+                    assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
 
-            if self.load_data is None:
-                self.load_rec()
-            if self.load_data is not None:
-                rec, cache_filename = self.load_data
-                # get variables to restore
-                if self.load_param_dict is None:
-                    restore_vars = self.get_restore_vars(cache_filename)
-                    if self.load_step is False:
-                        restore_vars = [restore_var for restore_var in restore_vars if 'global_step' not in restore_var.name] 
-                    log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
-                    tf_saver_restore = tf.train.Saver(restore_vars)
-                else:
-                    all_variables = tf.global_variables() + tf.local_variables()
-                    # associate values with actual variables
-                    load_var_dict = {}
-                    for key, value in self.load_param_dict.items():
-                        for var in all_variables:
-                            if var.name.split(':')[0] == value:
-                               load_var_dict[key] = var
-                               break 
-                    if self.load_step is False:
-                        load_var_dict = {k:v for k,v in load_var_dict.items() if 'global_step' not in v.name}
-                    restore_vars = list(load_var_dict.values()) 
-                    log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars]))
-                    tf_saver_restore = tf.train.Saver(load_var_dict) 
-                # tensorflow restore
-                log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
-                tf_saver_restore.restore(self.sess, cache_filename)
-                log.info('... done restoring.')
-                all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
-                unrestored_vars = [var for var in all_variables \
-                                            if var not in restore_vars] # compute list of variables not restored
-                self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
-                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
