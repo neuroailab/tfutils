@@ -69,7 +69,7 @@ DEFAULT_SAVE_PARAMS = frozendict({'save_metrics_freq': 100,
                                   'do_save': True})
 
 
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'load_param_dict': None, 'load_step': True, 'from_ckpt': False})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'load_param_dict': None, 'load_step': True, 'from_ckpt': None})
 
 
 class DBInterface(object):
@@ -285,8 +285,9 @@ class DBInterface(object):
         tf_saver = self.tf_saver
         if self.do_restore:
             if self.from_ckpt is not None:
-                tf_saver_restore = tf.train.Saver()
                 ckpt_filename = self.from_ckpt
+                restore_vars = self.get_restore_vars(ckpt_filename)
+                tf_saver_restore = tf.train.Saver(restore_vars)
                 log.info('Restoring variables from checkpoint %s ...' %ckpt_filename)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
@@ -331,7 +332,7 @@ class DBInterface(object):
                     self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
                     assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
 
-        if not self.do_restore or self.load_data is None:
+        if not self.do_restore or (self.load_data is None and self.from_ckpt is None):
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
