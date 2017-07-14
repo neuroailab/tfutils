@@ -416,6 +416,7 @@ class DBInterface(object):
                 fsbucket = gridfs.GridFSBucket(database,
                                                bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
+                load_dest.close()
                 if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
                     assert cache_filename.endswith('.tar')
                     tar = tarfile.open(cache_filename)
