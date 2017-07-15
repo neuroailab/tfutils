@@ -14,6 +14,7 @@ from bson.objectid import ObjectId
 import git
 
 from tensorflow.python import DType
+from tensorflow.python.client import device_lib
 # from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
@@ -30,8 +31,7 @@ def isstring(x):
 
 
 def version_info(module):
-    """Gets version of a standard python module
-    """
+    """Gets version of a standard python module."""
     if hasattr(module, '__version__'):
         version = module.__version__
     elif hasattr(module, 'VERSION'):
@@ -181,6 +181,11 @@ def jsonize(x):
         return x
 
 
+def get_available_gpus():
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+
 def format_devices(devices):
     """Return list of proper device (gpu) strings.
 
@@ -208,35 +213,6 @@ def format_devices(devices):
 
     devices = [devices] if not isinstance(devices, list) else devices
     return sorted(list(set(map(format_device, devices))))
-
-
-def suppress_stdout(func):
-    """Wrapper that suppresses the stdout of a function `func`."""
-    class DummyFile(object):
-        def write(self, x):
-            pass
-
-    def wrapper(*args, **kwargs):
-        stdout = sys.stdout
-        sys.stdout = DummyFile()
-        out = func(*args, **kwargs)
-        sys.stdout = stdout
-        return out
-
-    return wrapper
-
-
-class Suppress(object):
-    def __new__(cls, obj):
-        return obj
-        # cls.__class__ = obj.__class__
-
-    def __init__(self, obj):
-        # for name, value in inspect.getmembers(obj, callable):
-            # if not name.startswith('_'):
-        for name, value in obj.__dict__.items():
-            if callable(value):
-                setattr(self, name, suppress_stdout(value))
 
 
 def get_loss(inputs,
