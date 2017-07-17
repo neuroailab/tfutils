@@ -56,7 +56,7 @@ def run_all_tests():
     run_custom_training_tests()
     run_training_save_tests()
     run_validation_tests()
-    run_feature_extraction_tests()
+    # run_feature_extraction_tests()
 
 
 def run_training_tests():
@@ -120,13 +120,11 @@ def test_training():
                           port=testport)
 
     # delete old collection if it exists
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
-    # conn.drop_database(testdbname)
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    conn[testdbname][testcol + '.files'].drop()
+    nm = testdbname + '_' + testcol + '_training0'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    nm = testdbname + '_' + testcol + '_training1'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -224,14 +222,12 @@ def test_distributed_training():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
-
-    # conn.drop_database(testdbname)
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # delete old collection if it exists
+    conn[testdbname][testcol + '.files'].drop()
+    nm = testdbname + '_' + testcol + '_training0'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    nm = testdbname + '_' + testcol + '_training1'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -271,7 +267,7 @@ def test_distributed_training():
                                                     'n_threads': 4},
                                     'queue_params': {'queue_type': 'fifo',
                                                      'batch_size': 100},
-                                    'num_steps': 100,
+                                    'num_steps': 10,
                                     'agg_func': utils.mean_dict}}
     optimizer_params = {'func': optimizer.ClipOptimizer,
                         'optimizer_class': tf.train.MomentumOptimizer,
@@ -351,14 +347,12 @@ def test_multimodel_training():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
-
-    # conn.drop_database(testdbname)
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # delete old collection if it exists
+    conn[testdbname][testcol + '.files'].drop()
+    nm = testdbname + '_' + testcol + '_training0'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    nm = testdbname + '_' + testcol + '_training1'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -486,13 +480,12 @@ def test_distributed_multimodel_training():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
-    # conn.drop_database(testdbname)
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # delete old collection if it exists
+    conn[testdbname][testcol + '.files'].drop()
+    nm = testdbname + '_' + testcol + '_training0'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    nm = testdbname + '_' + testcol + '_training1'
+    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -1339,7 +1332,7 @@ def test_distributed_validation():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    conn[testdbname][testcol + '.files'].delete_many({'exp_id': 'validation0'})
+    # conn[testdbname][testcol + '.files'].delete_many({'exp_id': 'validation0'})
 
     # actually run the model
     base.test_from_params(**params)
