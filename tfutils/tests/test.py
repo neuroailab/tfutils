@@ -15,11 +15,12 @@ instance is running.
 from __future__ import division, print_function, absolute_import
 
 import os
+import re
 import sys
 import time
 import cPickle
 from functools import wraps
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import gridfs
 import numpy as np
@@ -41,9 +42,9 @@ testcol_dist = 'testcol_dist'
 testcol_multi = 'testcol_multi'
 testcol_dist_multi = 'testcol_dist_multi'
 testcol_cust = 'testcol_cust'
-testcol_cust_dist= 'testcol_cust_dist'
-testcol_cust_multi= 'testcol_cust_multi'
-testcol_cust_dist_multi= 'testcol_cust_dist_multi'
+testcol_cust_dist = 'testcol_cust_dist'
+testcol_cust_multi = 'testcol_cust_multi'
+testcol_cust_dist_multi = 'testcol_cust_dist_multi'
 
 testcol2_dist = 'testcol2_dist'
 testcol2_multi = 'testcol2_multi'
@@ -52,11 +53,13 @@ testcol2_dist_multi = 'testcol2_dist_multi'
 
 def run_all_tests():
     """Run all tests."""
+
+    remove_dbs()
     run_training_tests()
     run_custom_training_tests()
     run_training_save_tests()
     run_validation_tests()
-    # run_feature_extraction_tests()
+    run_feature_extraction_tests()
 
 
 def run_training_tests():
@@ -120,11 +123,11 @@ def test_training():
                           port=testport)
 
     # delete old collection if it exists
-    conn[testdbname][testcol + '.files'].drop()
-    nm = testdbname + '_' + testcol + '_training0'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    nm = testdbname + '_' + testcol + '_training1'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # conn[testdbname][testcol + '.files'].drop()
+    # nm = testdbname + '_' + testcol + '_training0'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # nm = testdbname + '_' + testcol + '_training1'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -223,11 +226,11 @@ def test_distributed_training():
                           port=testport)
 
     # delete old collection if it exists
-    conn[testdbname][testcol + '.files'].drop()
-    nm = testdbname + '_' + testcol + '_training0'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    nm = testdbname + '_' + testcol + '_training1'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # conn[testdbname][testcol + '.files'].drop()
+    # nm = testdbname + '_' + testcol + '_training0'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # nm = testdbname + '_' + testcol + '_training1'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -348,11 +351,11 @@ def test_multimodel_training():
                           port=testport)
 
     # delete old collection if it exists
-    conn[testdbname][testcol + '.files'].drop()
-    nm = testdbname + '_' + testcol + '_training0'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    nm = testdbname + '_' + testcol + '_training1'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # conn[testdbname][testcol + '.files'].drop()
+    # nm = testdbname + '_' + testcol + '_training0'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # nm = testdbname + '_' + testcol + '_training1'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -481,11 +484,11 @@ def test_distributed_multimodel_training():
                           port=testport)
 
     # delete old collection if it exists
-    conn[testdbname][testcol + '.files'].drop()
-    nm = testdbname + '_' + testcol + '_training0'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    nm = testdbname + '_' + testcol + '_training1'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # conn[testdbname][testcol + '.files'].drop()
+    # nm = testdbname + '_' + testcol + '_training0'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # nm = testdbname + '_' + testcol + '_training1'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -634,8 +637,8 @@ def test_custom_training():
                           port=testport)
 
     # delete old collection if it exists
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
+    # coll = conn[testdbname][testcol + '.files']
+    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -718,8 +721,8 @@ def test_custom_distributed_training():
                           port=testport)
 
     # delete old collection if it exists
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
+    # coll = conn[testdbname][testcol + '.files']
+    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -794,8 +797,8 @@ def test_custom_multimodel_training():
                           port=testport)
 
     # delete old collection if it exists
-    coll = conn[testdbname][testcol + '.files']
-    coll.drop()
+    # coll = conn[testdbname][testcol + '.files']
+    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -884,11 +887,11 @@ def test_custom_distributed_multimodel_training():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    conn.drop_database(testdbname)
-    nm = testdbname + '_' + testcol + '_training0'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    nm = testdbname + '_' + testcol + '_training1'
-    [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # conn.drop_database(testdbname)
+    # nm = testdbname + '_' + testcol + '_training0'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
+    # nm = testdbname + '_' + testcol + '_training1'
+    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -1041,8 +1044,8 @@ def test_distributed_training_save():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
     # delete old collection if it exists
-    coll = conn[testdbname][testcol_2 + '.files']
-    coll.drop()
+    # coll = conn[testdbname][testcol_2 + '.files']
+    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -1101,8 +1104,8 @@ def test_multimodel_training_save():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
     # delete old collection if it exists
-    coll = conn[testdbname][testcol_2 + '.files']
-    coll.drop()
+    # coll = conn[testdbname][testcol_2 + '.files']
+    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -1168,8 +1171,8 @@ def test_distributed_multimodel_training_save():
                           port=testport)
 
     # delete old collection if it exists
-    coll = conn[testdbname][testcol_2 + '.files']
-    coll.drop()
+    # coll = conn[testdbname][testcol_2 + '.files']
+    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -1513,9 +1516,19 @@ def get_extraction_target(inputs, outputs, to_extract, **loss_params):
 
     """
     names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
-    print("NAMES are: ", names)
+    names = [y for x in names for y in x]
 
-    targets = {k: tf.get_default_graph().get_tensor_by_name(v) for k, v in to_extract.items()}
+    r = re.compile(r'__GPU__\d/')
+    _targets = defaultdict(list)
+
+    for name in names:
+        name_without_gpu_prefix = r.sub('', name)
+        for save_name, actual_name in to_extract.items():
+            if actual_name in name_without_gpu_prefix:
+                tensor = tf.get_default_graph().get_tensor_by_name(name)
+                _targets[save_name].append(tensor)
+
+    targets = {k: tf.concat(v, axis=0) for k, v in _targets.items()}
     targets['loss'] = utils.get_loss(inputs, outputs, **loss_params)
     return targets
 
@@ -1551,8 +1564,8 @@ def test_feature_extraction():
                              'save_to_gfs': ['features', 'more_features']}
 
     targdict = {'func': get_extraction_target,
-                'to_extract': {'features': 'validation/valid1/gpu_0/hidden1/output:0',
-                               'more_features': 'model_0/validation/valid1/model_0/gpu_0/hidden2/output:0'}}
+                'to_extract': {'features': 'model_0/validation/valid1/hidden1/output:0',
+                               'more_features': 'model_0/validation/valid1/hidden2/output:0'}}
 
     targdict.update(base.DEFAULT_LOSS_PARAMS)
     params['validation_params'] = {'valid1': {'data_params': {'func': data.MNIST,
@@ -1994,72 +2007,3 @@ def remove_dbs():
     print('Removing:')
     [print(x) for x in conn.database_names() if x.startswith(testdbname)]
     [conn.drop_database(x) for x in conn.database_names() if x.startswith(testdbname)]
-
-
-def generate_test_params(model_params,
-                         custom_train_loop=None,
-                         custom_valid_loop=None,
-                         custom_train_targets=None,
-                         custom_valid_targets=None):
-
-    # set up the parameters
-    params = {}
-
-    params['model_params'] = model_params
-
-    save_params = {'host': testhost,
-                   'port': testport,
-                   'dbname': testdbname,
-                   'collname': testcol,
-                   'exp_id': 'training0',  # need to prefix this for each model
-                   'save_valid_freq': 20,
-                   'save_filters_freq': 200,
-                   'cache_filters_freq': 100}
-
-    train_params = {'data_params': {'func': data.MNIST,
-                                    'batch_size': 100,
-                                    'group': 'train',
-                                    'n_threads': 4},
-                    'queue_params': {'queue_type': 'fifo',
-                                     'batch_size': 100},
-                    'num_steps': 500}
-
-    learning_rate_params = {'learning_rate': 0.05,
-                            'decay_steps': num_batches_per_epoch,
-                            'decay_rate': 0.95,
-                            'staircase': True}
-
-    validation_params = {'valid0': {'data_params': {'func': data.MNIST,
-                                                    'batch_size': 100,
-                                                    'group': 'test',
-                                                    'n_threads': 4},
-                                    'queue_params': {'queue_type': 'fifo',
-                                                     'batch_size': 100},
-                                    'num_steps': 10,
-                                    'agg_func': utils.mean_dict}}
-
-    if custom_train_loop is not None:
-        if isinstance(custom_train_loop, list):
-            train_params = [train_params.update({'train_loop': loop}) for loop in custom_train_loop]
-        else:
-            train_params['train_loop'] = custom_train_loop
-    if custom_train_targets is not None:
-        params['train_params']['targets'] = custom_train_targets
-    if custom_valid_loop is not None:
-        params['validation_params']['valid0']['valid_loop'] = custom_valid_loop
-    if custom_valid_targets is not None:
-        params['validation_params']['valid0']['targets'] = custom_valid_targets
-
-    return params
-
-
-def timing_function(func):
-    @wraps(func)
-    def wrapper(arg):
-        t1 = time.time()
-        out = func(arg)
-        t2 = time.time()
-        print(out)
-        print('Time: {}'.format(t2 - t1))
-        return out
-    return wrapper
