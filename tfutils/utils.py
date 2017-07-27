@@ -215,6 +215,23 @@ def format_devices(devices):
     return sorted(list(set(map(format_device, devices))))
 
 
+def strip_prefix(prefix, all_vars):
+
+    def _strip_prefix_from_name(prefix, name):
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+            name = _strip_prefix_from_name(prefix, name)
+        return name
+
+    var_list = {}
+    prefix = prefix + '/' if not prefix.endswith('/') else prefix
+
+    for each_var in all_vars:
+        new_name = _strip_prefix_from_name(prefix, each_var.op.name)
+        var_list[new_name] = each_var
+    return var_list
+
+
 def get_loss(inputs,
              outputs,
              targets,
