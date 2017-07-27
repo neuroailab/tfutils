@@ -691,6 +691,9 @@ def get_queue(nodes,
         dtypes.append(nodes[name].dtype)
         shapes.append(nodes[name].get_shape()[1:])
 
+    if batch_size==1:
+        shapes = None
+
     if queue_type == 'random':
         queue = tf.RandomShuffleQueue(capacity=capacity,
                                       min_after_dequeue=min_after_dequeue,
