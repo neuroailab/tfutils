@@ -32,7 +32,8 @@ from tfutils.utils import (make_mongo_safe,
                            get_saver_pb2_v2_files,
                            verify_pb2_v2_files,
                            frozendict,
-                           format_devices)
+                           format_devices,
+                           strip_prefix)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -829,55 +830,43 @@ def test_from_params(load_params,
 
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
-            with tf.variable_scope(param['model_params']['prefix']) as scope:
+            # with tf.variable_scope(param['model_params']['prefix']) as scope:
 
-                print(scope.name)
-                ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
-                ttarg['dbinterface'].load_rec()
-                ld = ttarg['dbinterface'].load_data
-                assert ld is not None, "No load data found for query, aborting"
-                ld = ld[0]
-                # TODO: have option to reconstitute model_params entirely from
-                # saved object ("revivification")
-                param['model_params']['seed'] = ld['params']['model_params']['seed']
-                cfg_final = ld['params']['model_params']['cfg_final']
-                train_queue_params = ld['params']['train_params']['queue_params']
+            # print(scope.name)
+            ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
+            ttarg['dbinterface'].load_rec()
+            ld = ttarg['dbinterface'].load_data
+            assert ld is not None, "No load data found for query, aborting"
+            ld = ld[0]
+            # TODO: have option to reconstitute model_params entirely from
+            # saved object ("revivification")
+            param['model_params']['seed'] = ld['params']['model_params']['seed']
+            cfg_final = ld['params']['model_params']['cfg_final']
+            train_queue_params = ld['params']['train_params']['queue_params']
 
+            (ttarg['validation_targets'],
+             ttarg['queues']) = get_valid_targets_dict(loss_params=None,
+                                                       cfg_final=cfg_final,
+                                                       queue_params=train_queue_params,
+                                                       **param)
 
-                (ttarg['validation_targets'],
-                 ttarg['queues']) = get_valid_targets_dict(loss_params=None,
-                                                           cfg_final=cfg_final,
-                                                           queue_params=train_queue_params,
-                                                           **param)
+            # tf.get_variable_scope().reuse_variables()
 
-                tf.get_variable_scope().reuse_variables()
+            param['load_params']['do_restore'] = True
+            param['model_params']['cfg_final'] = cfg_final
 
-                param['load_params']['do_restore'] = True
-                param['model_params']['cfg_final'] = cfg_final
+            prefix = param['model_params']['prefix'] + '/'
+            all_vars = variables._all_saveable_objects()
+            var_list = strip_prefix(prefix, all_vars)
 
-                var_list = {}
-                all_vars = variables._all_saveable_objects()
-
-                prefix_str = param['model_params']['prefix'] + '/'
-
-                for each_var in all_vars:
-                    if each_var.op.name.startswith(prefix_str):
-                        new_name = each_var.op.name[len(prefix_str):]
-                        if new_name.startswith(prefix_str):
-                            new_name = new_name[len(prefix_str):]
-                        var_list[new_name] = each_var
-
-                print('Var_list: ')
-                print(var_list.keys())
-
-                ttarg['dbinterface'] = DBInterface(sess=sess,
-                                                   params=param,
-                                                   var_list=var_list,
-                                                   load_params=param['load_params'],
-                                                   save_params=param['save_params'])
-                ttarg['dbinterface'].initialize(no_scratch=True)
-                ttarg['sess'] = sess
-                ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
+            ttarg['dbinterface'] = DBInterface(sess=sess,
+                                               params=param,
+                                               var_list=var_list,
+                                               load_params=param['load_params'],
+                                               save_params=param['save_params'])
+            ttarg['dbinterface'].initialize(no_scratch=True)
+            ttarg['sess'] = sess
+            ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]
@@ -1239,20 +1228,9 @@ def train_from_params(save_params,
 
         for param, trarg in zip(_params, _trargs):
 
-            var_list = {}
+            prefix = param['model_params']['prefix'] + '/'
             all_vars = variables._all_saveable_objects()
-
-            prefix_str = param['model_params']['prefix'] + '/'
-
-            for each_var in all_vars:
-                if each_var.op.name.startswith(prefix_str):
-                    new_name = each_var.op.name[len(prefix_str):]
-                    if new_name.startswith(prefix_str):
-                        new_name = new_name[len(prefix_str):]
-                    var_list[new_name] = each_var
-
-            print('Var_list: ')
-            print(var_list.keys())
+            var_list = strip_prefix(prefix, all_vars)
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
@@ -1292,6 +1270,7 @@ def get_valid_targets_dict(validation_params,
     model_params = copy.deepcopy(model_params)
     # model_params.pop('train', None)  # hackety-hack
     model_params['train'] = False
+    prefix = model_params['prefix']
     if cfg_final is None:
         assert 'cfg_final' in model_params
         cfg_final = model_params['cfg_final']
@@ -1301,7 +1280,8 @@ def get_valid_targets_dict(validation_params,
         _, queue, vinputs = get_data(queue_params=queue_params,
                                      **validation_params[vtarg]['data_params'])
         queues.extend(queue)
-        scope_name = 'validation/%s' % vtarg
+        # scope_name = 'validation/%s' % vtarg
+        scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
             _mp, voutputs = get_distributed_model(vinputs, model_params)
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
@@ -1389,66 +1369,6 @@ def split_input(inputs, num_gpus=1):
     return list_of_args
 
 
-def get_graph(inputs, param, trarg, train=True):
-
-    with tf.variable_scope(tf.get_variable_scope()):
-
-        (param['learning_rate_params'],
-         learning_rate) = get_learning_rate(trarg['global_step'],
-                                            **param['learning_rate_params'])
-        (param['optimizer_params'],
-         optimizer_base) = get_optimizer_base(learning_rate,
-                                              param['optimizer_params'])
-        tower_outputs = []
-        tower_losses = []
-        tower_grads = []
-
-        devices = param['model_params']['devices']
-        num_gpus = param['model_params']['num_gpus']
-        inputs = split_input(inputs, num_gpus)
-
-        # Distribute graph across desired devices.
-        for device, input in zip(devices, inputs):
-            with tf.device(device), tf.name_scope('gpu_' + device[-1]):
-
-                # get_model should have ability to return dict, which may contain
-                # loss and optimizer keys
-                (param['model_params'],
-                 output) = get_model(input, **param['model_params'])
-                tower_outputs.append(output)
-                print('tower_outputs len: {}'.format(len(tower_outputs)))
-
-                if param['train_params'].get('targets') is not None:
-                    ttargs = copy.deepcopy(param['train_params']['targets'])
-                    ttargs_func = ttargs.pop('func')
-                    ttarg = ttargs_func(input, output, **ttargs)
-                    trarg['train_targets'].update(ttarg)
-
-                (param['loss_params'],
-                 loss) = get_loss(input, output, **param['loss_params'])
-
-                tf.get_variable_scope().reuse_variables()
-
-                grad = optimizer_base.compute_gradients(loss)
-                tower_losses.append(loss)
-                tower_grads.append(grad)
-
-    # On the host, gather outputs.
-    output = concat_output(tower_outputs, num_gpus)
-    # trarg['train_targets'].update({'output': output})
-
-    # Accumulate and average gradients.
-    loss = tf.reduce_mean(tf.stack(tower_losses))
-    average_grads = average_gradients(tower_grads)
-    optimizer = optimizer_base.apply_gradients(average_grads,
-                                               trarg['global_step'])
-
-    trarg['train_targets'].update({'loss': loss,
-                                   'optimizer': optimizer,
-                                   'learning_rate': learning_rate})
-    return param, trarg
-
-
 def get_model(input, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
@@ -1484,7 +1404,7 @@ def get_distributed_model(inputs, model_params, param=None, trarg=None):
 
         # Distribute graph across desired devices.
         for device, input in zip(devices, inputs):
-            with tf.device(device), tf.name_scope('gpu_' + device[-1]):
+            with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
 
                 model_params, output = get_model(input, **model_params)
                 tower_outputs.append(output)
