@@ -1205,7 +1205,7 @@ def train_from_params(save_params,
                                                        dtype=tf.int64, trainable=False,
                                                        initializer=tf.constant_initializer(0))
 
-                _, _, param, trarg = get_distributed_model(inputs,
+                _, _, param, trarg = get_model(inputs,
                                                            param['model_params'],
                                                            param=param,
                                                            trarg=trarg)
@@ -1289,7 +1289,7 @@ def get_valid_targets_dict(validation_params,
         # scope_name = 'validation/%s' % vtarg
         scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
-            _mp, voutputs = get_distributed_model(vinputs, model_params)
+            _mp, voutputs = get_model(vinputs, model_params)
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
@@ -1376,7 +1376,7 @@ def split_input(inputs, num_gpus=1):
     return list_of_args
 
 
-def get_model(input, func, seed=0, train=False, **model_params):
+def get_model_base(input, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
     outputs, cfg_final = func(inputs=input,
@@ -1386,7 +1386,7 @@ def get_model(input, func, seed=0, train=False, **model_params):
     return model_params, outputs
 
 
-def get_distributed_model(inputs, model_params, param=None, trarg=None):
+def get_model(inputs, model_params, param=None, trarg=None):
     """Return model and any other targets (loss + optimizer) specified."""
     with tf.variable_scope(tf.get_variable_scope()):
 
@@ -1413,7 +1413,7 @@ def get_distributed_model(inputs, model_params, param=None, trarg=None):
         for device, input in zip(devices, inputs):
             with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
 
-                model_params, output = get_model(input, **model_params)
+                model_params, output = get_model_base(input, **model_params)
                 tower_outputs.append(output)
 
                 tf.get_variable_scope().reuse_variables()
