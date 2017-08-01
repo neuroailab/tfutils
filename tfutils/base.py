@@ -571,9 +571,12 @@ class DBInterface(object):
             thread.start()
             self.checkpoint_thread = thread
 
+    # TODO: throw error if...
+    # TODO: Look into python threading lib.
+    # TODO: Talk to Damian if questions.
     def sync_with_host(self):
         if self.checkpoint_thread is not None:
-            self.checkpoint_thread.join()
+            self.checkpoint_thread.join()  # Why no error if error in thread??
             self.checkpoint_thread = None
 
     def _save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
@@ -960,6 +963,9 @@ def train(sess,
     while any(step < num_step for (step, num_step) in zip(steps, num_steps)):
 
         # Make a single call to sess.run to produce a list of results.
+        # TODO: call default train_loop which has minibatch option and is
+        # defined in base.py
+
         start_time_step = time.time()
         if train_loop is not None:
             train_results = train_loop(sess, train_targets)
@@ -1357,6 +1363,7 @@ def get_data(func, queue_params=None, **data_params):
     return data_params, [queue], inputs
 
 
+# TODO: More control over split input
 def split_input(inputs, num_gpus=1):
     if num_gpus == 1:
         return [inputs]
@@ -1627,17 +1634,21 @@ def parse_params(mode,
         assert isinstance(
             param_list, list), '{} should also be a list'.format(name)
         assert len(param_list) == num_models, '{} should have length'.format(num_models)
-    assert len(np.unique(list_lens)
-               ) == 1, 'All param lists should have be same length!'
+    assert len(np.unique(list_lens)) == 1, 'All param lists should have be same length!'
 
     # Append the model_prefix to non-unique exp_ids.
     for key in ['save_params', 'load_params']:
         unique_exp_ids = set(s.get('exp_id') for s in params[key])
         if None not in unique_exp_ids:
             if len(unique_exp_ids) == 1 and num_models != 1:
+                log.warning('Non-unique exp_ids detected in {} '.format(key) +
+                            'with multiple models.'.format(key))
                 for i, (p, mp) in enumerate(zip(params[key],
                                                 params['model_params'])):
                     p.update({'exp_id': p.get('exp_id') + '_' + mp['prefix']})
+                    log.info('Appending \'_{} to the exp_id of model number {}.'.
+                             format(mp['prefix'], i))
+                    log.info('New exp_id is: {}'.format(p.get('exp_id')))
 
             assert len(set(s['exp_id'] for s in params[key])) == num_models
 
