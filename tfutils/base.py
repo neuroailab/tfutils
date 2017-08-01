@@ -1601,8 +1601,12 @@ def parse_params(mode,
             if name == 'model_params':
                 if 'seed' not in param:
                     param['seed'] = DEFAULT_MODEL_SEED
+                    log.info('No seed specified for model {}... '.format(model_num) +
+                             'Defaulting to seed: {}.'.format(DEFAULT_MODEL_SEED))
                 if 'prefix' not in param:
                     param['prefix'] = 'model_{}'.format(model_num)
+                    log.info('No prefix specified for model {}... '.format(model_num) +
+                             'Defaulting to prefix: {}.'.format(param['prefix']))
                 if 'train' not in param:
                     if mode == 'train':
                         param['train'] = True
@@ -1612,6 +1616,8 @@ def parse_params(mode,
                 # Parse device specification
                 if 'devices' not in param:
                     param['devices'] = [DEVICES.pop(0)]
+                    log.info('No devices specified for model {}... '.format(model_num) +
+                             'Defaulting to gpus: {}.'.format(param['devices']))
                 param['devices'] = format_devices(param['devices'])
 
                 if 'num_gpus' not in param:
@@ -1621,12 +1627,20 @@ def parse_params(mode,
             if name == 'train_params':
                 if 'num_steps' not in param:
                     param['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
+                    log.info('num_steps not specified for model {}... '.format(model_num) +
+                             'Defaulting num_steps to: {}.'.format(DEFAULT_TRAIN_NUM_STEPS))
                 if 'thres_loss' not in param:
                     param['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
+                    log.info('thres_loss not specified for model {}... '.format(model_num) +
+                             'Defaulting thres_loss to: {}.'.format(DEFAULT_TRAIN_THRES_LOSS))
                 if 'train_loop' not in param:
                     param['train_loop'] = {'func': None}
+                    log.info('train_loop not specified for model {}... '.format(model_num) +
+                             'Using default training loop.')
                 if 'validate_first' not in param:
                     param['validate_first'] = True
+                    log.info('validate_fist not specified for model {}... '.format(model_num) +
+                             'Defaulting validate_first to: {}.'.format(param['validate_first']))
 
         params[name] = param_list
 
