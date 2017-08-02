@@ -219,7 +219,7 @@ class ParallelByFileProviderBase(DataProviderBase):
 DEFAULT_TFRECORDS_GLOB_PATTERN = '*.tfrecords'
 
 
-def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN, file_grab_func = None):
+def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN, file_grab_func = None, file_grab_func_kwargs = None):
     if not isinstance(paths, list):
         assert isstring(paths)
         paths = [paths]
@@ -236,7 +236,7 @@ def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN, file_grab
               tfrecord_pattern = os.path.join(path, file_pattern)
               datasource = tf.gfile.Glob(tfrecord_pattern)
             else:
-              datasource = file_grab_func(path)
+              datasource = file_grab_func(path, **file_grab_func_kwargs)
             datasource.sort()
             datasources.append(datasource)
         else:
@@ -348,6 +348,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
                  trans_dicts=None,
                  file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN,
                  file_grab_func = None,
+                 file_grab_func_kwargs = None,
                  **kwargs):
         """
         Subclass of ParallelByFileProviderBase specific to TFRecords files.
@@ -411,6 +412,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
             - file_pattern (str, optional): pattern for selecting files in glob format.
             - file_grab_func (func, optional): takes a path and returns files within that path to be included in source_paths.
                       overrides file_pattern
+            - file_grab_func_kwargs (dict, optional): kwargs for file_grab_func
 
         """
         self.source_dirs = source_dirs
@@ -420,7 +422,7 @@ class TFRecordsParallelByFileProvider(ParallelByFileProviderBase):
         self.meta_dict, self.parser_list = merge_meta(self.meta_dicts,
                                                       trans_dicts)
         postprocess = add_standard_postprocessing(postprocess, self.meta_dict)
-        source_paths = get_data_paths(source_dirs, file_pattern = file_pattern, file_grab_func = file_grab_func)
+        source_paths = get_data_paths(source_dirs, file_pattern = file_pattern, file_grab_func = file_grab_func, file_grab_func_kwargs = file_grab_func_kwargs)
         super(TFRecordsParallelByFileProvider, self).__init__(source_paths,
                                                               read_args=[(p, ) for p in self.parser_list],
                                                               postprocess=postprocess,
