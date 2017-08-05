@@ -1184,7 +1184,7 @@ def get_data(func, queue_params=None, **data_params):
     batch_size = data_params['batch_size']
     data_params['func'] = func
     enqueue_ops = []
-    queue = get_queue(input_ops[0], **queue_params)
+    queue = get_queue(input_ops[0], shape_flag = batch_size!=1, **queue_params)
     for input_op in input_ops:
         if batch_size == 1:
             enqueue_ops.append(queue.enqueue(input_op))
