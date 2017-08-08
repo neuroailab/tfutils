@@ -4,6 +4,7 @@ import logging
 import json
 import datetime
 import inspect
+import threading
 import pkg_resources
 import os
 import re
@@ -13,12 +14,54 @@ import numpy as np
 from bson.objectid import ObjectId
 import git
 
+import tensorflow as tf
 from tensorflow.python import DType
 from tensorflow.python.client import device_lib
 # from tfutils.error import RepoIsDirtyError
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
+
+
+class CoordinatedThread(threading.Thread):
+    """A thread class coordinated by tf.train.Coordinator."""
+
+    def __init__(self, coord=None, group=None, target=None, name=None, args=(), kwargs={}):
+        # threading.Thread.__init__(
+            # self, group=group, target=target, name=name, args=args,
+            # kwargs=kwargs)
+        super(CoordinatedThread, self).__init__(
+            group=None, target=target, name=name, args=args, kwargs=kwargs)
+        self._coord = coord
+        self._target = target
+        self._args = args
+        self._kwargs = kwargs
+
+    def run(self):
+        """Run the thread's main activity.
+
+        You may override this method in a subclass. The standard run() method
+        invokes the callable object passed to the object's constructor as the
+        target argument, if any, with sequential and keyword arguments taken
+        from the args and kwargs arguments, respectively.
+
+        """
+        try:
+            if self._target:
+                self._target(*self._args, **self._kwargs)
+        except Exception as e:
+            self._coord.request_stop(e)
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
+            # self._coord.request_stop()
+
+
+class ThreadError(Exception):
+    """Exception class to raise if a thread has an issue."""
+
+    pass
 
 
 def isstring(x):
@@ -42,7 +85,8 @@ def version_info(module):
             info = pkg_resources.get_distribution(pkgname)
         except (pkg_resources.DistributionNotFound, pkg_resources.RequirementParseError):
             version = None
-            log.warning('version information not found for %s -- what package is this from?' % module.__name__)
+            log.warning(
+                'version information not found for %s -- what package is this from?' % module.__name__)
         else:
             version = info.version
 
@@ -59,7 +103,8 @@ def version_check_and_info(module):
     try:
         repo = git.Repo(srcpath, search_parent_directories=True)
     except git.InvalidGitRepositoryError:
-        log.info('module %s not in a git repo, checking package version' % module.__name__)
+        log.info('module %s not in a git repo, checking package version' %
+                 module.__name__)
         info = version_info(module)
     else:
         info = git_info(repo)
@@ -70,7 +115,8 @@ def version_check_and_info(module):
 def git_info(repo):
     """Return information about a git repo."""
     if repo.is_dirty():
-        log.warning('repo %s is dirty -- having committment issues?' % repo.git_dir)
+        log.warning('repo %s is dirty -- having committment issues?' %
+                    repo.git_dir)
         clean = False
     else:
         clean = True
@@ -78,7 +124,8 @@ def git_info(repo):
     commit = repo.active_branch.commit.hexsha
     origin = repo.remote('origin')
     urls = map(str, list(origin.urls))
-    remote_ref = [_r for _r in origin.refs if _r.name == 'origin/' + branchname]
+    remote_ref = [_r for _r in origin.refs if _r.name ==
+                  'origin/' + branchname]
     if not len(remote_ref) > 0:
         log.warning('Active branch %s not in origin ref' % branchname)
         active_branch_in_origin = False
@@ -87,7 +134,8 @@ def git_info(repo):
         active_branch_in_origin = True
         remote_ref = remote_ref[0]
         gitlog = remote_ref.log()
-        shas = [_r.oldhexsha for _r in gitlog] + [_r.newhexsha for _r in gitlog]
+        shas = [_r.oldhexsha for _r in gitlog] + \
+            [_r.newhexsha for _r in gitlog]
         if commit not in shas:
             log.warning('Commit %s not in remote origin log for branch %s' % (commit,
                                                                               branchname))
@@ -208,7 +256,8 @@ def format_devices(devices):
             elif n is not None:
                 gpu = gpu.format(n.group())
             else:
-                raise TypeError('Invalid device specification: {}'.format(device))
+                raise TypeError(
+                    'Invalid device specification: {}'.format(device))
         return gpu
 
     devices = [devices] if not isinstance(devices, list) else devices
@@ -232,11 +281,59 @@ def strip_prefix(prefix, all_vars):
     return var_list
 
 
+def aggregate_outputs(tower_outputs):
+    """Return aggregated model replicate outputs.
+
+    The elements of `tower_outputs` should have identical structure and
+    correspond to the outputs of individual model replicas on separate
+    devices (GPUs). Model replicate outputs are recursively searched until
+    a tensor `t` satisfying
+    ```python
+        isinstance(t, tf.Tensor) -> True
+    ```
+    is found. Tensor `t` is then concatenated with all of its corresponding
+    replicates along the batch dimension (axis=0).
+
+    If `tower_outputs` is a list of length one, then the element it contains
+    is returned.
+
+    Args:
+        tower_outputs (list): The outputs of individual model replicas.
+
+    Returns:
+        The aggregated output with a structure identical to the replicate outputs.
+
+    Example:
+        >>> print(tower_outputs)
+        [{'tensor': <tf.Tensor 'softmax_linear/fc/output:0' shape=(50, 10) dtype=float32>},
+        {'tensor': <tf.Tensor 'softmax_linear_1/fc/output:0' shape=(50, 10) dtype=float32>}]
+        >>>
+        >>> print(aggegrate_ouputs(tower_outputs))
+        {'tensor': <tf.Tensor 'concat:0' shape=(100, 10) dtype=float32>}
+
+    """
+    if len(tower_outputs) == 1:
+        return tower_outputs.pop()
+    # Tensorflow tensors are concatenated along axis 0.
+    elif isinstance(tower_outputs[0], tf.Tensor):
+        return tf.concat(tower_outputs, axis=0)
+    # Dict values are aggregated by key.
+    elif isinstance(tower_outputs[0], collections.Mapping):
+        return {key: aggregate_outputs([out[key] for out in tower_outputs])
+                for key in tower_outputs[0]}
+    # List elements are aggregated by index.
+    elif isinstance(tower_outputs[0], collections.Iterable):
+        return [aggregate_outputs(out) for out in zip(*tower_outputs)]
+    raise TypeError('Aggregation not supported for type: {}'.
+                    format(type(tower_outputs[0])))
+
+
 def get_loss(inputs,
              outputs,
              targets,
              loss_per_case_func,
-             loss_per_case_func_params={'_outputs': 'logits', '_targets_$all': 'labels'},
+             loss_per_case_func_params={
+                 '_outputs': 'logits', '_targets_$all': 'labels'},
              agg_func=None,
              loss_func_kwargs=None,
              agg_func_kwargs=None,
@@ -264,7 +361,8 @@ def get_loss(inputs,
             tmp_key = key_value[len('_targets_'):]
             if tmp_key in targets:
                 targets.remove(tmp_key)
-                loss_func_kwargs[loss_per_case_func_params[key_value]] = inputs[tmp_key]
+                loss_func_kwargs[loss_per_case_func_params[
+                    key_value]] = inputs[tmp_key]
 
     if len(targets) == 0:
         flag_with_tar = False
