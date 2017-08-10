@@ -74,7 +74,15 @@ def isstring(x):
 
 
 def version_info(module):
-    """Gets version of a standard python module."""
+    """Get version of a standard python module.
+
+    Args:
+        module (module): python module object to get version info for.
+
+    Returns:
+        dict: dictionary of version info.
+
+    """
     if hasattr(module, '__version__'):
         version = module.__version__
     elif hasattr(module, 'VERSION'):
@@ -96,8 +104,12 @@ def version_info(module):
 def version_check_and_info(module):
     """Return either git info or standard module version if not a git repo.
 
-    Args: - module (module): python module object to get info for.
-    Returns: dictionary of info
+    Args:
+        module (module): python module object to get info for.
+
+    Returns:
+        dict: dictionary of info
+
     """
     srcpath = inspect.getsourcefile(module)
     try:
@@ -113,7 +125,15 @@ def version_check_and_info(module):
 
 
 def git_info(repo):
-    """Return information about a git repo."""
+    """Return information about a git repo.
+
+    Args:
+        repo (git.Repo): The git repo to be investigated.
+
+    Returns:
+        dict: Git repo information
+
+    """
     if repo.is_dirty():
         log.warning('repo %s is dirty -- having committment issues?' %
                     repo.git_dir)
@@ -153,7 +173,12 @@ def git_info(repo):
 
 
 def make_mongo_safe(_d):
-    """Make a json-izable actually safe for insertion into Mongo."""
+    """Make a json-izable actually safe for insertion into Mongo.
+
+    Args:
+        _d (dict): a dictionary to make safe for Mongo.
+
+    """
     klist = _d.keys()[:]
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
@@ -166,7 +191,20 @@ def make_mongo_safe(_d):
 
 
 def sonify(arg, memo=None, skip=False):
-    """Return version of arg that can be trivally serialized to json format."""
+    """Return version of arg that can be trivally serialized to json format.
+
+    Args:
+        arg (object): an argument to sonify.
+        memo (dict, optional): A dictionary to contain args. Defaults to None.
+        skip (bool, optional): Skip git repo info check. Defaults to False.
+
+    Returns:
+        Sonified return argument.
+
+    Raises:
+        TypeError: Cannot sonify argument type.
+
+    """
     if memo is None:
         memo = {}
     if id(arg) in memo:
@@ -237,11 +275,20 @@ def get_available_gpus():
 def format_devices(devices):
     """Return list of proper device (gpu) strings.
 
-    If `devices` is not a list, it is converted into one.
-    For each inproperly formatted element:
-        - an int n is mapped to '/gpu:{}'.format(n)
-        - the first digit d of a string is mapped to '/gpu:{}'.format(d)
-        - all other elements raise a TypeError
+    Args:
+        devices (list): A list of device strings.
+            If `devices is not a list, it is converted to one. The following
+            rules are applied to each element in the list:
+
+                type: (int) -> '/gpu:{}'.format(int)
+                type: (str) -> /gpu:{}'.format(d) where d is first occurence
+                 of a digit
+
+    Returns:
+        list: A sorted list of unique and properly formatted device strings.
+
+    Raises:
+        TypeError: Invalid device specification.
 
     """
     def format_device(device):
@@ -287,10 +334,12 @@ def aggregate_outputs(tower_outputs):
     The elements of `tower_outputs` should have identical structure and
     correspond to the outputs of individual model replicas on separate
     devices (GPUs). Model replicate outputs are recursively searched until
-    a tensor `t` satisfying
+    a tensor `t` satisfying:
+
     ```python
         isinstance(t, tf.Tensor) -> True
     ```
+
     is found. Tensor `t` is then concatenated with all of its corresponding
     replicates along the batch dimension (axis=0).
 
@@ -303,7 +352,10 @@ def aggregate_outputs(tower_outputs):
     Returns:
         The aggregated output with a structure identical to the replicate outputs.
 
-    Example:
+    Raises:
+        TypeError: Aggregation not supported for given type.
+
+    Examples:
         >>> print(tower_outputs)
         [{'tensor': <tf.Tensor 'softmax_linear/fc/output:0' shape=(50, 10) dtype=float32>},
         {'tensor': <tf.Tensor 'softmax_linear_1/fc/output:0' shape=(50, 10) dtype=float32>}]
@@ -314,16 +366,21 @@ def aggregate_outputs(tower_outputs):
     """
     if len(tower_outputs) == 1:
         return tower_outputs.pop()
+
     # Tensorflow tensors are concatenated along axis 0.
     elif isinstance(tower_outputs[0], tf.Tensor):
         return tf.concat(tower_outputs, axis=0)
+
     # Dict values are aggregated by key.
     elif isinstance(tower_outputs[0], collections.Mapping):
         return {key: aggregate_outputs([out[key] for out in tower_outputs])
                 for key in tower_outputs[0]}
+
     # List elements are aggregated by index.
     elif isinstance(tower_outputs[0], collections.Iterable):
         return [aggregate_outputs(out) for out in zip(*tower_outputs)]
+
+    # All other types are not supported.
     raise TypeError('Aggregation not supported for type: {}'.
                     format(type(tower_outputs[0])))
 
@@ -332,8 +389,7 @@ def get_loss(inputs,
              outputs,
              targets,
              loss_per_case_func,
-             loss_per_case_func_params={
-                 '_outputs': 'logits', '_targets_$all': 'labels'},
+             loss_per_case_func_params={'_outputs': 'logits', '_targets_$all': 'labels'},
              agg_func=None,
              loss_func_kwargs=None,
              agg_func_kwargs=None,
@@ -477,7 +533,8 @@ def mean_dict(y):
 
 
 class frozendict(collections.Mapping):
-    """
+    """An immuatable dictionary.
+
     An immutable wrapper around dictionaries that implements the complete :py:class:`collections.Mapping`
     interface. It can be used as a drop-in replacement for dictionaries where immutability is desired.
 
