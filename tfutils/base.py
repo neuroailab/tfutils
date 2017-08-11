@@ -30,6 +30,7 @@ import tfutils.utils as utils
 from tfutils.utils import (sonify,
                            make_mongo_safe,
                            aggregate_outputs,
+                           CoordinatedThread,
                            get_saver_pb2_v2_files,
                            verify_pb2_v2_files,
                            frozendict,
@@ -565,23 +566,33 @@ class DBInterface(object):
             save_rec = sonify(rec, skip=self._skip_check)
             make_mongo_safe(save_rec)
 
-            thread = threading.Thread(target=self._save_thread,
-                                      args=(save_filters_permanent,
-                                            save_filters_tmp,
-                                            save_rec,
-                                            step,
-                                            save_to_gfs))
+            coord = tf.train.Coordinator()
+            thread = CoordinatedThread(coord=coord,
+                                       target=self._save_thread,
+                                       args=(save_filters_permanent,
+                                             save_filters_tmp,
+                                             save_rec,
+                                             step,
+                                             save_to_gfs))
             thread.daemon = True
             thread.start()
             self.checkpoint_thread = thread
+            self.checkpoint_coord = coord
 
     # TODO: throw error if...
     # TODO: Look into python threading lib.
     # TODO: Talk to Damian if questions.
     def sync_with_host(self):
         if self.checkpoint_thread is not None:
-            self.checkpoint_thread.join()  # Why no error if error in thread??
-            self.checkpoint_thread = None
+            try:
+                self.checkpoint_coord.join([self.checkpoint_thread])
+            except Exception as error:
+                log.warning('A checkpoint thead raised an exception'
+                            'while saving a checkpoint.')
+                log.error(error)
+                raise
+            else:
+                self.checkpoint_thread = None
 
     def _save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
 
@@ -900,6 +911,10 @@ def train_loop(sess, train_targets, num_minibatches=1):
 
     Returns:
         dict: The result of calling sess.run on the train_targets.
+
+    TODO: Should wrap a custom train loop that can be specified
+    by the user as to not lose minibatching when user wants to
+    customize behavior of training loop.
     """
     for minibatch in range(num_minibatches - 1):
         sess.run([target['grads'] for target in train_targets])
