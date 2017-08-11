@@ -499,11 +499,15 @@ class DBInterface(object):
             # TODO: also include error rate of the train set to monitor
             # overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items(
-            ) if k != 'optimizer' and k not in self.save_to_gfs]
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
+                    if k not in ['optimizer', 'grads', 'zero_grad'] and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
+            if 'grads' in train_res:
+                del train_res['grads']
+            if 'zero_grad' in train_res:
+                del train_res['zero_grad']
             if 'optimizer' in train_res:
                 del train_res['optimizer']
             if 'train_results' not in rec:
@@ -514,10 +518,9 @@ class DBInterface(object):
         if len(valid_res) > 0:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
-            message += ', '.join('{}: {}'.format(k,
-                                                 {_k: _v for _k, _v in v.items(
-                                                 ) if _k not in self.save_to_gfs}
-                                                 ) for k, v in valid_res.items())
+            message += ', '.join('{}: {}'.format(k, {_k: _v for _k, _v in v.items()
+                                                     if _k not in self.save_to_gfs})
+                                                for k, v in valid_res.items())
             log.info(message)
 
         if validation_only:
@@ -886,12 +889,30 @@ def test_from_params(load_params,
         return res
 
 
+def train_loop(sess, train_targets, num_minibatches=1):
+    """Evaluate train_targets.
+
+    Args:
+        sess (tf.Session): Current tensorflow session.
+        train_targets (dict): Training targets to be evaluated by sess.
+        num_minibatches (int, optional): Number of minibatches to use.
+            Defaults to 1.
+
+    Returns:
+        dict: The result of calling sess.run on the train_targets.
+    """
+    for minibatch in range(num_minibatches - 1):
+        sess.run([target['grads'] for target in train_targets])
+    return sess.run(train_targets)
+
+
 def train(sess,
           queues,
           dbinterface,
           train_loop,
           train_targets,
           global_step,
+          num_minibatches=1,
           num_steps=float('inf'),
           thres_loss=DEFAULT_TRAIN_THRES_LOSS,
           validate_first=True,
@@ -911,6 +932,8 @@ def train(sess,
         - train_targets (dict of tensorflow nodes)
             Targets to train. One item in this dict must be "optimizer" or similar
             to make anything happen
+        - num_minibatches (int)
+            How many minibatches to use to before applying gradient update.
         - num_steps (int)
             How many steps to train to before quitting
         - valid_targets (dict of tensorflow objects, default: None)
@@ -930,6 +953,7 @@ def train(sess,
         'dbinterface': dbinterface,
         'train_targets': train_targets,
         'validate_first': validate_first,
+        'num_minibatches': num_minibatches,
         'validation_targets': validation_targets}
 
     # Convert to a list of dicts
@@ -969,7 +993,9 @@ def train(sess,
 
         start_time_step = time.time()
         if train_loop is not None:
-            train_results = train_loop(sess, train_targets)
+            train_results = train_loop(sess,
+                                       train_targets,
+                                       num_minibatches=trarg['num_minibatches'])
         else:
             train_results = sess.run(train_targets)
 
@@ -1207,9 +1233,9 @@ def train_from_params(save_params,
                                                        initializer=tf.constant_initializer(0))
 
                 _, _, param, trarg = get_model(inputs,
-                                                           param['model_params'],
-                                                           param=param,
-                                                           trarg=trarg)
+                                               param['model_params'],
+                                               param=param,
+                                               trarg=trarg)
 
                 tf.get_variable_scope().reuse_variables()
 
@@ -1444,7 +1470,7 @@ def get_model(inputs, model_params, param=None, trarg=None):
 
         loss = tf.reduce_mean(tf.stack(tower_losses))
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        grads = optimizer.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
         optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
         zero_grad = optimizer_base.zero_grad()
 
@@ -1454,8 +1480,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
             trarg['train_targets']['grads'] = grads
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
-        if 'zero_grads' not in trarg['train_targets']:
-            trarg['train_targets']['zero_grads'] = zero_grads
+        if 'zero_grad' not in trarg['train_targets']:
+            trarg['train_targets']['zero_grad'] = zero_grad
         if 'learning_rate' not in trarg['train_targets']:
             trarg['train_targets']['learning_rate'] = learning_rate
 
@@ -1630,7 +1656,7 @@ def parse_params(mode,
                     log.info('thres_loss not specified for model {}... '.format(model_num) +
                              'Defaulting thres_loss to: {}.'.format(DEFAULT_TRAIN_THRES_LOSS))
                 if 'train_loop' not in param:
-                    param['train_loop'] = {'func': None}
+                    param['train_loop'] = {'func': train_loop}
                     log.info('train_loop not specified for model {}... '.format(model_num) +
                              'Using default training loop.')
                 if 'validate_first' not in param:
@@ -1639,15 +1665,15 @@ def parse_params(mode,
                              'Defaulting validate_first to: {}.'.format(param['validate_first']))
 
                 # Parse training data params (minibatching).
-                if 'minibatch_size' not in param['data_params']:
-                    param['data_params']['num_minibatches'] = 1
-                    param['data_params']['minibatch_size'] = param['data_params']['batch_size']
+                if 'minibatch_size' not in param:
+                    param['num_minibatches'] = 1
+                    param['minibatch_size'] = param['data_params']['batch_size']
                     log.info('minibatch_size not specified for training data_params... ' +
                              'Defaulting minibatch_size to: {} (identical to the batch size).'
                              .format(param['data_params']['batch_size']))
                 else:
                     batch_size = param['data_params']['batch_size']
-                    minibatch_size = param['data_params']['minibatch_size']
+                    minibatch_size = param['minibatch_size']
                     assert(minibatch_size <= batch_size,
                            'Minibatch size cannot be larger than batch size.')
 
@@ -1659,8 +1685,8 @@ def parse_params(mode,
                                     .format(minibatch_size, batch_size))
                         log.info('Rounding minibatch size to closest factor of batch size: {}'
                                  .format(minibatch_size))
-                    param['data_params']['minibatch_size'] = minibatch_size
-                    param['data_params']['num_minibatches'] = num_minibatches
+                    param['minibatch_size'] = minibatch_size
+                    param['num_minibatches'] = num_minibatches
 
         params[name] = param_list
 
@@ -1702,7 +1728,8 @@ def parse_params(mode,
             'num_steps': [p['num_steps'] for p in params['train_params']],
             'thres_loss': [p['thres_loss'] for p in params['train_params']],
             'train_loop': [p['train_loop']['func'] for p in params['train_params']],
-            'validate_first': [p['validate_first'] for p in params['train_params']]})
+            'validate_first': [p['validate_first'] for p in params['train_params']],
+            'num_minibatches': [p['num_minibatches'] for p in params['train_params']]})
 
     return params, run_args
 

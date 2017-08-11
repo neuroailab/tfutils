@@ -63,7 +63,9 @@ class ClipOptimizer(object):
 
         if self.grads_and_vars is None:
             self.grads_and_vars = [(
-                tf.Variable(tf.zeros_like(var), dtype=tf.float32, trainable=False),
+                tf.Variable(tf.zeros_like(var.initialized_value()),
+                            dtype=tf.float32,
+                            trainable=False),
                 var) for var in self.var_list]
 
         # Add 1/num_minibatches * minibatch_grads to current gradients.
