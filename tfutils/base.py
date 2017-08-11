@@ -27,8 +27,9 @@ from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import get_queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from tfutils.utils import (make_mongo_safe,
-                           sonify,
+from tfutils.utils import (sonify,
+                           make_mongo_safe,
+                           aggregate_outputs,
                            get_saver_pb2_v2_files,
                            verify_pb2_v2_files,
                            frozendict,
@@ -1363,7 +1364,6 @@ def get_data(func, queue_params=None, **data_params):
     return data_params, [queue], inputs
 
 
-# TODO: More control over split input
 def split_input(inputs, num_gpus=1):
     if num_gpus == 1:
         return [inputs]
@@ -1430,10 +1430,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
                     tower_losses.append(loss)
                     tower_grads.append(grad)
 
-    # with tf.variable_scope(tf.get_variable_scope()):
-
     # Gather outputs on the host (CPU)
-    output = tf.concat(tower_outputs, axis=0)
+    output = aggregate_outputs(tower_outputs)
 
     # DEFAULT: Accumulate and average gradients on the host (CPU)
     if model_params['train']:
@@ -1445,13 +1443,19 @@ def get_model(inputs, model_params, param=None, trarg=None):
             trarg['train_targets'].update(ttarg)
 
         loss = tf.reduce_mean(tf.stack(tower_losses))
-        average_grads = average_gradients(tower_grads)
-        optimizer = optimizer_base.apply_gradients(average_grads,
-                                                   trarg['global_step'])
+        minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
+        grads = optimizer.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
+        zero_grad = optimizer_base.zero_grad()
+
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
+        if 'grads' not in trarg['train_targets']:
+            trarg['train_targets']['grads'] = grads
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
+        if 'zero_grads' not in trarg['train_targets']:
+            trarg['train_targets']['zero_grads'] = zero_grads
         if 'learning_rate' not in trarg['train_targets']:
             trarg['train_targets']['learning_rate'] = learning_rate
 
@@ -1512,23 +1516,6 @@ def get_optimizer_base(learning_rate,
     return optimizer_params, optimizer_base
 
 
-def average_gradients(tower_grads):
-    average_grads = []
-    for grads_and_vars in zip(*tower_grads):
-        # print(grads_and_vars)
-        grads = []
-        for g, _ in grads_and_vars:
-            # print(g.get_shape().as_list(), g)
-            grads.append(tf.expand_dims(g, axis=0))
-        grad = tf.concat(grads, axis=0)
-        grad = tf.reduce_mean(grad, axis=0)
-        # all variables are the same so we just use the first gpu variables
-        var = grads_and_vars[0][1]
-        grad_and_var = (grad, var)
-        average_grads.append(grad_and_var)
-    return average_grads
-
-
 def get_params():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--params', type=json.loads, default=None)
@@ -1562,6 +1549,12 @@ def parse_params(mode,
     corresponds to parameters of the ith distinct model. Thus, the length of
     all *_params must be the same and reflect the number of distinct models
     to be evaluated.
+
+    If an *_params arg does not satisfy the above requirements, `parse_params`
+    attempts to convert to the correct structure and logs any changes made.
+    If it is missing any necessary components, defaults defined at the top of
+    this module are used. If there exists an unresovlable conflict, an error
+    is raised, and the user will be forced to resolve it before continuing.
 
     """
     model_params = [model_params] if not isinstance(model_params,
@@ -1598,6 +1591,7 @@ def parse_params(mode,
 
         for model_num, param in enumerate(param_list):
 
+            # Parse model_params.
             if name == 'model_params':
                 if 'seed' not in param:
                     param['seed'] = DEFAULT_MODEL_SEED
@@ -1613,7 +1607,7 @@ def parse_params(mode,
                     else:
                         param['train'] = False
 
-                # Parse device specification
+                # Parse device specification.
                 if 'devices' not in param:
                     param['devices'] = [DEVICES.pop(0)]
                     log.info('No devices specified for model {}... '.format(model_num) +
@@ -1622,8 +1616,10 @@ def parse_params(mode,
 
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
-                assert param['num_gpus'] == len(param['devices'])
+                assert(param['num_gpus'] == len(param['devices']),
+                       'num_gpus does not match the number of gpus specified in devices.')
 
+            # Parse train_params.
             if name == 'train_params':
                 if 'num_steps' not in param:
                     param['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
@@ -1642,11 +1638,34 @@ def parse_params(mode,
                     log.info('validate_fist not specified for model {}... '.format(model_num) +
                              'Defaulting validate_first to: {}.'.format(param['validate_first']))
 
+                # Parse training data params (minibatching).
+                if 'minibatch_size' not in param['data_params']:
+                    param['data_params']['num_minibatches'] = 1
+                    param['data_params']['minibatch_size'] = param['data_params']['batch_size']
+                    log.info('minibatch_size not specified for training data_params... ' +
+                             'Defaulting minibatch_size to: {} (identical to the batch size).'
+                             .format(param['data_params']['batch_size']))
+                else:
+                    batch_size = param['data_params']['batch_size']
+                    minibatch_size = param['data_params']['minibatch_size']
+                    assert(minibatch_size <= batch_size,
+                           'Minibatch size cannot be larger than batch size.')
+
+                    num_minibatches = batch_size / float(minibatch_size)
+                    if num_minibatches % 1 != 0:
+                        num_minibatches = round(num_minibatches)
+                        minibatch_size = batch_size / num_minibatches
+                        log.warning('Minibatch size ({}) does not divide batch size ({}) evenly...'
+                                    .format(minibatch_size, batch_size))
+                        log.info('Rounding minibatch size to closest factor of batch size: {}'
+                                 .format(minibatch_size))
+                    param['data_params']['minibatch_size'] = minibatch_size
+                    param['data_params']['num_minibatches'] = num_minibatches
+
         params[name] = param_list
 
         list_lens.append(len(param_list))
-        assert isinstance(
-            param_list, list), '{} should also be a list'.format(name)
+        assert isinstance(param_list, list), '{} should also be a list'.format(name)
         assert len(param_list) == num_models, '{} should have length'.format(num_models)
     assert len(np.unique(list_lens)) == 1, 'All param lists should have be same length!'
 

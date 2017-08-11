@@ -1,3 +1,12 @@
+"""Default Optimizer to be used with tfutils.
+
+The ClipOptimizer class adds support for gradient clipping, gradient
+aggregation across devices and gradient accumulation useful for
+performing minibatching (accumulating and aggregating
+gradients for multiple batches before applying a gradient update).
+
+"""
+import copy
 import tensorflow as tf
 
 
@@ -6,9 +15,15 @@ class ClipOptimizer(object):
     def __init__(self, optimizer_class, clip=True, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         self.clip = clip
+        self.var_list = None
+        self.grads_and_vars = None
 
-    def compute_gradients(self, *args, **kwargs):
-        gvs = self._optimizer.compute_gradients(*args, **kwargs)
+    def compute_gradients(self, loss, var_list=None, *args, **kwargs):
+        if var_list is not None:
+            self.var_list = var_list
+        gvs = self._optimizer.compute_gradients(loss,
+                                                var_list=var_list,
+                                                *args, **kwargs)
         if self.clip:
             # gradient clipping. Some gradients returned are 'None' because
             # no relation between the variable and loss; so we skip those.
@@ -16,9 +31,59 @@ class ClipOptimizer(object):
                    for grad, var in gvs if grad is not None]
         return gvs
 
+    @classmethod
+    def aggregate_gradients(cls, grads_and_vars, method='average'):
+        if method == 'average':
+            return cls.average_gradients(grads_and_vars)
+        else:
+            raise ValueError('Unsupported aggregation method: {}.'.format(method))
+
+    @classmethod
+    def average_gradients(cls, tower_grads):
+        """Average a list of (grads, vars) produced by `compute_gradients`."""
+        average_grads = []
+        for grads_and_vars in zip(*tower_grads):
+            # print(grads_and_vars)
+            grads = []
+            for g, _ in grads_and_vars:
+                # print(g.get_shape().as_list(), g)
+                grads.append(tf.expand_dims(g, axis=0))
+            grad = tf.concat(grads, axis=0)
+            grad = tf.reduce_mean(grad, axis=0)
+            # all variables are the same so we just use the first gpu variables
+            var = grads_and_vars[0][1]
+            grad_and_var = (grad, var)
+            average_grads.append(grad_and_var)
+        return average_grads
+
+    def accumulate_gradients(self, minibatch_grads, num_minibatches=1):
+        """Accumulate gradients for `num_minibatches` minibatches."""
+        if self.var_list is None:
+            self.var_list = tf.trainable_variables()
+
+        if self.grads_and_vars is None:
+            self.grads_and_vars = [(
+                tf.Variable(tf.zeros_like(var), dtype=tf.float32, trainable=False),
+                var) for var in self.var_list]
+
+        # Add 1/num_minibatches * minibatch_grads to current gradients.
+        grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
+                 for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
+        return grads
+
     def apply_gradients(self, grads_and_vars, global_step=None):
-        return self._optimizer.apply_gradients(grads_and_vars,
-                                               global_step=global_step)
+        # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
+        optimize = self._optimizer.apply_gradients(grads_and_vars,
+                                                   global_step=global_step)
+        return optimize
+
+    def zero_grad(self):
+        if self.grads_and_vars is None:
+            self.grads_and_vars = [(
+                tf.Variable(tf.zeros_like(var), dtype=tf.float32, trainable=False),
+                var) for var in self.var_list]
+        return [tf.assign(gv[0], tf.zeros_like(gv[0]))
+                for gv in self.grads_and_vars]
 
     def minimize(self, loss, global_step, var_list=None):
         grads_and_vars = self.compute_gradients(loss, var_list=var_list)
