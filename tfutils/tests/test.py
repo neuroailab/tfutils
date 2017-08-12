@@ -52,8 +52,22 @@ testcol2_dist_multi = 'testcol2_dist_multi'
 
 
 def run_all_tests():
-    """Run all tests."""
+    """Run all tests.
 
+    This function drops all databases associated/created by the tests in the
+    module before running them.
+
+    TODO: The order in which these tests are run matters. For example, you must
+    run a training test before its corresponding test/validation test can be
+    run successfully.
+
+    TODO: The number of times a certain test is run will also affect its
+    outcome (e.g. some of the validation tests, which expect a certain number
+    of entries in the database).
+
+    TODO: Use unittests module and testCases to perform setUp and tearDown.
+
+    """
     remove_dbs()
     run_training_tests()
     run_custom_training_tests()
@@ -2001,7 +2015,7 @@ def asserts_for_record(r, params, train=False):
 
 
 def remove_dbs():
-    # delete old database if it exists
+    """Delete old test related databases if they exist."""
     conn = pm.MongoClient(host=testhost,
                           port=testport)
     print('Removing:')
