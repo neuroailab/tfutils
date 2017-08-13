@@ -28,14 +28,14 @@ from tfutils.data import get_queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
 from tfutils.utils import (sonify,
-                           make_mongo_safe,
-                           aggregate_outputs,
-                           CoordinatedThread,
-                           get_saver_pb2_v2_files,
-                           verify_pb2_v2_files,
                            frozendict,
+                           strip_prefix,
                            format_devices,
-                           strip_prefix)
+                           make_mongo_safe,
+                           CoordinatedThread,
+                           aggregate_outputs,
+                           verify_pb2_v2_files,
+                           get_saver_pb2_v2_files)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -519,9 +519,9 @@ class DBInterface(object):
         if len(valid_res) > 0:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
-            message += ', '.join('{}: {}'.format(k, {_k: _v for _k, _v in v.items()
-                                                     if _k not in self.save_to_gfs})
-                                                for k, v in valid_res.items())
+            message += ', '.join('{}: {}'.format(
+                k, {_k: _v for _k, _v in v.items()
+                if _k not in self.save_to_gfs}) for k, v in valid_res.items())
             log.info(message)
 
         if validation_only:
@@ -551,8 +551,7 @@ class DBInterface(object):
                         save_to_gfs['train_results'][_k] = [
                             r.pop(_k) for r in rec['train_results'] if _k in r]
                         if len(save_to_gfs['train_results'][_k]) == 1:
-                            save_to_gfs['train_results'][
-                                _k] == save_to_gfs['train_results'][_k][0]
+                            save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
                     if 'validation_results' not in save_to_gfs:
                         save_to_gfs['validation_results'] = {}
@@ -560,8 +559,7 @@ class DBInterface(object):
                         if _vk not in save_to_gfs['validation_results']:
                             save_to_gfs['validation_results'][_vk] = {}
                         if _k in valid_res[_vk]:
-                            save_to_gfs['validation_results'][
-                                _vk][_k] = valid_res[_vk].pop(_k)
+                            save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
 
             save_rec = sonify(rec, skip=self._skip_check)
             make_mongo_safe(save_rec)
@@ -579,9 +577,6 @@ class DBInterface(object):
             self.checkpoint_thread = thread
             self.checkpoint_coord = coord
 
-    # TODO: throw error if...
-    # TODO: Look into python threading lib.
-    # TODO: Talk to Damian if questions.
     def sync_with_host(self):
         if self.checkpoint_thread is not None:
             try:
@@ -900,24 +895,38 @@ def test_from_params(load_params,
         return res
 
 
-def train_loop(sess, train_targets, num_minibatches=1):
-    """Evaluate train_targets.
+def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
+    """Define default minibatch training loop.
+
+    A training loop that performs minibatching with `num_minibatches`
+    minibatches.
 
     Args:
         sess (tf.Session): Current tensorflow session.
-        train_targets (dict): Training targets to be evaluated by sess.
-        num_minibatches (int, optional): Number of minibatches to use.
-            Defaults to 1.
+        train_targets (dict): Target operations to be evaluated by `sess.run`.
+            By default, `base.train_from_params` inserts the following
+            targets to facilitate minibatching:
+            - `grads` (tf.Variable): Stores accumulated gradients.
+            - `zero_grad` (tf.Operation): Zeros gradients in `optimizer_base.grads_and_vars`.
+        num_minibatches (int): number of minibatches to use.
+        **loop_params (mapping): additional, user-defined kwargs to
+            be used in the training loop.
 
     Returns:
-        dict: The result of calling sess.run on the train_targets.
+        dict: A dictionary containing train targets evaluated by the session.
 
-    TODO: Should wrap a custom train loop that can be specified
-    by the user as to not lose minibatching when user wants to
-    customize behavior of training loop.
+    TODO:
+        Should wrap a custom train loop that can be specified
+        by the user as to not lose minibatching when user wants to
+        customize behavior of training loop.
+
     """
+    # Perform minibatching
     for minibatch in range(num_minibatches - 1):
+        # Accumulate gradient for each minibatch
         sess.run([target['grads'] for target in train_targets])
+
+    # Compute final targets (includes zeroing gradient accumulator variable)
     return sess.run(train_targets)
 
 
@@ -932,8 +941,7 @@ def train(sess,
           thres_loss=DEFAULT_TRAIN_THRES_LOSS,
           validate_first=True,
           validation_targets=None):
-    """
-    Actually runs the training evaluation loop.
+    """Actually runs the training evaluation loop.
 
     :Args:
         - sess: (tesorflow.Session)
@@ -951,7 +959,7 @@ def train(sess,
             How many minibatches to use to before applying gradient update.
         - num_steps (int)
             How many steps to train to before quitting
-        - valid_targets (dict of tensorflow objects, default: None)
+        - validdation_targets (dict of tensorflow objects, default: None)
             Objects on which validation will be computed
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
@@ -1409,8 +1417,8 @@ def split_input(inputs, num_gpus=1):
     if num_gpus == 1:
         return [inputs]
 
-    temp_args = {v: tf.split(
-        inputs[v], axis=0, num_or_size_splits=num_gpus) for v in inputs}
+    temp_args = {v: tf.split(inputs[v], axis=0, num_or_size_splits=num_gpus)
+                 for v in inputs}
     list_of_args = [{now_arg: temp_args[now_arg][ind]
                      for now_arg in temp_args} for ind in xrange(num_gpus)]
 
@@ -1428,7 +1436,21 @@ def get_model_base(input, func, seed=0, train=False, **model_params):
 
 
 def get_model(inputs, model_params, param=None, trarg=None):
-    """Return model and any other targets (loss + optimizer) specified."""
+    """Return model and any other targets (loss + optimizer) specified.
+
+    Args:
+        inputs (tf.Operation): Model inputs provided by a tf.QueueRunner.
+        model_params (dict): Specifies model configuration and must contain:
+            'devices' (list): device specs (e.g. '/gpu:0')
+            'train' (bool): whether getting model for training
+        param (None, optional): Description.
+        trarg (None, optional): Description.
+        inputs ()
+
+    Returns:
+        tuple: Description.
+
+    """
     with tf.variable_scope(tf.get_variable_scope()):
 
         tower_outputs = []
@@ -1436,7 +1458,7 @@ def get_model(inputs, model_params, param=None, trarg=None):
         num_gpus = model_params['num_gpus']
         inputs = split_input(inputs, num_gpus)
 
-        # DEFAULT: Prepare loss and optimizer if training
+        # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
             assert param and trarg is not None
 
@@ -1471,10 +1493,10 @@ def get_model(inputs, model_params, param=None, trarg=None):
                     tower_losses.append(loss)
                     tower_grads.append(grad)
 
-    # Gather outputs on the host (CPU)
+    # Gather and aggregate outputs on the host (CPU).
     output = aggregate_outputs(tower_outputs)
 
-    # DEFAULT: Accumulate and average gradients on the host (CPU)
+    # DEFAULT: Accumulate and average gradients on the host (CPU).
     if model_params['train']:
 
         if param['train_params'].get('targets') is not None:
@@ -1483,16 +1505,22 @@ def get_model(inputs, model_params, param=None, trarg=None):
             ttarg = ttargs_func(input, output, **ttargs)
             trarg['train_targets'].update(ttarg)
 
+        # Aggregate loss.
         loss = tf.reduce_mean(tf.stack(tower_losses))
+
+        # Aggregate and accumulate gradients.
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
         grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+
+        # Apply accumulated gradients.
         optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
+
+        # Zero gradients stored in optimizer_base.grads_and_vars
         zero_grad = optimizer_base.zero_grad()
 
+        # Prepare train_targets
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
-        if 'grads' not in trarg['train_targets']:
-            trarg['train_targets']['grads'] = grads
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
         if 'zero_grad' not in trarg['train_targets']:
@@ -1657,7 +1685,7 @@ def parse_params(mode,
 
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
-                assert(param['num_gpus'] == len(param['devices']),
+                assert param['num_gpus'] == len(param['devices']), (
                        'num_gpus does not match the number of gpus specified in devices.')
 
             # Parse train_params.
@@ -1689,7 +1717,7 @@ def parse_params(mode,
                 else:
                     batch_size = param['data_params']['batch_size']
                     minibatch_size = param['minibatch_size']
-                    assert(minibatch_size <= batch_size,
+                    assert minibatch_size <= batch_size, (
                            'Minibatch size cannot be larger than batch size.')
 
                     num_minibatches = batch_size / float(minibatch_size)
@@ -1725,8 +1753,7 @@ def parse_params(mode,
                     log.info('New exp_id is: {}'.format(p.get('exp_id')))
 
             assert len(set(s['exp_id'] for s in params[key])) == num_models
-
-    # Prepare run_args to be passed to `base.(train|test)(**run_args)`.
+# Prepare run_args to be passed to `base.(train|test)(**run_args)`.
     run_args = {
         'sess': num_models * [None],
         'queues': num_models * [None],

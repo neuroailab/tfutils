@@ -620,14 +620,22 @@ def test_distributed_multimodel_training():
 
 
 def custom_train_loop(sess, train_targets, **loop_params):
-    """Custom training loop."""
-    num_models = len(train_targets)
-    print('CALLING CUSTOM TRAINING LOOP ...')
-    print('{} MODELS DETECTED'.format(num_models))
-    for i, target in enumerate(train_targets):
-        loss = sess.run(target['loss'])
-        print('Model {} has loss {}'.format(i, loss))
-    return sess.run(train_targets)
+    """Define Custom training loop.
+
+    Args:
+        sess (tf.Session): Current tensorflow session.
+        train_targets (list): Description.
+        **loop_params: Optional kwargs needed to perform custom train loop.
+
+    Returns:
+        dict: A dictionary containing train targets evaluated by the session.
+
+    """
+    print('Calling custom training loop...')
+    train_results = sess.run(train_targets)
+    for i, result in enumerate(train_results):
+        print('Model {} has loss {}'.format(i, result['loss']))
+    return train_results
 
 
 def test_custom_training():
