@@ -49,19 +49,12 @@ class CoordinatedThread(threading.Thread):
         try:
             if self._target:
                 self._target(*self._args, **self._kwargs)
-        except Exception as e:
-            self._coord.request_stop(e)
+        except Exception as error:
+            self._coord.request_stop(error)
         finally:
             # Avoid a refcycle if the thread is running a function with
             # an argument that has a member that points to the thread.
             del self._target, self._args, self._kwargs
-            # self._coord.request_stop()
-
-
-class ThreadError(Exception):
-    """Exception class to raise if a thread has an issue."""
-
-    pass
 
 
 def isstring(x):
