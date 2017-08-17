@@ -406,19 +406,16 @@ class DBInterface(object):
         try:
             count_recent = collfs_recent.find(query).count()
         except Exception as inst:
-            raise er.OperationFailure(inst.args[
-                                      0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
+            raise er.OperationFailure(inst.args[0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
         if count_recent > 0:  # get latest that matches query
-            ckpt_record_recent = coll_recent.find(query,
-                                                  sort=[('uploadDate', -1)])[0]
+            ckpt_record_recent = coll_recent.find(query, sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
             if ckpt_record is None or ckpt_record_recent['uploadDate'] > ckpt_record['uploadDate']:
                 loading_from = coll_recent
                 ckpt_record = ckpt_record_recent
 
         if count + count_recent == 0:  # no matches for query
-            log.warning(
-                'No matching checkpoint for query "{}"'.format(repr(query)))
+            log.warning('No matching checkpoint for query "{}"'.format(repr(query)))
             return
 
         database = loading_from._Collection__database
@@ -430,14 +427,12 @@ class DBInterface(object):
 
             # check if there is no local copy
             if not os.path.isfile(cache_filename):
-                log.info('No cache file at %s, loading from DB' %
-                         cache_filename)
+                log.info('No cache file at %s, loading from DB' % cache_filename)
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
                 load_dest = open(cache_filename, 'rwb+')
-                fsbucket = gridfs.GridFSBucket(database,
-                                               bucket_name=loading_from.name.split('.')[0])
+                fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
                     assert cache_filename.endswith('.tar')
@@ -901,11 +896,6 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
 
     Returns:
         dict: A dictionary containing train targets evaluated by the session.
-
-    TODO:
-        Should wrap a custom train loop that can be specified
-        by the user as to not lose minibatching when user wants to
-        customize behavior of training loop.
 
     """
     # Perform minibatching
