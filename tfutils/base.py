@@ -889,7 +889,6 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
             By default, `base.train_from_params` inserts the following
             targets to facilitate minibatching:
             - `grads` (tf.Variable): Stores accumulated gradients.
-            - `zero_grad` (tf.Operation): Zeros gradients in `optimizer_base.grads_and_vars`.
         num_minibatches (int): number of minibatches to use.
         **loop_params (mapping): additional, user-defined kwargs to
             be used in the training loop.
@@ -1488,16 +1487,11 @@ def get_model(inputs, model_params, param=None, trarg=None):
         # Apply accumulated gradients.
         optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
 
-        # Zero gradients stored in optimizer_base.grads_and_vars
-        zero_grad = optimizer_base.zero_grad()
-
         # Prepare train_targets
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
-        if 'zero_grad' not in trarg['train_targets']:
-            trarg['train_targets']['zero_grad'] = zero_grad
         if 'learning_rate' not in trarg['train_targets']:
             trarg['train_targets']['learning_rate'] = learning_rate
 

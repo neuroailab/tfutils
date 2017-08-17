@@ -74,10 +74,25 @@ class ClipOptimizer(object):
         return grads
 
     def apply_gradients(self, grads_and_vars, global_step=None):
+        """Apply gradients to model variables specified in `grads_and_vars`.
+
+        `apply_gradients` returns an op that calls
+        `tf.train.Optimizer.apply_gradients` and then zeros the gradient
+        variables stored in `self.grads_and_vars`.
+
+        Args:
+            grads_and_vars (list): Description.
+            global_step (None, optional): tensorflow global_step variable.
+
+        Returns:
+            (tf.Operation): Applies gradient update to model followed by an
+                internal gradient zeroing operation to `self.grads_and_vars`.
+
+        """
         # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
         optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                    global_step=global_step)
-        return optimize
+        return [optimize, self.zero_grad()]
 
     def zero_grad(self):
         if self.grads_and_vars is None:
