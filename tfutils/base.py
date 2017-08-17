@@ -936,7 +936,7 @@ def train(sess,
             How many minibatches to use to before applying gradient update.
         - num_steps (int)
             How many steps to train to before quitting
-        - validdation_targets (dict of tensorflow objects, default: None)
+        - validation_targets (dict of tensorflow objects, default: None)
             Objects on which validation will be computed
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
@@ -986,10 +986,6 @@ def train(sess,
 
     # Run training
     while any(step < num_step for (step, num_step) in zip(steps, num_steps)):
-
-        # Make a single call to sess.run to produce a list of results.
-        # TODO: call default train_loop which has minibatch option and is
-        # defined in base.py
 
         start_time_step = time.time()
         if train_loop is not None:
