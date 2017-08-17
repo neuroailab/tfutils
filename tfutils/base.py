@@ -225,8 +225,7 @@ class DBInterface(object):
         self.sameloc = all([getattr(self, _k) == getattr(
             self, 'load_' + _k) for _k in location_variables])
         if 'query' in load_params and not load_params['query'] is None and 'exp_id' in load_params['query']:
-            self.sameloc = self.sameloc & (
-                load_params['query']['exp_id'] == self.exp_id)
+            self.sameloc = self.sameloc & (load_params['query']['exp_id'] == self.exp_id)
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
@@ -483,14 +482,12 @@ class DBInterface(object):
             # overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
-                    if k not in ['optimizer', 'grads', 'zero_grad'] and k not in self.save_to_gfs]
+                    if k not in ['optimizer', '__grads__'] and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
-            if 'grads' in train_res:
-                del train_res['grads']
-            if 'zero_grad' in train_res:
-                del train_res['zero_grad']
+            if '__grads__' in train_res:
+                del train_res['__grads__']
             if 'optimizer' in train_res:
                 del train_res['optimizer']
             if 'train_results' not in rec:
@@ -754,7 +751,7 @@ def test(sess,
         'save_intermediate_freq': save_intermediate_freq}
 
     _ttargs = [{key: value[i] for (key, value) in test_args.items()}
-               for i in range(len(sess))]
+               for i in range(len(queues))]
 
     for ttarg in _ttargs:
 
@@ -885,7 +882,8 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
         train_targets (dict): Target operations to be evaluated by `sess.run`.
             By default, `base.train_from_params` inserts the following
             targets to facilitate minibatching:
-            - `grads` (tf.Variable): Stores accumulated gradients.
+            - `__grads__` (tf.Operation): Accumulates and stores gradients.
+            - `optimizer` (tf.Operation): Applies and zeros gradients.
         num_minibatches (int): number of minibatches to use.
         **loop_params (mapping): additional, user-defined kwargs to
             be used in the training loop.
@@ -894,10 +892,13 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
         dict: A dictionary containing train targets evaluated by the session.
 
     """
+    assert all([required in targets for targets in train_targets
+                for required in ['__grads__', 'optimizer']])
+
     # Perform minibatching
     for minibatch in range(num_minibatches - 1):
         # Accumulate gradient for each minibatch
-        sess.run([target['grads'] for target in train_targets])
+        sess.run([target['__grads__'] for target in train_targets])
 
     # Compute final targets (includes zeroing gradient accumulator variable)
     return sess.run(train_targets)
@@ -1483,6 +1484,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
         # Prepare train_targets
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
+        if '__grads__' not in trarg['train_targets']:
+            trarg['train_targets']['__grads__'] = grads
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
         if 'learning_rate' not in trarg['train_targets']:
