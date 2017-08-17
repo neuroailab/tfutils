@@ -748,7 +748,6 @@ def test(sess,
     """
     # Collect args in a dict of lists
     test_args = {
-        'sess': sess,
         'queues': queues,
         'dbinterface': dbinterface,
         'validation_targets': validation_targets,
@@ -759,9 +758,9 @@ def test(sess,
 
     for ttarg in _ttargs:
 
-        ttarg['coord'], ttarg['threads'] = start_queues(ttarg['sess'])
+        ttarg['coord'], ttarg['threads'] = start_queues(sess)
         ttarg['dbinterface'].start_time_step = time.time()
-        validation_summary = run_targets_dict(ttarg['sess'],
+        validation_summary = run_targets_dict(sess,
                                               ttarg['validation_targets'],
                                               save_intermediate_freq=ttarg['save_intermediate_freq'],
                                               dbinterface=ttarg['dbinterface'],
@@ -771,8 +770,7 @@ def test(sess,
     for ttarg in _ttargs:
         ttarg['dbinterface'].sync_with_host()
         res.append(ttarg['dbinterface'].outrecs)
-        stop_queues(ttarg['sess'], ttarg['queues'],
-                    ttarg['coord'], ttarg['threads'])
+        stop_queues(sess, ttarg['queues'], ttarg['coord'], ttarg['threads'])
 
     return validation_summary, res
 
@@ -860,7 +858,6 @@ def test_from_params(load_params,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize(no_scratch=True)
-            ttarg['sess'] = sess
             ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
 
         # Convert back to a dictionary of lists
@@ -872,7 +869,7 @@ def test_from_params(load_params,
         if dont_run:
             return test_args
 
-        res = test(**test_args)
+        res = test(sess, **test_args)
         sess.close()
         return res
 
@@ -943,7 +940,6 @@ def train(sess,
     """
     # Collect args in a dict of lists
     train_args = {
-        'sess': sess,
         'queues': queues,
         'num_steps': num_steps,
         'thres_loss': thres_loss,
@@ -960,7 +956,7 @@ def train(sess,
               for i in range(len(train_targets))]
 
     num_steps = [t['num_steps'] for t in trargs]
-    steps = [t['global_step'].eval(session=t['sess']) for t in trargs]
+    steps = [t['global_step'].eval(session=sess) for t in trargs]
 
     # Start queues and initial validation
     for (step, trarg) in zip(steps, trargs):
@@ -971,15 +967,14 @@ def train(sess,
             return
 
         log.info('Training beginning ...')
-        trarg['coord'], trarg['threads'] = start_queues(trarg['sess'])
+        trarg['coord'], trarg['threads'] = start_queues(sess)
 
         if step == 0:
             trarg['dbinterface'].start_time_step = time.time()
             if trarg['validate_first']:
-                valid_res = run_targets_dict(trarg['sess'],
+                valid_res = run_targets_dict(sess,
                                              trarg['validation_targets'],
                                              dbinterface=trarg['dbinterface'])
-    sess = train_args['sess'][0]
     train_loop = train_args['train_loop'][0]
     train_targets = train_args['train_targets']
 
@@ -997,7 +992,7 @@ def train(sess,
         for (step, trarg, train_res) in zip(steps, trargs, train_results):
 
             old_step = step
-            step = trarg['global_step'].eval(session=trarg['sess'])
+            step = trarg['global_step'].eval(session=sess)
 
             if step <= old_step:
                 raise NoChangeError('Your optimizer should have incremented the global step,'
@@ -1008,7 +1003,7 @@ def train(sess,
 
             # Validation
             vtargs = trarg['validation_targets'] if step % trarg['dbinterface'].save_valid_freq == 0 else {}
-            valid_res = run_targets_dict(trarg['sess'], vtargs)
+            valid_res = run_targets_dict(sess, vtargs)
 
             # Save
             trarg['dbinterface'].start_time_step = start_time_step
@@ -1016,17 +1011,16 @@ def train(sess,
                                       valid_res=valid_res,
                                       validation_only=False)
 
-        steps = [t['global_step'].eval(session=t['sess']) for t in trargs]
+        steps = [t['global_step'].eval(session=sess) for t in trargs]
 
     # Sync and close the session
     res = []
     for trarg in trargs:
-        stop_queues(trarg['sess'], trarg['queues'],
-                    trarg['coord'], trarg['threads'])
+        stop_queues(sess, trarg['queues'], trarg['coord'], trarg['threads'])
         trarg['dbinterface'].sync_with_host()
         res.append(trarg['dbinterface'].outrecs)
 
-    trargs[0]['sess'].close()
+    sess.close()
     return res
 
 
@@ -1267,7 +1261,6 @@ def train_from_params(save_params,
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])
             trarg['dbinterface'].initialize(no_scratch=True)
-            trarg['sess'] = sess
             trarg['queues'] = queues
 
         # Convert back to a dictionary of lists
@@ -1279,7 +1272,7 @@ def train_from_params(save_params,
         if dont_run:
             return train_args
 
-        return train(**train_args)
+        return train(sess, **train_args)
 
 
 def get_valid_targets_dict(validation_params,
@@ -1720,9 +1713,9 @@ def parse_params(mode,
                     log.info('New exp_id is: {}'.format(p.get('exp_id')))
 
             assert len(set(s['exp_id'] for s in params[key])) == num_models
+
 # Prepare run_args to be passed to `base.(train|test)(**run_args)`.
     run_args = {
-        'sess': num_models * [None],
         'queues': num_models * [None],
         'dbinterface': num_models * [None],
         'validation_targets': [dict() for _ in range(num_models)]}
