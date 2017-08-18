@@ -27,15 +27,15 @@ from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import get_queue
 from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from tfutils.utils import (sonify,
-                           frozendict,
-                           strip_prefix,
-                           format_devices,
-                           make_mongo_safe,
-                           CoordinatedThread,
-                           aggregate_outputs,
-                           verify_pb2_v2_files,
-                           get_saver_pb2_v2_files)
+from utils import (sonify,
+                   frozendict,
+                   strip_prefix,
+                   format_devices,
+                   make_mongo_safe,
+                   CoordinatedThread,
+                   aggregate_outputs,
+                   verify_pb2_v2_files,
+                   get_saver_pb2_v2_files)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -570,10 +570,10 @@ class DBInterface(object):
 
     def _save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
 
-        if self.collfs_rec:
+        if self.collfs_recent:
             save_rec['saved_filters'] = False
             log.info('Inserting record into record database.')
-            outrec = self.collfs_rec._GridFS__files.insert_one(save_rec)
+            outrec = self.collfs_recent._GridFS__files.insert_one(save_rec)
 
             if not isinstance(outrec, ObjectId):
                 outrec = outrec.inserted_id
@@ -581,8 +581,7 @@ class DBInterface(object):
             if save_to_gfs:
                 idval = str(outrec)
                 save_to_gfs_path = idval + "_fileitems"
-                self.collfs_rec.put(cPickle.dumps(
-                    save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
+                self.collfs_recent.put(cPickle.dumps(save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
 
         if save_filters_permanent or save_filters_tmp:
             save_rec['saved_filters'] = True
@@ -1615,7 +1614,10 @@ def parse_params(mode,
     # Ensure params is a dict of lists, using defaults when necessary.
     for name, param_list in params.items():
         if not param_list and not isinstance(param_list, bool):
-            param_list = DEFAULT_PARAMS[name]
+            if isinstance(DEFAULT_PARAMS[name], frozendict):
+                param_list = dict(DEFAULT_PARAMS[name])
+            else:
+                param_list = DEFAULT_PARAMS[name]
         if not isinstance(param_list, list):
             param_list = [copy.deepcopy(param_list) for _ in range(num_models)]
         if len(param_list) != num_models and len(param_list) == 1:
