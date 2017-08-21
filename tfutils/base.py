@@ -345,7 +345,7 @@ class DBInterface(object):
                 all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
                 self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
-                # Next, retrieve the vars present in the specified checkpoint.
+                # Next, determine which vars should be restored from the specified checkpoint.
                 restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
 
                 # Actually load the vars.
@@ -402,9 +402,11 @@ class DBInterface(object):
             all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
             all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
+        # Specify which vars are to be restored vs. reinitialized.
         restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
         restore_vars = self.filter_var_list(restore_vars)
 
+        # Ensure the vars to restored have the correct shape.
         var_list = {}
         for name, var in restore_vars.items():
             var_shape = var.get_shape().as_list()
@@ -1062,12 +1064,7 @@ def train(sess,
     while any(step < num_step for (step, num_step) in zip(steps, num_steps)):
 
         start_time_step = time.time()
-        if train_loop is not None:
-            train_results = train_loop(sess,
-                                       train_targets,
-                                       num_minibatches=trarg['num_minibatches'])
-        else:
-            train_results = sess.run(train_targets)
+        train_results = train_loop(sess, train_targets, num_minibatches=trarg['num_minibatches'])
 
         for (step, trarg, train_res) in zip(steps, trargs, train_results):
 
