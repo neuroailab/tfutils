@@ -1,6 +1,8 @@
+"""base.py"""
 from __future__ import absolute_import, division, print_function
 
 import os
+import re
 import sys
 import time
 import importlib
@@ -25,7 +27,7 @@ import numpy as np
 
 from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
 from tfutils.data import get_queue
-from tfutils.optimizer import ClipOptimizer
+from optimizer import ClipOptimizer
 import tfutils.utils as utils
 from utils import (sonify,
                    frozendict,
@@ -35,7 +37,8 @@ from utils import (sonify,
                    CoordinatedThread,
                    aggregate_outputs,
                    verify_pb2_v2_files,
-                   get_saver_pb2_v2_files)
+                   get_saver_pb2_v2_files,
+                   strip_prefix_from_name)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -68,7 +71,7 @@ DEFAULT_TRAIN_THRES_LOSS = 100
 DEFAULT_HOST = '/cpu:0'
 DEFAULT_DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2', '/gpu:3']
 DEFAULT_LOOP_PARAMS = frozendict()
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'to_restore': None, 'load_param_dict': None})
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
@@ -182,6 +185,15 @@ class DBInterface(object):
                         Whether to restore from saved model
                     - load_query (dict)
                         mongodb query describing how to load from loading database
+                    - from_ckpt (string)
+                        Path to load from a TensorFlow checkpoint (instead of from the db)
+                    - to_restore (list of strings or a regex/callable which returns strings)
+                        Specifies which variables should be loaded from the checkpoint.
+                        Any variables not specified here will be reinitialized.
+                    - load_param_dict (dict)
+                        A dictionary whose keys are the names of the variables that are to be loaded
+                        from the checkpoint, and the values are the names of the variables of the model
+                        that you want to restore with the value of the corresponding checkpoint variable.
             - sess (tesorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
@@ -231,7 +243,7 @@ class DBInterface(object):
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
-        for _k in ['do_restore']:
+        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -304,67 +316,151 @@ class DBInterface(object):
                                      collfs=self.load_collfs,
                                      collfs_recent=self.load_collfs_recent)
             if load is None:
-                raise Exception(
-                    'You specified load parameters but no record was found with the given spec.')
+                raise Exception('You specified load parameters but no '
+                                'record was found with the given spec.')
         self.load_data = load
 
     def initialize(self, no_scratch=False):
         """Fetch record then uses tf's saver.restore."""
-        # fetch record from database and get the filename info from record
-        tf_saver = self.tf_saver
         if self.do_restore:
-            if self.load_data is None:
-                self.load_rec()
-            if self.load_data is not None:
-                rec, cache_filename = self.load_data
-                # get variables to restore
-                if self.var_list is None:
-                    restore_vars = self.get_restore_vars(cache_filename)
-                    log.info('Restored Vars:\n' + str([restore_var.name for restore_var in restore_vars]))
-                else:
-                    restore_vars = self.var_list
-                    log.info('Restored Vars:\n' + str([restore_var for restore_var in restore_vars]))
-                tf_saver_restore = tf.train.Saver(restore_vars)
 
-                # tensorflow restore
-                log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
-                tf_saver_restore.restore(self.sess, cache_filename)
+            # First, determine which checkpoint to use.
+            if self.from_ckpt is not None:
+                # Use a cached checkpoint file.
+                ckpt_filename = self.from_ckpt
+                log.info('Restoring variables from checkpoint %s ...' % ckpt_filename)
+            else:
+                # Otherwise, use a database checkpoint.
+                self.load_rec() if self.load_data is None else None
+                if self.load_data is not None:
+                    rec, ckpt_filename = self.load_data
+                    log.info('Restoring variables from record %s (step %d)...' %
+                             (str(rec['_id']), rec['step']))
+                else:
+                    # No db checkpoint to load.
+                    ckpt_filename = None
+
+            if ckpt_filename is not None:
+
+                all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
+                self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
+
+                # Next, retrieve the vars present in the specified checkpoint.
+                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
+
+                # Actually load the vars.
+                log.info('Restored Vars:\n' + str([restore_var for restore_var in restore_vars]))
+                tf_saver_restore = tf.train.Saver(restore_vars)
+                tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
-                if self.var_list is None:
-                    all_variables = tf.global_variables() + tf.local_variables()  # get list of all variables
-                    unrestored_vars = [var for var in all_variables
-                                       if var not in restore_vars]  # compute list of variables not restored
-                    self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
-                    assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
-        if (not self.do_restore or self.load_data is None) and not no_scratch:
+
+                # Reinitialize all other, unrestored vars.
+                unrestored_vars = [var for var in self.all_vars if var not in restore_vars]
+                log.info('Unrestored Vars:\n' + str([unrestore_var.name for unrestore_var in unrestored_vars]))
+                self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
+                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
+                    self.sess.run(tf.report_uninitialized_variables()))
+
+        if not self.do_restore or (self.load_data is None and self.from_ckpt is None):
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
-            log.info('Model variables initialized from scratch.')
 
-    def get_restore_vars(self, save_file):
-        """Create list of variables to restore from save_file.
+    def get_restore_vars(self, save_file, all_vars=None):
+        """Create the `var_list` init argument to tf.Saver from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
         name and shape of variables saved in the checkpoint file, and returns these
         as a list of variables to restore.
 
+        To support multi-model training, a model prefix is prepended to all
+        tf global_variable names, although this prefix is stripped from
+        all variables before they are saved to a checkpoint. Thus,
+
+
         Args:
-            save_file: path of tf.train.Saver checkpoint
+            save_file: path of tf.train.Saver checkpoint.
+
+        Returns:
+            dict: checkpoint variables.
+
         """
         reader = tf.train.NewCheckpointReader(save_file)
-        saved_shapes = reader.get_variable_to_shape_map()
-        log.info('Saved Vars:\n' + str(saved_shapes.keys()))
-        var_names = sorted([(var.name.split(':')[0], var) for var in tf.global_variables()
-                            if var.name.split(':')[0] in saved_shapes])
-        restore_vars = []
-        for saved_var_name, var in var_names:
-            curr_var = var
-            var_shape = curr_var.get_shape().as_list()
-            if var_shape == saved_shapes[saved_var_name]:
-                restore_vars.append(curr_var)
-        return restore_vars
+        var_shapes = reader.get_variable_to_shape_map()
+        log.info('Saved Vars:\n' + str(var_shapes.keys()))
+
+        var_shapes = {  # Strip the prefix off saved var names.
+            strip_prefix_from_name(self.params['model_params']['prefix'], name): shape
+            for name, shape in var_shapes.items()}
+
+        # Map old vars from checkpoint to new vars via load_param_dict.
+        mapped_var_shapes = self.remap_var_list(var_shapes)
+        log.info('Saved shapes:\n' + str(mapped_var_shapes))
+
+        if all_vars is None:
+            all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
+            all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
+
+        restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        restore_vars = self.filter_var_list(restore_vars)
+
+        var_list = {}
+        for name, var in restore_vars.items():
+            var_shape = var.get_shape().as_list()
+            if var_shape == mapped_var_shapes[name]:
+                var_list[name] = var
+        return var_list
+
+    def remap_var_list(self, var_list):
+        """Map old vars in checkpoint to new vars in current session.
+
+        Args:
+            var_list (dict): var names mapped to variables (or some related
+            quantity, such as variable shapes).
+
+        Returns:
+            dict: New var names mapped to the corresponding restored var.
+
+        Examples:
+        >>>var_list
+        {'Weights': <tf.Variable>}
+        >>>self.load_param_dict
+        {'Weights': 'Filters'}
+        >>>self.remap_var_list(var_list)
+        {'Filters': <tf.Variable>}
+
+        """
+        if self.load_param_dict is None:
+            log.info('No variable mapping specified.')
+            return var_list
+        for old_name, new_name in self.load_param_dict.items():
+            for name in var_list:
+                if old_name == name:
+                    var_list[new_name] = var_list.pop(old_name)
+                    break
+        return var_list
+
+    def filter_var_list(self, var_list):
+        """Filter checkpoint vars for those to be restored.
+
+        Args:
+            checkpoint_vars (list): Vars that can be restored from checkpoint.
+            to_restore (list[str] or regex, optional): Selects vars to restore.
+
+        Returns:
+            list: Variables to be restored from checkpoint.
+
+        """
+        if not self.to_restore:
+            return var_list
+        elif isinstance(self.to_restore, re._pattern_type):
+            return {name: var for name, var in var_list.items()
+                    if self.to_restore.match(name)}
+        elif isinstance(self.to_restore, list):
+            return {name: var for name, var in var_list.items()
+                    if name in self.to_restore}
+        raise TypeError('to_restore ({}) unsupported.'.format(type(self.to_restore)))
 
     @property
     def tf_saver(self):
@@ -561,7 +657,7 @@ class DBInterface(object):
             try:
                 self.checkpoint_coord.join([self.checkpoint_thread])
             except Exception as error:
-                log.warning('A checkpoint thead raised an exception'
+                log.warning('A checkpoint thead raised an exception '
                             'while saving a checkpoint.')
                 log.error(error)
                 raise
@@ -569,20 +665,6 @@ class DBInterface(object):
                 self.checkpoint_thread = None
 
     def _save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
-
-        if self.collfs_recent:
-            save_rec['saved_filters'] = False
-            log.info('Inserting record into record database.')
-            outrec = self.collfs_recent._GridFS__files.insert_one(save_rec)
-
-            if not isinstance(outrec, ObjectId):
-                outrec = outrec.inserted_id
-
-            if save_to_gfs:
-                idval = str(outrec)
-                save_to_gfs_path = idval + "_fileitems"
-                self.collfs_recent.put(cPickle.dumps(save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
-
         if save_filters_permanent or save_filters_tmp:
             save_rec['saved_filters'] = True
             save_path = os.path.join(self.cache_dir, 'checkpoint')
@@ -819,9 +901,7 @@ def test_from_params(load_params,
 
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
-            # with tf.variable_scope(param['model_params']['prefix']) as scope:
 
-            # print(scope.name)
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
             ld = ttarg['dbinterface'].load_data
@@ -1253,6 +1333,8 @@ def train_from_params(save_params,
             prefix = param['model_params']['prefix'] + '/'
             all_vars = variables._all_saveable_objects()
             var_list = strip_prefix(prefix, all_vars)
+            for var in var_list:
+                print(var)
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
@@ -1260,7 +1342,7 @@ def train_from_params(save_params,
                                                global_step=trarg['global_step'],
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])
-            trarg['dbinterface'].initialize(no_scratch=True)
+            trarg['dbinterface'].initialize()
             trarg['queues'] = queues
 
         # Convert back to a dictionary of lists

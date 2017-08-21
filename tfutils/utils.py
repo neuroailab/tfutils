@@ -306,19 +306,27 @@ def format_devices(devices):
 
 def strip_prefix(prefix, all_vars):
 
-    def _strip_prefix_from_name(prefix, name):
-        if name.startswith(prefix):
-            name = name[len(prefix):]
-            name = _strip_prefix_from_name(prefix, name)
-        return name
+    # def _strip_prefix_from_name(prefix, name):
+    #     prefix = prefix + '/' if not prefix.endswith('/') else prefix
+    #     if name.startswith(prefix):
+    #         name = name[len(prefix):]
+    #         name = _strip_prefix_from_name(prefix, name)
+    #     return name
 
     var_list = {}
-    prefix = prefix + '/' if not prefix.endswith('/') else prefix
 
-    for each_var in all_vars:
-        new_name = _strip_prefix_from_name(prefix, each_var.op.name)
-        var_list[new_name] = each_var
+    for var in all_vars:
+        new_name = strip_prefix_from_name(prefix, var.op.name)
+        var_list[new_name] = var
     return var_list
+
+
+def strip_prefix_from_name(prefix, name):
+    prefix = prefix + '/' if not prefix.endswith('/') else prefix
+    if name.startswith(prefix):
+        name = name[len(prefix):]
+        name = strip_prefix_from_name(prefix, name)
+    return name
 
 
 def aggregate_outputs(tower_outputs):
