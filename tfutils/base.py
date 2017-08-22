@@ -576,8 +576,7 @@ class DBInterface(object):
         rec['step'] = step
 
         if len(train_res) > 0:
-            # TODO: also include error rate of the train set to monitor
-            # overfitting
+            # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
                     if k not in ['optimizer', '__grads__'] and k not in self.save_to_gfs]
@@ -625,8 +624,7 @@ class DBInterface(object):
                     if 'train_results' not in save_to_gfs:
                         save_to_gfs['train_results'] = {}
                     if _k in train_res:
-                        save_to_gfs['train_results'][_k] = [
-                            r.pop(_k) for r in rec['train_results'] if _k in r]
+                        save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
                         if len(save_to_gfs['train_results'][_k]) == 1:
                             save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
@@ -1427,21 +1425,19 @@ def get_validation_target(vinputs, voutputs,
                      'valid_loop': valid_loop,
                      'agg_func': validation_params['agg_func'],
                      'online_agg_func': validation_params['online_agg_func'],
-                     'num_steps': validation_params['num_steps'],
-                     }
+                     'num_steps': validation_params['num_steps']}
     return validation_params, valid_targets
 
 
 def get_data(func, queue_params=None, **data_params):
     data_provider = func(**data_params)
     input_ops = data_provider.init_ops()
-    assert len(input_ops) == data_params[
-        'n_threads'], (len(input_ops), data_params['n_threads'])
+    assert len(input_ops) == data_params['n_threads'], (len(input_ops), data_params['n_threads'])
     assert len(input_ops) > 0, len(input_ops)
     batch_size = data_params['batch_size']
     data_params['func'] = func
     enqueue_ops = []
-    queue = get_queue(input_ops[0], **queue_params)
+    queue = get_queue(input_ops[0], shape_flag=batch_size!=1, **queue_params)
     for input_op in input_ops:
         # enqueue_ops.append(queue.enqueue_many(input_op))
         if batch_size == 1:
