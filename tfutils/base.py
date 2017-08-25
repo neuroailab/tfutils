@@ -26,7 +26,7 @@ from tensorflow.python.ops import variables
 import numpy as np
 
 from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from tfutils.data import get_queue
+from data import get_queue
 from optimizer import ClipOptimizer
 import tfutils.utils as utils
 from utils import (sonify,
