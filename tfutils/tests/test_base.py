@@ -4,10 +4,12 @@ import os
 import sys
 import errno
 import shutil
+import cPickle
 import logging
-import pymongo
 import unittest
 
+import gridfs
+import pymongo
 import tensorflow as tf
 
 sys.path.insert(0, "..")
@@ -174,6 +176,29 @@ class TestBase(unittest.TestCase):
         exp_id = 'training_save'
         params = self.setup_params(exp_id)
 
+        params['save_params']['save_to_gfs'] = ['first_image']
+        params['train_params']['targets'] = {'func': self.get_first_image_target}
+
+        # Actually run the training.
+        base.train_from_params(**params)
+
+        # Check that the first image has been saved.
+        coll = self.collection['files`']
+        q = {'exp_id': exp_id, 'train_results': {'$exists': True}}
+        train_steps = coll.find(q)
+        self.assertEqual(train_steps.count(), 5)
+        idx = train_steps[0]['_id']
+        fn = coll.find({'item_for': idx})[0]['filename']
+        fs = gridfs.GridFS(coll.database, self.collection_name)
+        fh = fs.get_last_version(fn)
+        saved_data = cPickle.loads(fh.read())
+        fh.close()
+
+        self.assertIn('train_results', saved_data)
+        self.assertIn('first_image', saved_data['train_results'])
+        self.assertEqual(len(saved_data['train_results']['first_image']), 100)
+        self.assertEqual(saved_data['train_results']['first_image'][0].shape, (28 * 28,))
+
     def test_validation(self):
         """Illustrate validation.
 
@@ -187,31 +212,31 @@ class TestBase(unittest.TestCase):
         See the docstring of tfutils.base.test_from_params for more detailed information on usage.
 
         """
-        # Specify the parameters for the validation
+        # Specify the parameters for the validation.
         exp_id = 'training0'
+        val_exp_id = 'validation0'
 
         params = self.setup_params(exp_id)
 
         params.pop('train_params')
         params.pop('learning_rate_params')
         params['load_params'] = params['save_params']
-        params['save_params'] = {'exp_id': 'validation0'}
+        params['save_params'] = {'exp_id': val_exp_id}
 
-
-        # actually run the model
+        # Actually run the model.
         base.test_from_params(**params)
 
         # ... specifically, there is now a record containing the validation0 performance results
-        self.assertEqual(self.collection['files'].find({'exp_id': 'validation0'}).count(), 1)
+        self.assertEqual(self.collection['files'].find({'exp_id': val_exp_id}).count(), 1)
         # ... here's how to load the record:
-        r = self.collection['files'].find({'exp_id': 'validation0'})[0]
+        r = self.collection['files'].find({'exp_id': val_exp_id})[0]
         self.asserts_for_record(r, params, train=False)
 
         # ... check that the recorrectly ties to the id information for the
         # pre-trained model it was supposed to validate
         self.assertTrue(r['validates'])
-        idval = self.collection['files'].find({'exp_id': 'training0'})[50]['_id']
-        v = self.collection['files'].find({'exp_id': 'validation0'})[0]['validates']
+        idval = self.collection['files'].find({'exp_id': exp_id})[50]['_id']
+        v = self.collection['files'].find({'exp_id': val_exp_id})[0]['validates']
         self.assertEqual(idval, v)
 
     def assert_count(self, exp_id, count):
@@ -262,6 +287,15 @@ class TestBase(unittest.TestCase):
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
+
+    @staticmethod
+    def get_first_image_target(inputs, outputs, **ttarg_params):
+        """Return target for saving the first image of every batch.
+
+        Used in test_training_save test to test save_to_gfs option.
+
+        """
+        return {'first_image': inputs['images'][0]}
 
     @staticmethod
     def asserts_for_record(r, params, train=False):
