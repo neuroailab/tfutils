@@ -68,8 +68,9 @@ class TestBase(unittest.TestCase):
         """Tear down class after all test methods have run."""
         # TODO: Remove cache.
         cls.remove_database(cls.database_name)
-        [cls.conn.drop_database(x) for x in cls.conn.database_names(
-        ) if x.startswith(cls.database_name)]
+        [cls.conn.drop_database(x)
+         for x in cls.conn.database_names()
+         if x.startswith(cls.database_name)]
 
         # Close primary MongoDB connection.
         cls.conn.close()
@@ -77,25 +78,22 @@ class TestBase(unittest.TestCase):
     def setUp(self):
         """Set up class before each test method is executed."""
         pass
-        # self.collection_name = self.__class__.__name__
-        # self.collection = self.conn[self.database_name][self.collection_name]
 
     def tearDown(self):
         """Tear Down is called after each test method is executed."""
         self.remove_collection(self.collection_name)
 
-    @classmethod
-    def setup_params(cls, exp_id):
+    def setup_params(self, exp_id):
 
         params = {}
         params['model_params'] = {
             'func': model.mnist_tfutils}
 
         params['save_params'] = {
-            'host': cls.host,
-            'port': cls.port,
-            'dbname': cls.database_name,
-            'collname': cls.collection_name,
+            'host': self.host,
+            'port': self.port,
+            'dbname': self.database_name,
+            'collname': self.collection_name,
             'exp_id': exp_id,
             'save_valid_freq': 20,
             'save_filters_freq': 200,
@@ -150,8 +148,7 @@ class TestBase(unittest.TestCase):
         information about usage.
 
         """
-
-	exp_id = 'training0'
+        exp_id = 'training0'
         params = self.setup_params(exp_id)
 
         base.train_from_params(**params)
@@ -319,6 +316,169 @@ class TestBase(unittest.TestCase):
         else:
             assert not r['params']['model_params']['train']
             assert 'train_params' not in r['params']
+
+
+class TestDistributedModel(TestBase):
+
+    def setup_params(self, exp_id):
+
+        params = {}
+        params['model_params'] = {
+            'func': model.mnist_tfutils,
+	    'devices': ['/gpu:0', '/gpu:1']}
+
+        params['save_params'] = {
+            'host': self.host,
+            'port': self.port,
+            'dbname': self.database_name,
+            'collname': self.collection_name,
+            'exp_id': exp_id,
+            'save_valid_freq': 20,
+            'save_filters_freq': 200,
+            'cache_filters_freq': 100}
+
+        params['train_params'] = {
+            'data_params': {'func': data.MNIST,
+                            'batch_size': 100,
+                            'group': 'train',
+                            'n_threads': 4},
+            'queue_params': {'queue_type': 'fifo',
+                             'batch_size': 100},
+            'num_steps': 500}
+
+        params['learning_rate_params'] = {
+            'learning_rate': 0.05,
+            'decay_steps': num_batches_per_epoch,
+            'decay_rate': 0.95,
+            'staircase': True}
+
+        params['validation_params'] = {
+            'valid0': {
+                'data_params': {
+                    'func': data.MNIST,
+                    'batch_size': 100,
+                    'group': 'test',
+                    'n_threads': 4},
+                'queue_params': {
+                    'queue_type': 'fifo',
+                    'batch_size': 100},
+                'num_steps': 10,
+                'agg_func': utils.mean_dict}}
+
+        params['skip_check'] = True
+
+        return params
+
+
+class TestMultiModel(TestBase):
+
+    def setup_params(self, exp_id):
+
+        params = {}
+        params['model_params'] = [
+	    {'func': model.mnist_tfutils},
+	    {'func': model.mnist_tfutils}]
+
+        params['save_params'] = {
+            'host': self.host,
+            'port': self.port,
+            'dbname': self.database_name,
+            'collname': self.collection_name,
+            'exp_id': exp_id,
+            'save_valid_freq': 20,
+            'save_filters_freq': 200,
+            'cache_filters_freq': 100}
+
+        params['train_params'] = {
+            'data_params': {'func': data.MNIST,
+                            'batch_size': 100,
+                            'group': 'train',
+                            'n_threads': 4},
+            'queue_params': {'queue_type': 'fifo',
+                             'batch_size': 100},
+            'num_steps': 500}
+
+        params['learning_rate_params'] = {
+            'learning_rate': 0.05,
+            'decay_steps': num_batches_per_epoch,
+            'decay_rate': 0.95,
+            'staircase': True}
+
+        params['validation_params'] = {
+            'valid0': {
+                'data_params': {
+                    'func': data.MNIST,
+                    'batch_size': 100,
+                    'group': 'test',
+                    'n_threads': 4},
+                'queue_params': {
+                    'queue_type': 'fifo',
+                    'batch_size': 100},
+                'num_steps': 10,
+                'agg_func': utils.mean_dict}}
+
+        params['skip_check'] = True
+
+        return params
+
+
+class TestDistributedMultiModel(TestBase):
+
+    def setup_params(self, exp_id):
+
+        params = {}
+        params['model_params'] = [
+	    {
+            	'func': model.mnist_tfutils,
+	    	'devices': ['/gpu:0', '/gpu:1']
+	    },
+	    {
+		'func': models.mnist_tfutils,
+		'devices': ['/gpu:2', '/gpu:3']
+	    }
+	]
+
+        params['save_params'] = {
+            'host': self.host,
+            'port': self.port,
+            'dbname': self.database_name,
+            'collname': self.collection_name,
+            'exp_id': exp_id,
+            'save_valid_freq': 20,
+            'save_filters_freq': 200,
+            'cache_filters_freq': 100}
+
+        params['train_params'] = {
+            'data_params': {'func': data.MNIST,
+                            'batch_size': 100,
+                            'group': 'train',
+                            'n_threads': 4},
+            'queue_params': {'queue_type': 'fifo',
+                             'batch_size': 100},
+            'num_steps': 500}
+
+        params['learning_rate_params'] = {
+            'learning_rate': 0.05,
+            'decay_steps': num_batches_per_epoch,
+            'decay_rate': 0.95,
+            'staircase': True}
+
+        params['validation_params'] = {
+            'valid0': {
+                'data_params': {
+                    'func': data.MNIST,
+                    'batch_size': 100,
+                    'group': 'test',
+                    'n_threads': 4},
+                'queue_params': {
+                    'queue_type': 'fifo',
+                    'batch_size': 100},
+                'num_steps': 10,
+                'agg_func': utils.mean_dict}}
+
+        params['skip_check'] = True
+
+        return params
 
 
 if __name__ == '__main__':
