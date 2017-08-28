@@ -362,7 +362,7 @@ class TestDistributedModel(TestBase):
         params = {}
         params['model_params'] = {
             'func': model.mnist_tfutils,
-	        'devices': ['/gpu:0', '/gpu:1']}
+            'devices': ['/gpu:0', '/gpu:1']}
 
         params['save_params'] = {
             'host': self.host,
@@ -462,7 +462,6 @@ class TestMultiModel(TestBase):
         def test_training(self):
             base_exp_id = 'training0'
             params = self.setup_params(base_exp_id)
-
             for i in range(num_models):
                 exp_id = base_exp_id + '_model_{}'.format(i)
 
