@@ -84,6 +84,55 @@ class TestBase(unittest.TestCase):
         """Tear Down is called after each test method is executed."""
         self.remove_collection(self.collection_name)
 
+    @classmethod
+    def setup_params(cls, exp_id):
+
+        params = {}
+        params['model_params'] = {
+            'func': model.mnist_tfutils}
+
+        params['save_params'] = {
+            'host': cls.host,
+            'port': cls.port,
+            'dbname': cls.database_name,
+            'collname': cls.collection_name,
+            'exp_id': exp_id,
+            'save_valid_freq': 20,
+            'save_filters_freq': 200,
+            'cache_filters_freq': 100}
+
+        params['train_params'] = {
+            'data_params': {'func': data.MNIST,
+                            'batch_size': 100,
+                            'group': 'train',
+                            'n_threads': 4},
+            'queue_params': {'queue_type': 'fifo',
+                             'batch_size': 100},
+            'num_steps': 500}
+
+        params['learning_rate_params'] = {
+            'learning_rate': 0.05,
+            'decay_steps': num_batches_per_epoch,
+            'decay_rate': 0.95,
+            'staircase': True}
+
+        params['validation_params'] = {
+            'valid0': {
+                'data_params': {
+                    'func': data.MNIST,
+                    'batch_size': 100,
+                    'group': 'test',
+                    'n_threads': 4},
+                'queue_params': {
+                    'queue_type': 'fifo',
+                    'batch_size': 100},
+                'num_steps': 10,
+                'agg_func': utils.mean_dict}}
+
+        params['skip_check'] = True
+
+        return params
+
     def test_training(self):
         """Illustrate training.
 
@@ -101,10 +150,9 @@ class TestBase(unittest.TestCase):
         information about usage.
 
         """
-        exp_id = 'training0'
-        model_params = {'func': model.mnist_tfutils}
 
-        params = self.setup_params(exp_id, model_params)
+	exp_id = 'training0'
+        params = self.setup_params(exp_id)
 
         base.train_from_params(**params)
 
@@ -164,9 +212,8 @@ class TestBase(unittest.TestCase):
         """
         # Specify the parameters for the validation
         exp_id = 'training0'
-        model_params = {'func': model.mnist_tfutils}
 
-        params = self.setup_params(exp_id, model_params)
+        params = self.setup_params(exp_id)
 
         params.pop('train_params')
         params.pop('learning_rate_params')
@@ -190,54 +237,6 @@ class TestBase(unittest.TestCase):
         v = self.collection['files'].find({'exp_id': 'validation0'})[0]['validates']
         self.assertEqual(idval, v)
 
-    @classmethod
-    def setup_params(cls, exp_id, model_params):
-        params = {}
-
-        params['model_params'] = {
-            'func': model.mnist_tfutils}
-
-        params['save_params'] = {
-            'host': cls.host,
-            'port': cls.port,
-            'dbname': cls.database_name,
-            'collname': cls.collection_name,
-            'exp_id': exp_id,
-            'save_valid_freq': 20,
-            'save_filters_freq': 200,
-            'cache_filters_freq': 100}
-
-        params['train_params'] = {
-            'data_params': {'func': data.MNIST,
-                            'batch_size': 100,
-                            'group': 'train',
-                            'n_threads': 4},
-            'queue_params': {'queue_type': 'fifo',
-                             'batch_size': 100},
-            'num_steps': 500}
-
-        params['learning_rate_params'] = {
-            'learning_rate': 0.05,
-            'decay_steps': num_batches_per_epoch,
-            'decay_rate': 0.95,
-            'staircase': True}
-
-        params['validation_params'] = {
-            'valid0': {
-                'data_params': {
-                    'func': data.MNIST,
-                    'batch_size': 100,
-                    'group': 'test',
-                    'n_threads': 4},
-                'queue_params': {
-                    'queue_type': 'fifo',
-                    'batch_size': 100},
-                'num_steps': 10,
-                'agg_func': utils.mean_dict}}
-
-        params['skip_check'] = True
-
-        return params
 
     @classmethod
     def remove_directory(cls, directory):
