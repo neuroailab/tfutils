@@ -4,7 +4,6 @@ import os
 import sys
 import errno
 import shutil
-import inspect
 import logging
 import pymongo
 import unittest
@@ -22,33 +21,21 @@ import tfutils.utils as utils
 num_batches_per_epoch = 10000 // 256
 
 
-def whoami():
-    return inspect.stack()[1][3]
-
-
-def logPoint(context):
-    """Log information about module functions and class methods."""
-    callingFunction = whoami()
-    print 'in %s - %s()' % (context, callingFunction)
-
-
 def setUpModule():
     """Set up module once, before any TestCases are run."""
     logging.basicConfig()
-    logPoint('module %s' % __name__)
 
 
 def tearDownModule():
     """Tear down module after all TestCases are run."""
     pass
-    # logPoint('module %s' % __name__)
 
 
 class TestBase(unittest.TestCase):
 
     port = 29101
     host = 'localhost'
-    database_name = 'TFUTILS_TEST_DATABASE'
+    database_name = 'TFUTILS_TEST_DB'
 
     @classmethod
     def setUpClass(cls):
@@ -151,39 +138,28 @@ class TestBase(unittest.TestCase):
         exp_id = 'training0'
         params = self.setup_params(exp_id)
 
+        # Run training.
         base.train_from_params(**params)
 
-        self.assertEqual(self.collection['files'].find({'exp_id': exp_id}).count(), 26)
-        self.assertEqual(
-            self.collection['files']
-                .find({'exp_id': exp_id, 'saved_filters': True})
-                .distinct('step'),
-            [0, 200, 400])
-
-        self.assert_as_expected(exp_id, 26, [0, 200, 400])
+        # Test if results are as expected.
+        self.assert_as_expected(exp_id, count=26, step=[0, 200, 400])
         r = self.collection['files'].find({'exp_id': exp_id, 'step': 0})[0]
         self.asserts_for_record(r, params, train=True)
         r = self.collection['files'].find({'exp_id': exp_id, 'step': 20})[0]
         self.asserts_for_record(r, params, train=True)
 
-        # run another 500 steps of training on the same experiment id.
+        # Run another 500 steps of training on the same experiment id.
         params['train_params']['num_steps'] = 1000
         base.train_from_params(**params)
 
-        # test if results are as expected
-        self.assertEqual(self.collection['files'].find({'exp_id': exp_id}).count(), 51)
-        self.assertEqual(
-            self.collection['files']
-                .find({'exp_id': exp_id, 'saved_filters': True})
-                .distinct('step'),
-            [0, 200, 400, 600, 800, 1000])
-        self.assertEqual(self.collection['files'].distinct('exp_id'), [exp_id])
+        # Test if results are as expected.
         self.assert_as_expected(exp_id, 51, [0, 200, 400, 600, 800, 1000])
+        self.assertEqual(self.collection['files'].distinct('exp_id'), [exp_id])
 
         r = self.collection['files'].find({'exp_id': exp_id, 'step': 1000})[0]
         self.asserts_for_record(r, params, train=True)
 
-        # run 500 more steps but save to a new experiment id.
+        # Run 500 more steps but save to a new experiment id.
         new_exp_id = 'training1'
         params['train_params']['num_steps'] = 1500
         params['load_params'] = {'exp_id': exp_id}
@@ -191,11 +167,12 @@ class TestBase(unittest.TestCase):
 
         base.train_from_params(**params)
 
-        self.assertEqual(
-            self.collection['files']
-                .find({'exp_id': new_exp_id, 'saved_filters': True})
-                .distinct('step'),
-            [1200, 1400])
+        self.assert_step(new_exp_id, [1200, 1400])
+
+    def test_training_save(self):
+        """Illustrate saving to the grid file system during training time."""
+        exp_id = 'training_save'
+        params = self.setup_params(exp_id)
 
     def test_validation(self):
         """Illustrate validation.
@@ -249,7 +226,7 @@ class TestBase(unittest.TestCase):
                 .distinct('step'),
             step)
 
-    def assert_as_expected(self, exp_id, count, step):
+    def assert_as_expected(self, exp_id, count=None, step=None):
         self.assert_count(exp_id, count)
         self.assert_step(exp_id, step)
 
