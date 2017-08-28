@@ -153,12 +153,14 @@ class TestBase(unittest.TestCase):
 
         base.train_from_params(**params)
 
+        self.assertEqual(self.collection['files'].find({'exp_id': exp_id}).count(), 26)
         self.assertEqual(
             self.collection['files']
                 .find({'exp_id': exp_id, 'saved_filters': True})
                 .distinct('step'),
             [0, 200, 400])
 
+        self.assert_as_expected(exp_id, 26, [0, 200, 400])
         r = self.collection['files'].find({'exp_id': exp_id, 'step': 0})[0]
         self.asserts_for_record(r, params, train=True)
         r = self.collection['files'].find({'exp_id': exp_id, 'step': 20})[0]
@@ -176,6 +178,7 @@ class TestBase(unittest.TestCase):
                 .distinct('step'),
             [0, 200, 400, 600, 800, 1000])
         self.assertEqual(self.collection['files'].distinct('exp_id'), [exp_id])
+        self.assert_as_expected(exp_id, 51, [0, 200, 400, 600, 800, 1000])
 
         r = self.collection['files'].find({'exp_id': exp_id, 'step': 1000})[0]
         self.asserts_for_record(r, params, train=True)
@@ -234,6 +237,21 @@ class TestBase(unittest.TestCase):
         v = self.collection['files'].find({'exp_id': 'validation0'})[0]['validates']
         self.assertEqual(idval, v)
 
+    def assert_count(self, exp_id, count):
+        self.assertEqual(
+            self.collection['files'].find({'exp_id': exp_id}).count(),
+            count)
+
+    def assert_step(self, exp_id, step):
+        self.assertEqual(
+            self.collection['files']
+                .find({'exp_id': exp_id, 'saved_filters': True})
+                .distinct('step'),
+            step)
+
+    def assert_as_expected(self, exp_id, count, step):
+        self.assert_count(exp_id, count)
+        self.assert_step(exp_id, step)
 
     @classmethod
     def remove_directory(cls, directory):
@@ -325,7 +343,7 @@ class TestDistributedModel(TestBase):
         params = {}
         params['model_params'] = {
             'func': model.mnist_tfutils,
-	    'devices': ['/gpu:0', '/gpu:1']}
+	        'devices': ['/gpu:0', '/gpu:1']}
 
         params['save_params'] = {
             'host': self.host,
@@ -338,12 +356,14 @@ class TestDistributedModel(TestBase):
             'cache_filters_freq': 100}
 
         params['train_params'] = {
-            'data_params': {'func': data.MNIST,
-                            'batch_size': 100,
-                            'group': 'train',
-                            'n_threads': 4},
-            'queue_params': {'queue_type': 'fifo',
-                             'batch_size': 100},
+            'data_params': {
+                'func': data.MNIST,
+                'batch_size': 100,
+                'group': 'train',
+                'n_threads': 4},
+            'queue_params': {
+                'queue_type': 'fifo',
+                'batch_size': 100},
             'num_steps': 500}
 
         params['learning_rate_params'] = {
@@ -370,14 +390,15 @@ class TestDistributedModel(TestBase):
         return params
 
 
+@unittest.skip('skipping')
 class TestMultiModel(TestBase):
 
     def setup_params(self, exp_id):
 
         params = {}
         params['model_params'] = [
-	    {'func': model.mnist_tfutils},
-	    {'func': model.mnist_tfutils}]
+            {'func': model.mnist_tfutils},
+            {'func': model.mnist_tfutils}]
 
         params['save_params'] = {
             'host': self.host,
@@ -419,24 +440,27 @@ class TestMultiModel(TestBase):
 
         params['skip_check'] = True
 
+        def test_training(self):
+            base_exp_id = 'training0'
+            params = self.setup_params(base_exp_id)
+
+            for i in range(num_models):
+                exp_id = base_exp_id + '_model_{}'.format(i)
+
         return params
 
 
-class TestDistributedMultiModel(TestBase):
+@unittest.skip('skipping')
+class TestDistributedMultiModel(TestMultiModel):
 
     def setup_params(self, exp_id):
 
         params = {}
         params['model_params'] = [
-	    {
-            	'func': model.mnist_tfutils,
-	    	'devices': ['/gpu:0', '/gpu:1']
-	    },
-	    {
-		'func': models.mnist_tfutils,
-		'devices': ['/gpu:2', '/gpu:3']
-	    }
-	]
+            {'func': model.mnist_tfutils,
+             'devices': ['/gpu:0', '/gpu:1']},
+            {'func': model.mnist_tfutils,
+             'devices': ['/gpu:2', '/gpu:3']}]
 
         params['save_params'] = {
             'host': self.host,
