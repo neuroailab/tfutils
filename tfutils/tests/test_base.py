@@ -162,51 +162,33 @@ class TestBase(unittest.TestCase):
         See the docstring of tfutils.base.test_from_params for more detailed information on usage.
 
         """
-        # specify the parameters for the validation
-        params = {}
+        # Specify the parameters for the validation
+        exp_id = 'training0'
+        model_params = {'func': model.mnist_tfutils}
 
-        params['model_params'] = {'func': model.mnist_tfutils}
+        params = self.setup_params(exp_id, model_params)
 
-        params['load_params'] = {'host': testhost,
-                                 'port': testport,
-                                 'dbname': testdbname,
-                                 'collname': testcol,
-                                 'exp_id': 'training0'}
-
+        params.pop('train_params')
+        params.pop('learning_rate_params')
+        params['load_params'] = params['save_params']
         params['save_params'] = {'exp_id': 'validation0'}
 
-        params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
-                                                                  'batch_size': 100,
-                                                                  'group': 'test',
-                                                                  'n_threads': 4},
-                                                  'queue_params': {'queue_type': 'fifo',
-                                                                   'batch_size': 100},
-                                                  'num_steps': 10,
-                                                  'agg_func': utils.mean_dict}}
-        params['skip_check'] = True
-
-        # check that the results are correct
-        conn = pm.MongoClient(host=testhost,
-                              port=testport)
-
-        conn[testdbname][testcol + '.files'].delete_many({'exp_id': 'validation0'})
 
         # actually run the model
         base.test_from_params(**params)
 
         # ... specifically, there is now a record containing the validation0 performance results
-        assert conn[testdbname][testcol + '.files'].find({'exp_id': 'validation0'}).count() == 1
+        self.assertEqual(self.collection['files'].find({'exp_id': 'validation0'}).count(), 1)
         # ... here's how to load the record:
-        r = conn[testdbname][testcol + '.files'].find({'exp_id': 'validation0'})[0]
-        asserts_for_record(r, params, train=False)
+        r = self.collection['files'].find({'exp_id': 'validation0'})[0]
+        self.asserts_for_record(r, params, train=False)
 
         # ... check that the recorrectly ties to the id information for the
         # pre-trained model it was supposed to validate
-        assert r['validates']
-        idval = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'})[50]['_id']
-        v = conn[testdbname][testcol + '.files'].find({'exp_id': 'validation0'})[0]['validates']
-        assert idval == v
-            pass
+        self.assertTrue(r['validates'])
+        idval = self.collection['files'].find({'exp_id': 'training0'})[50]['_id']
+        v = self.collection['files'].find({'exp_id': 'validation0'})[0]['validates']
+        self.assertEqual(idval, v)
 
     @classmethod
     def setup_params(cls, exp_id, model_params):
@@ -232,7 +214,7 @@ class TestBase(unittest.TestCase):
                             'n_threads': 4},
             'queue_params': {'queue_type': 'fifo',
                              'batch_size': 100},
-                             'num_steps': 500}
+            'num_steps': 500}
 
         params['learning_rate_params'] = {
             'learning_rate': 0.05,
@@ -250,7 +232,7 @@ class TestBase(unittest.TestCase):
                 'queue_params': {
                     'queue_type': 'fifo',
                     'batch_size': 100},
-                'num_steps': 100,
+                'num_steps': 10,
                 'agg_func': utils.mean_dict}}
 
         params['skip_check'] = True
