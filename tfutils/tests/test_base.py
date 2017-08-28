@@ -171,6 +171,9 @@ class TestBase(unittest.TestCase):
 
         self.assert_step(new_exp_id, [1200, 1400])
 
+    def test_interactive_training(self):
+        pass
+
     def test_training_save(self):
         """Illustrate saving to the grid file system during training time."""
         exp_id = 'training_save'
@@ -255,8 +258,10 @@ class TestBase(unittest.TestCase):
             step)
 
     def assert_as_expected(self, exp_id, count=None, step=None):
-        self.assert_count(exp_id, count)
-        self.assert_step(exp_id, step)
+        if count is not None:
+            self.assert_count(exp_id, count)
+        if step is not None:
+            self.assert_step(exp_id, step)
 
     @classmethod
     def remove_directory(cls, directory):
