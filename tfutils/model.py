@@ -6,7 +6,6 @@ from contextlib import contextmanager
 
 import tensorflow as tf
 
-
 def initializer(kind='xavier', *args, **kwargs):
     if kind == 'xavier':
         init = tf.contrib.layers.xavier_initializer(*args, **kwargs)
@@ -64,6 +63,154 @@ def conv(inp,
                             scale=None, variance_epsilon=1e-8, name='batch_norm')
     return output
 
+def conv_bnf(inp,
+         out_depth,
+         ksize=[3,3],
+         strides=[1,1,1,1],
+         padding='SAME',
+         kernel_init='xavier',
+         kernel_init_kwargs=None,
+         bias=0,
+         weight_decay=None,
+         activation='relu6',
+         batch_norm=True,
+         train_bn=True,
+         name='conv_bnf'
+         ):
+
+    # assert out_shape is not None
+    if weight_decay is None:
+        weight_decay = 0.
+    if isinstance(ksize, int):
+        ksize = [ksize, ksize]
+    if isinstance(strides, int):
+        strides = [1, strides, strides, 1]
+        
+    if kernel_init_kwargs is None:
+        kernel_init_kwargs = {}
+    in_depth = inp.get_shape().as_list()[-1]
+
+    # weights
+    init = initializer(kernel_init, **kernel_init_kwargs)
+    kernel = tf.get_variable(initializer=init,
+                            shape=[ksize[0], ksize[1], in_depth, out_depth],
+                            dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                            name='weights')
+
+    # ops
+    conv = tf.nn.conv2d(inp, kernel,
+                        strides=strides,
+                        padding=padding)
+
+    if batch_norm:
+        output = tf.contrib.layers.batch_norm(conv, center=True, scale=True, decay=0.9997, epsilon=0.001, is_training=train_bn, trainable=True)
+    else:
+        init = initializer(kind='constant', value=bias)
+        biases = tf.get_variable(initializer=init,
+                                shape=[out_depth],
+                                dtype=tf.float32,
+                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                name='bias')
+        output = tf.nn.bias_add(conv, biases, name=name)
+
+    if activation is not None:
+        output = getattr(tf.nn, activation)(output, name=activation)
+
+    return output
+
+def depthsep_conv(inp,
+             out_depth,
+             multiplier=1,
+             ksize=3,
+             strides=1,
+             dep_padding='SAME',
+             sep_padding='SAME',
+             batch_norm = True,
+             train_bn=True,
+             name='depthsep_conv',
+             *args,
+             **kwargs
+             ):
+
+    with tf.variable_scope('depthwise_conv'):
+        d_out = depth_conv(inp, multiplier = multiplier,
+                ksize = ksize,
+                strides = strides,
+                padding = dep_padding,
+                batch_norm = batch_norm,
+                train_bn = train_bn,
+                *args, **kwargs)
+
+    with tf.variable_scope('pointwise_conv'):
+        # we batch norm first according to mobilenet paper
+        p_out = conv_bnf(d_out, out_depth = out_depth,
+                ksize = 1,
+                strides = 1,
+                padding = sep_padding,
+                batch_norm = batch_norm,
+                train_bn = train_bn,
+                *args, **kwargs)
+        
+    return p_out
+
+def depth_conv(inp,
+             multiplier=1,
+             ksize=3,
+             strides=1,
+             padding='SAME',
+             kernel_init='xavier',
+             kernel_init_kwargs=None,
+             bias=1,
+             activation='relu6',
+             weight_decay=None,
+             batch_norm = True,
+             train_bn=True,
+             name='depth_conv'
+             ):
+
+    # assert out_shape is not None
+    if weight_decay is None:
+        weight_decay = 0.
+    if isinstance(ksize, int):
+        ksize = [ksize, ksize]
+    if isinstance(strides, int):
+        strides = [1, strides, strides, 1]
+
+    if kernel_init_kwargs is None:
+        kernel_init_kwargs = {}
+    
+    in_depth = inp.get_shape().as_list()[-1]
+
+    out_depth = multiplier * in_depth
+
+    # weights
+    init = initializer(kernel_init, **kernel_init_kwargs)
+    kernel = tf.get_variable(initializer=init,
+                            shape=[ksize[0], ksize[1], in_depth, multiplier],
+                            dtype=tf.float32,
+                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                            name='weights')
+
+    conv = tf.nn.depthwise_conv2d(inp, kernel,
+                            strides=strides,
+                            padding=padding)
+        
+    if batch_norm:
+        output = tf.contrib.layers.batch_norm(conv, center=True, scale=True, decay=0.9997, epsilon=0.001, is_training=train_bn, trainable=True)
+    else:
+        init = initializer(kind='constant', value=bias)
+        biases = tf.get_variable(initializer=init,
+                                shape=[out_depth],
+                                dtype=tf.float32,
+                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                                name='bias')
+        output = tf.nn.bias_add(conv, biases, name=name)   
+
+    if activation is not None:
+        output = getattr(tf.nn, activation)(output, name=activation)
+
+    return output
 
 def fc(inp,
        out_depth,
@@ -127,12 +274,17 @@ def global_pool(inp, kind='avg', name=None):
     output = tf.reshape(out, [out.get_shape().as_list()[0], -1], name=name)
     return output
 
+def avg_pool2d(inp, kernel_size, stride=2, padding='VALID', name=None):
+    if name is None:
+        name = 'avg_pool2d'
+    output = tf.contrib.layers.avg_pool2d(inp, kernel_size=kernel_size, stride=stride, padding=padding)
+    return output
 
 class ConvNet(object):
 
     INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer',
                      '_reuse_scope_name', '__call__', '_get_func']
-    CUSTOM_FUNC = [conv, fc, global_pool]
+    CUSTOM_FUNC = [conv, fc, global_pool, conv_bnf, depthsep_conv, depth_conv, avg_pool2d]
 
     def __init__(self, defaults=None, name=None):
         """

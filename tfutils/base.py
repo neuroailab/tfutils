@@ -26,10 +26,10 @@ from tensorflow.python.ops import variables
 import numpy as np
 
 from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from data import get_queue
-from optimizer import ClipOptimizer
+from tfutils.data import get_queue
+from tfutils.optimizer import ClipOptimizer
 import tfutils.utils as utils
-from utils import (sonify,
+from tfutils.utils import (sonify,
                    frozendict,
                    strip_prefix,
                    format_devices,
@@ -1454,13 +1454,19 @@ def get_data(func, queue_params=None, **data_params):
 
 
 def split_input(inputs, num_gpus=1):
-    if num_gpus == 1:
+    if not isinstance(num_gpus, list):
+        n_gpus = num_gpus
+    else:
+        n_gpus = len(num_gpus)
+
+    if n_gpus == 1:
         return [inputs]
 
     temp_args = {v: tf.split(inputs[v], axis=0, num_or_size_splits=num_gpus)
                  for v in inputs}
+
     list_of_args = [{now_arg: temp_args[now_arg][ind]
-                     for now_arg in temp_args} for ind in xrange(num_gpus)]
+                     for now_arg in temp_args} for ind in xrange(n_gpus)]
 
     return list_of_args
 
