@@ -166,7 +166,7 @@ def test_training():
                                                               'n_threads': 4},
                                               'queue_params': {'queue_type': 'fifo',
                                                                'batch_size': 100},
-                                              'num_steps': 100,
+                                              'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
     params['skip_check'] = True
 

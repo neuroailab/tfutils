@@ -171,8 +171,19 @@ class TestBase(unittest.TestCase):
 
         self.assert_step(new_exp_id, [1200, 1400])
 
-    def test_interactive_training(self):
-        pass
+    def test_custom_training(self):
+        """Illustrate training with custom training loop.
+
+        This test illustrates how basic training is performed with a custom
+        training loop using the tfutils.base.train_from_params function.
+
+        """
+        exp_id = 'training0'
+        params = self.setup_params(exp_id)
+
+        params['train_params']['train_loop'] = {'func': self.custom_train_loop}
+
+        base.train_from_params(**params)
 
     def test_training_save(self):
         """Illustrate saving to the grid file system during training time."""
@@ -304,6 +315,24 @@ class TestBase(unittest.TestCase):
 
         """
         return {'first_image': inputs['images'][0]}
+
+    @staticmethod
+    def custom_train_loop(sess, train_targets, **loop_params):
+        """Define Custom training loop.
+
+        Args:
+            sess (tf.Session): Current tensorflow session.
+            train_targets (list): Description.
+            **loop_params: Optional kwargs needed to perform custom train loop.
+
+        Returns:
+            dict: A dictionary containing train targets evaluated by the session.
+
+        """
+        train_results = sess.run(train_targets)
+        for i, result in enumerate(train_results):
+            print('Model {} has loss {}'.format(i, result['loss']))
+        return train_results
 
     @staticmethod
     def asserts_for_record(r, params, train=False):
