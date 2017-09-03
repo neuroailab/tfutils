@@ -37,7 +37,7 @@ class TestBase(unittest.TestCase):
 
     port = 29101
     host = 'localhost'
-    database_name = 'TFUTILS_TEST_DB'
+    database_name = 'tfutils_test'
 
     @classmethod
     def setUpClass(cls):
@@ -384,6 +384,7 @@ class TestBase(unittest.TestCase):
             assert 'train_params' not in r['params']
 
 
+@unittest.skip('skip')
 class TestDistributedModel(TestBase):
 
     def setup_params(self, exp_id):
@@ -438,7 +439,6 @@ class TestDistributedModel(TestBase):
         return params
 
 
-@unittest.skip('skipping')
 class TestMultiModel(TestBase):
 
     def setup_params(self, exp_id):
@@ -488,13 +488,119 @@ class TestMultiModel(TestBase):
 
         params['skip_check'] = True
 
-        def test_training(self):
-            base_exp_id = 'training0'
-            params = self.setup_params(base_exp_id)
-            for i in range(num_models):
-                exp_id = base_exp_id + '_model_{}'.format(i)
-
         return params
+
+    def test_training(self):
+        base_exp_id = 'training0'
+        params = self.setup_params(base_exp_id)
+        num_models = len(params['model_params'])
+
+        # Actually run the training.
+        base.train_from_params(**params)
+
+        # Test if results are as expected.
+        for i in range(num_models):
+            exp_id = base_exp_id + '_model_{}'.format(i)
+            self.assert_as_expected(exp_id, count=26, step=[0, 200, 400])
+            r = self.collection['files'].find({'exp_id': exp_id, 'step': 0})[0]
+            self.asserts_for_record(r, params, train=True)
+            r = self.collection['files'].find({'exp_id': exp_id, 'step': 20})[0]
+            self.asserts_for_record(r, params, train=True)
+
+        # Run another 500 steps of training on the same experiment id.
+        params['train_params']['num_steps'] = 1000
+        base.train_from_params(**params)
+
+        # Test if results are as expected.
+        for i in range(num_models):
+            exp_id = base_exp_id + '_model_{}'.format(i)
+            self.assert_as_expected(exp_id, 51, [0, 200, 400, 600, 800, 1000])
+            self.assertItemsEqual(
+                self.collection['files'].distinct('exp_id'),
+                [base_exp_id + '_model_{}'.format(i) for i in range(num_models)])
+
+            r = self.collection['files'].find({'exp_id': exp_id, 'step': 1000})[0]
+            self.asserts_for_record(r, params, train=True)
+
+        # Run 500 more steps but save to a new experiment id.
+        new_exp_id = 'training1'
+        params['train_params']['num_steps'] = 1500
+        params['load_params'] = {'exp_id': base_exp_id}
+        params['save_params']['exp_id'] = new_exp_id
+
+        base.train_from_params(**params)
+
+        for i in range(num_models):
+            exp_id = new_exp_id + '_model_{}'.format(i)
+            self.assert_step(exp_id, [1200, 1400])
+
+    def test_training_save(self):
+        """Illustrate saving to the grid file system during training time."""
+        base_exp_id = 'training_save'
+        params = self.setup_params(base_exp_id)
+        num_models = len(params['model_params'])
+
+        params['save_params']['save_to_gfs'] = ['first_image']
+        params['save_params']['save_valid_freq'] = 3000
+        params['save_params']['save_filters_freq'] = 30000
+        params['save_params']['cache_filters_freq'] = 3000
+        params['train_params']['targets'] = {'func': self.get_first_image_target}
+
+        # Actually run the training.
+        base.train_from_params(**params)
+
+        # Check that the first image has been saved.
+        for i in range(num_models):
+            exp_id = base_exp_id + '_model_{}'.format(i)
+            coll = self.collection['files']
+            q = {'exp_id': exp_id, 'train_results': {'$exists': True}}
+            train_steps = coll.find(q)
+            self.assertEqual(train_steps.count(), 5)
+            idx = train_steps[0]['_id']
+            fn = coll.find({'item_for': idx})[0]['filename']
+            fs = gridfs.GridFS(coll.database, self.collection_name)
+            fh = fs.get_last_version(fn)
+            saved_data = cPickle.loads(fh.read())
+            fh.close()
+
+            self.assertIn('train_results', saved_data)
+            self.assertIn('first_image', saved_data['train_results'])
+            self.assertEqual(len(saved_data['train_results']['first_image']), 100)
+            self.assertEqual(saved_data['train_results']['first_image'][0].shape, (28 * 28,))
+
+    def test_validation(self):
+
+        # Specify the parameters for the validation.
+        base_exp_id = 'training0'
+        base_val_exp_id = 'validation0'
+
+        params = self.setup_params(base_exp_id)
+        num_models = len(params['model_params'])
+
+        params.pop('train_params')
+        params.pop('learning_rate_params')
+        params['load_params'] = params['save_params']
+        params['save_params'] = {'exp_id': base_val_exp_id}
+
+        # Actually run the model
+        base.test_from_params(**params)
+
+        # Check that the results are correct.
+        for i in range(num_models):
+            exp_id = base_exp_id + '_model_{}'.format(i)
+            val_exp_id = base_val_exp_id + '_model_{}'.format(i)
+            # ... specifically, there is now a record containing the validation0 performance results
+            self.assertEqual(self.collection['files'].find({'exp_id': val_exp_id}).count(), 1)
+            # ... here's how to load the record:
+            r = self.collection['files'].find({'exp_id': val_exp_id})[0]
+            self.asserts_for_record(r, params, train=False)
+
+            # ... check that the recorrectly ties to the id information for the
+            # pre-trained model it was supposed to validate
+            self.assertTrue(r['validates'])
+            idval = self.collection['files'].find({'exp_id': exp_id})[50]['_id']
+            v = self.collection['files'].find({'exp_id': val_exp_id})[0]['validates']
+            self.assertEqual(idval, v)
 
 
 @unittest.skip('skipping')

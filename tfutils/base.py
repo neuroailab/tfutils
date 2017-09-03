@@ -25,11 +25,11 @@ from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.ops import variables
 import numpy as np
 
-from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from tfutils.data import get_queue
-from tfutils.optimizer import ClipOptimizer
-import tfutils.utils as utils
-from tfutils.utils import (sonify,
+import utils
+from data import get_queue
+from optimizer import ClipOptimizer
+from error import HiLossError, NoGlobalStepError, NoChangeError
+from utils import (sonify,
                    frozendict,
                    strip_prefix,
                    format_devices,
