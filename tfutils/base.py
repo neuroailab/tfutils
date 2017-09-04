@@ -347,16 +347,18 @@ class DBInterface(object):
 
                 # Next, determine which vars should be restored from the specified checkpoint.
                 restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
-
+                restore_stripped = strip_prefix(self.params['model_params']['prefix'], list(restore_vars.values()))
+                restore_names =  [name for name, var in restore_stripped.items()]
                 # Actually load the vars.
-                log.info('Restored Vars:\n' + str([restore_var for restore_var in restore_vars]))
+                log.info('Restored Vars:\n' + str(restore_names))
                 tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
 
                 # Reinitialize all other, unrestored vars.
-                unrestored_vars = [var for name, var in self.all_vars.items() if name not in restore_vars]
-                log.info('Unrestored Vars:\n' + str([unrestore_var.name for unrestore_var in unrestored_vars]))
+                unrestored_vars = [var for name, var in self.all_vars.items() if name not in restore_names]
+                unrestored_var_names = [name for name, var in self.all_vars.items() if name not in restore_names]
+                log.info('Unrestored Vars:\n' + str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
                     self.sess.run(tf.report_uninitialized_variables()))
@@ -403,7 +405,19 @@ class DBInterface(object):
             all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
         # Specify which vars are to be restored vs. reinitialized.
-        restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        if self.load_param_dict is None:
+            restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        else:
+            # associate checkpoint names with actual variables
+            load_var_dict = {}
+            for ckpt_var_name, curr_var_name in self.load_param_dict.items():
+                for curr_name, curr_var in all_vars.items():
+                    if curr_name == curr_var_name:
+                        load_var_dict[ckpt_var_name] = curr_var
+                        break
+
+            restore_vars = load_var_dict
+
         restore_vars = self.filter_var_list(restore_vars)
 
         # Ensure the vars to restored have the correct shape.
@@ -439,7 +453,7 @@ class DBInterface(object):
         for old_name, new_name in self.load_param_dict.items():
             for name in var_list:
                 if old_name == name:
-                    var_list[new_name] = var_list.pop(old_name)
+                    var_list[old_name] = var_list.pop(old_name)
                     break
         return var_list
 
@@ -975,7 +989,8 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
                 for required in ['__grads__', 'optimizer']])
 
     # Perform minibatching
-    for minibatch in range(num_minibatches - 1):
+    range_len = (int)(num_minibatches)
+    for minibatch in range(range_len - 1):
         # Accumulate gradient for each minibatch
         sess.run([target['__grads__'] for target in train_targets])
 
