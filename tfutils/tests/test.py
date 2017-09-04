@@ -1415,7 +1415,7 @@ def test_distributed_multimodel_validation():
 
 
 def get_extraction_target(inputs, outputs, to_extract, **loss_params):
-    """Example validation target function.
+    """Produce validation target function.
 
     Example validation target function to use to provide targets for extracting features.
     This function also adds a standard "loss" target which you may or not may not want

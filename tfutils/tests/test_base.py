@@ -1,12 +1,14 @@
 """Test base module."""
 
 import os
+import re
 import sys
 import errno
 import shutil
 import cPickle
 import logging
 import unittest
+from collections import defaultdict
 
 import gridfs
 import pymongo
@@ -37,7 +39,7 @@ class TestBase(unittest.TestCase):
 
     port = 29101
     host = 'localhost'
-    database_name = 'tfutils_test'
+    database_name = '_tfutils'
 
     @classmethod
     def setUpClass(cls):
@@ -256,6 +258,26 @@ class TestBase(unittest.TestCase):
         v = self.collection['files'].find({'exp_id': val_exp_id})[0]['validates']
         self.assertEqual(idval, v)
 
+    def test_feature_extraction(self):
+        """Illustrate feature extraction.
+
+        This is a test illustrating how to perform feature extraction using
+        tfutils.base.test_from_params.
+        The basic idea is to specify a validation target that is simply the actual output of
+        the model at some layer. (See the "get_extraction_target" function above as well.)
+        This test assumes that test_train has run first.
+
+        After the test is run, the results of the feature extraction are saved in the Grid
+        File System associated with the mongo database, with one file per batch of feature
+        results.  See how the features are accessed by reading the test code below.
+        """
+        # set up parameters
+        exp_id = 'validation1'
+        params = {}
+
+        params
+
+
     def assert_count(self, exp_id, count):
         self.assertEqual(
             self.collection['files'].find({'exp_id': exp_id}).count(),
@@ -315,6 +337,39 @@ class TestBase(unittest.TestCase):
 
         """
         return {'first_image': inputs['images'][0]}
+
+    @staticmethod
+    def get_extraction_target(inputs, outputs, to_extract, **loss_params):
+        """Produce validation target function.
+
+        Example validation target function to use to provide targets for extracting features.
+        This function also adds a standard "loss" target which you may or not may not want
+
+        The to_extract argument must be a dictionary of the form
+              {name_for_saving: name_of_actual_tensor, ...}
+        where the "name_for_saving" is a human-friendly name you want to save extracted
+        features under, and name_of_actual_tensor is a name of the tensor in the tensorflow
+        graph outputing the features desired to be extracted.  To figure out what the names
+        of the tensors you want to extract are "to_extract" argument,  uncomment the
+        commented-out lines, which will print a list of all available tensor names.
+
+        """
+        names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
+        names = [y for x in names for y in x]
+
+        r = re.compile(r'__GPU__\d/')
+        _targets = defaultdict(list)
+
+        for name in names:
+            name_without_gpu_prefix = r.sub('', name)
+            for save_name, actual_name in to_extract.items():
+                if actual_name in name_without_gpu_prefix:
+                    tensor = tf.get_default_graph().get_tensor_by_name(name)
+                    _targets[save_name].append(tensor)
+
+        targets = {k: tf.concat(v, axis=0) for k, v in _targets.items()}
+        targets['loss'] = utils.get_loss(inputs, outputs, **loss_params)
+        return targets
 
     @staticmethod
     def custom_train_loop(sess, train_targets, **loop_params):
@@ -384,7 +439,6 @@ class TestBase(unittest.TestCase):
             assert 'train_params' not in r['params']
 
 
-@unittest.skip('skip')
 class TestDistributedModel(TestBase):
 
     def setup_params(self, exp_id):
@@ -603,8 +657,7 @@ class TestMultiModel(TestBase):
             self.assertEqual(idval, v)
 
 
-@unittest.skip('skipping')
-class TestDistributedMultiModel(TestMultiModel):
+class TestDistributedMulti(TestMultiModel):
 
     def setup_params(self, exp_id):
 
