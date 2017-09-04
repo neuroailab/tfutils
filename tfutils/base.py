@@ -989,7 +989,8 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
                 for required in ['__grads__', 'optimizer']])
 
     # Perform minibatching
-    for minibatch in range(num_minibatches - 1):
+    range_len = (int)(num_minibatches - 1)
+    for minibatch in range(range_len):
         # Accumulate gradient for each minibatch
         sess.run([target['__grads__'] for target in train_targets])
 
