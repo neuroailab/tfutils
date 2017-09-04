@@ -355,8 +355,8 @@ class DBInterface(object):
                 log.info('... done restoring.')
 
                 # Reinitialize all other, unrestored vars.
-                unrestored_vars = [var for var in self.all_vars if var not in restore_vars]
-                log.info('Unrestored Vars:\n' + str([unrestore_var for unrestore_var in unrestored_vars]))
+                unrestored_vars = [var for name, var in self.all_vars.items() if name not in restore_vars]
+                log.info('Unrestored Vars:\n' + str([unrestore_var.name for unrestore_var in unrestored_vars]))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
                     self.sess.run(tf.report_uninitialized_variables()))
@@ -403,7 +403,7 @@ class DBInterface(object):
             all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
         # Specify which vars are to be restored vs. reinitialized.
-        restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes.keys()}
         restore_vars = self.filter_var_list(restore_vars)
 
         # Ensure the vars to restored have the correct shape.

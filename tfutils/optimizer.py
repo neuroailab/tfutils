@@ -8,7 +8,11 @@ gradients for multiple batches before applying a gradient update).
 """
 import copy
 import tensorflow as tf
+import logging
 
+logging.basicConfig()
+log = logging.getLogger('tfutils')
+log.setLevel('DEBUG')
 
 class ClipOptimizer(object):
 
@@ -108,14 +112,16 @@ class ClipOptimizer(object):
     def minimize(self, loss, global_step):
         train_vars = None
         if self.trainable_names is not None:
-            #print('All trainable vars: ', [var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)])
+#            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
+            print('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
             train_vars = []
             for scope_name in self.trainable_names:
                 new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
                 if len(new_vars) == 0:
                     raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
                 train_vars.extend(new_vars)
-            #print('Variables to be trained: ', [var.name for var in train_vars])
+#            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
+            print('Variables to be trained:\n'+str([var.name for var in train_vars]))
         grads_and_vars = self.compute_gradients(loss, var_list=train_vars)
         return self._optimizer.apply_gradients(grads_and_vars,
                                                global_step=global_step)
