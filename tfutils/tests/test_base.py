@@ -57,11 +57,12 @@ class TestBase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Tear down class after all test methods have run."""
-        # TODO: Remove cache.
         cls.remove_database(cls.database_name)
         [cls.conn.drop_database(x)
          for x in cls.conn.database_names()
          if x.startswith(cls.database_name)]
+
+        # TODO: Remove cache, if desired.
 
         # Close primary MongoDB connection.
         cls.conn.close()
@@ -75,6 +76,7 @@ class TestBase(unittest.TestCase):
         self.remove_collection(self.collection_name)
 
     def setup_params(self, exp_id):
+        """Specify training params with a specific exp_id."""
 
         params = {}
         params['model_params'] = {
@@ -183,6 +185,7 @@ class TestBase(unittest.TestCase):
         exp_id = 'training0'
         params = self.setup_params(exp_id)
 
+        # Add a custom train_loop to use during training.
         params['train_params']['train_loop'] = {'func': self.custom_train_loop}
 
         base.train_from_params(**params)
@@ -192,10 +195,13 @@ class TestBase(unittest.TestCase):
         exp_id = 'training_save'
         params = self.setup_params(exp_id)
 
-        params['save_params']['save_to_gfs'] = ['first_image']
+        # Modify a few of the save parameters.
         params['save_params']['save_valid_freq'] = 3000
         params['save_params']['save_filters_freq'] = 30000
         params['save_params']['cache_filters_freq'] = 3000
+
+        # Specify additional save_params for saving to gfs.
+        params['save_params']['save_to_gfs'] = ['first_image']
         params['train_params']['targets'] = {'func': self.get_first_image_target}
 
         # Actually run the training.
@@ -213,6 +219,7 @@ class TestBase(unittest.TestCase):
         saved_data = cPickle.loads(fh.read())
         fh.close()
 
+        # Assert as expected.
         self.assertIn('train_results', saved_data)
         self.assertIn('first_image', saved_data['train_results'])
         self.assertEqual(len(saved_data['train_results']['first_image']), 100)

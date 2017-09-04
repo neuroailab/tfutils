@@ -154,7 +154,7 @@ class TestDBInterface(unittest.TestCase):
 
     def test_remap_var_list(self):
 
-        # Get a test `var_list` {var.name: name}
+        # Get a test `var_list` {var.name: var}
         var_list = {var.op.name: var for var in tf.global_variables()}
 
         # Specify mapping from old var names to new ones.
