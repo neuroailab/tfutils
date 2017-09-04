@@ -1791,6 +1791,7 @@ def parse_params(mode,
                                  .format(minibatch_size))
                     param['minibatch_size'] = minibatch_size
                     param['num_minibatches'] = num_minibatches
+                    param['queue_params']['batch_size'] = minibatch_size
 
         params[name] = param_list
 
