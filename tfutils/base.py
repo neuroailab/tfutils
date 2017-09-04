@@ -356,7 +356,7 @@ class DBInterface(object):
 
                 # Reinitialize all other, unrestored vars.
                 unrestored_vars = [var for var in self.all_vars if var not in restore_vars]
-                log.info('Unrestored Vars:\n' + str([unrestore_var.name for unrestore_var in unrestored_vars]))
+                log.info('Unrestored Vars:\n' + str([unrestore_var for unrestore_var in unrestored_vars]))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
                     self.sess.run(tf.report_uninitialized_variables()))
