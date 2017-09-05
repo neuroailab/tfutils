@@ -25,11 +25,22 @@ class ClipOptimizer(object):
         self.trainable_names = trainable_names
         self.grads_and_vars = None
 
-    def compute_gradients(self, loss, var_list=None, *args, **kwargs):
-        if var_list is not None:
-            self.var_list = var_list
+    def compute_gradients(self, loss, *args, **kwargs):
+        train_vars = None
+        if self.trainable_names is not None:
+            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
+            train_vars = []
+            for scope_name in self.trainable_names:
+                new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
+                if len(new_vars) == 0:
+                    raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
+                train_vars.extend(new_vars)
+            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
+        if train_vars is not None:
+            self.var_list = train_vars
+
         gvs = self._optimizer.compute_gradients(loss,
-                                                var_list=var_list,
+                                                var_list=train_vars,
                                                 *args, **kwargs)
         if self.clip:
             # gradient clipping. Some gradients returned are 'None' because
@@ -112,16 +123,14 @@ class ClipOptimizer(object):
     def minimize(self, loss, global_step):
         train_vars = None
         if self.trainable_names is not None:
-#            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
-            print('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
+            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
             train_vars = []
             for scope_name in self.trainable_names:
                 new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
                 if len(new_vars) == 0:
                     raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
                 train_vars.extend(new_vars)
-#            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
-            print('Variables to be trained:\n'+str([var.name for var in train_vars]))
+            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
         grads_and_vars = self.compute_gradients(loss, var_list=train_vars)
         return self._optimizer.apply_gradients(grads_and_vars,
                                                global_step=global_step)
