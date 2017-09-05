@@ -1518,7 +1518,6 @@ def get_model(inputs, model_params, param=None, trarg=None):
         devices = model_params['devices']
         num_gpus = model_params['num_gpus']
         inputs = split_input(inputs, num_gpus)
-
         # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
             assert param and trarg is not None
@@ -1746,7 +1745,12 @@ def parse_params(mode,
 
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
-                assert param['num_gpus'] == len(param['devices']), (
+                
+                if not isinstance(param['num_gpus'], list):
+                    assert param['num_gpus'] == len(param['devices']), (
+                       'num_gpus does not match the number of gpus specified in devices.')
+                else:
+                    assert len(param['num_gpus']) == len(param['devices']), (
                        'num_gpus does not match the number of gpus specified in devices.')
 
             # Parse train_params.
