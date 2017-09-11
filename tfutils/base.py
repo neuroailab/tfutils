@@ -1569,7 +1569,6 @@ def get_model(inputs, model_params, param=None, trarg=None):
         loss = tf.reduce_mean(tf.stack(tower_losses))
 
         # Aggregate and accumulate gradients.
-        print(tower_grads)
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
         grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
 
