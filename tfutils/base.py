@@ -1,6 +1,8 @@
+"""base.py"""
 from __future__ import absolute_import, division, print_function
 
 import os
+import re
 import sys
 import time
 import importlib
@@ -23,17 +25,20 @@ from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.ops import variables
 import numpy as np
 
-from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from tfutils.data import get_queue
-from tfutils.optimizer import ClipOptimizer
-import tfutils.utils as utils
-from tfutils.utils import (make_mongo_safe,
-                           sonify,
-                           get_saver_pb2_v2_files,
-                           verify_pb2_v2_files,
-                           frozendict,
-                           format_devices,
-                           strip_prefix)
+import utils
+from data import get_queue
+from optimizer import ClipOptimizer
+from error import HiLossError, NoGlobalStepError, NoChangeError
+from utils import (sonify,
+                   frozendict,
+                   strip_prefix,
+                   format_devices,
+                   make_mongo_safe,
+                   CoordinatedThread,
+                   aggregate_outputs,
+                   verify_pb2_v2_files,
+                   get_saver_pb2_v2_files,
+                   strip_prefix_from_name)
 
 logging.basicConfig()
 log = logging.getLogger('tfutils')
@@ -66,7 +71,7 @@ DEFAULT_TRAIN_THRES_LOSS = 100
 DEFAULT_HOST = '/cpu:0'
 DEFAULT_DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2', '/gpu:3']
 DEFAULT_LOOP_PARAMS = frozendict()
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'to_restore': None, 'load_param_dict': None})
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
@@ -87,16 +92,16 @@ DEFAULT_SAVE_PARAMS = frozendict({'save_metrics_freq': 100,
 DEFAULT_PARAMS = frozendict({
     'dont_run': False,
     'skip_check': False,
-    'model_params': {},
-    'train_params': {},
-    'validation_params': {},
+    'model_params': frozendict(),
+    'train_params': frozendict(),
+    'validation_params': frozendict(),
     'log_device_placement': False,
     'inter_op_parallelism_threads': 40,
-    'save_params': dict(DEFAULT_SAVE_PARAMS),
-    'load_params': dict(DEFAULT_LOAD_PARAMS),
-    'loss_params': dict(DEFAULT_LOSS_PARAMS),
-    'optimizer_params': dict(DEFAULT_OPTIMIZER_PARAMS),
-    'learning_rate_params': dict(DEFAULT_LEARNING_RATE_PARAMS),
+    'save_params': frozendict(DEFAULT_SAVE_PARAMS),
+    'load_params': frozendict(DEFAULT_LOAD_PARAMS),
+    'loss_params': frozendict(DEFAULT_LOSS_PARAMS),
+    'optimizer_params': frozendict(DEFAULT_OPTIMIZER_PARAMS),
+    'learning_rate_params': frozendict(DEFAULT_LEARNING_RATE_PARAMS),
 })
 
 
@@ -180,6 +185,15 @@ class DBInterface(object):
                         Whether to restore from saved model
                     - load_query (dict)
                         mongodb query describing how to load from loading database
+                    - from_ckpt (string)
+                        Path to load from a TensorFlow checkpoint (instead of from the db)
+                    - to_restore (list of strings or a regex/callable which returns strings)
+                        Specifies which variables should be loaded from the checkpoint.
+                        Any variables not specified here will be reinitialized.
+                    - load_param_dict (dict)
+                        A dictionary whose keys are the names of the variables that are to be loaded
+                        from the checkpoint, and the values are the names of the variables of the model
+                        that you want to restore with the value of the corresponding checkpoint variable.
             - sess (tesorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
@@ -223,14 +237,13 @@ class DBInterface(object):
         self.sameloc = all([getattr(self, _k) == getattr(
             self, 'load_' + _k) for _k in location_variables])
         if 'query' in load_params and not load_params['query'] is None and 'exp_id' in load_params['query']:
-            self.sameloc = self.sameloc & (
-                load_params['query']['exp_id'] == self.exp_id)
+            self.sameloc = self.sameloc & (load_params['query']['exp_id'] == self.exp_id)
 
         for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq',
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
-        for _k in ['do_restore']:
+        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -241,20 +254,7 @@ class DBInterface(object):
         self.conn.server_info()
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
 
-        if 'port_rec' in save_params:
-            tmp_host = save_params.get('host_rec', self.host)
-            tmp_port = save_params['port_rec']
-
-            self.conn_rec = pymongo.MongoClient(host=tmp_host, port=tmp_port)
-            self.conn_rec.server_info()
-            self.collfs_rec = gridfs.GridFS(
-                self.conn_rec[self.dbname], self.collname)
-        else:
-            self.conn_rec = None
-            self.collfs_rec = None
-
-        recent_name = '_'.join(
-            [self.dbname, self.collname, self.exp_id, '__RECENT'])
+        recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
 
         self.load_data = None
@@ -316,67 +316,167 @@ class DBInterface(object):
                                      collfs=self.load_collfs,
                                      collfs_recent=self.load_collfs_recent)
             if load is None:
-                raise Exception(
-                    'You specified load parameters but no record was found with the given spec.')
+                raise Exception('You specified load parameters but no '
+                                'record was found with the given spec.')
         self.load_data = load
 
     def initialize(self, no_scratch=False):
         """Fetch record then uses tf's saver.restore."""
-        # fetch record from database and get the filename info from record
-        tf_saver = self.tf_saver
         if self.do_restore:
-            if self.load_data is None:
-                self.load_rec()
-            if self.load_data is not None:
-                rec, cache_filename = self.load_data
-                # get variables to restore
-                if self.var_list is None:
-                    restore_vars = self.get_restore_vars(cache_filename)
-                    log.info('Restored Vars:\n' + str([restore_var.name for restore_var in restore_vars]))
-                else:
-                    restore_vars = self.var_list
-                    log.info('Restored Vars:\n' + str([restore_var for restore_var in restore_vars]))
-                tf_saver_restore = tf.train.Saver(restore_vars)
 
-                # tensorflow restore
-                log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
-                tf_saver_restore.restore(self.sess, cache_filename)
+            # First, determine which checkpoint to use.
+            if self.from_ckpt is not None:
+                # Use a cached checkpoint file.
+                ckpt_filename = self.from_ckpt
+                log.info('Restoring variables from checkpoint %s ...' % ckpt_filename)
+            else:
+                # Otherwise, use a database checkpoint.
+                self.load_rec() if self.load_data is None else None
+                if self.load_data is not None:
+                    rec, ckpt_filename = self.load_data
+                    log.info('Restoring variables from record %s (step %d)...' %
+                             (str(rec['_id']), rec['step']))
+                else:
+                    # No db checkpoint to load.
+                    ckpt_filename = None
+
+            if ckpt_filename is not None:
+
+                all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
+                self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
+
+                # Next, determine which vars should be restored from the specified checkpoint.
+                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
+                restore_stripped = strip_prefix(self.params['model_params']['prefix'], list(restore_vars.values()))
+                restore_names =  [name for name, var in restore_stripped.items()]
+                # Actually load the vars.
+                log.info('Restored Vars:\n' + str(restore_names))
+                tf_saver_restore = tf.train.Saver(restore_vars)
+                tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
-                if self.var_list is None:
-                    all_variables = tf.global_variables() + tf.local_variables()  # get list of all variables
-                    unrestored_vars = [var for var in all_variables
-                                       if var not in restore_vars]  # compute list of variables not restored
-                    self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
-                    assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
-        if (not self.do_restore or self.load_data is None) and not no_scratch:
+
+                # Reinitialize all other, unrestored vars.
+                unrestored_vars = [var for name, var in self.all_vars.items() if name not in restore_names]
+                unrestored_var_names = [name for name, var in self.all_vars.items() if name not in restore_names]
+                log.info('Unrestored Vars:\n' + str(unrestored_var_names))
+                self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
+                assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
+                    self.sess.run(tf.report_uninitialized_variables()))
+
+        if not self.do_restore or (self.load_data is None and self.from_ckpt is None):
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
-            log.info('Model variables initialized from scratch.')
 
-    def get_restore_vars(self, save_file):
-        """Create list of variables to restore from save_file.
+    def get_restore_vars(self, save_file, all_vars=None):
+        """Create the `var_list` init argument to tf.Saver from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
         name and shape of variables saved in the checkpoint file, and returns these
         as a list of variables to restore.
 
+        To support multi-model training, a model prefix is prepended to all
+        tf global_variable names, although this prefix is stripped from
+        all variables before they are saved to a checkpoint. Thus,
+
+
         Args:
-            save_file: path of tf.train.Saver checkpoint
+            save_file: path of tf.train.Saver checkpoint.
+
+        Returns:
+            dict: checkpoint variables.
+
         """
         reader = tf.train.NewCheckpointReader(save_file)
-        saved_shapes = reader.get_variable_to_shape_map()
-        log.info('Saved Vars:\n' + str(saved_shapes.keys()))
-        var_names = sorted([(var.name.split(':')[0], var) for var in tf.global_variables()
-                            if var.name.split(':')[0] in saved_shapes])
-        restore_vars = []
-        for saved_var_name, var in var_names:
-            curr_var = var
-            var_shape = curr_var.get_shape().as_list()
-            if var_shape == saved_shapes[saved_var_name]:
-                restore_vars.append(curr_var)
-        return restore_vars
+        var_shapes = reader.get_variable_to_shape_map()
+        log.info('Saved Vars:\n' + str(var_shapes.keys()))
+
+        var_shapes = {  # Strip the prefix off saved var names.
+            strip_prefix_from_name(self.params['model_params']['prefix'], name): shape
+            for name, shape in var_shapes.items()}
+
+        # Map old vars from checkpoint to new vars via load_param_dict.
+        mapped_var_shapes = self.remap_var_list(var_shapes)
+        log.info('Saved shapes:\n' + str(mapped_var_shapes))
+
+        if all_vars is None:
+            all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
+            all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
+
+        # Specify which vars are to be restored vs. reinitialized.
+        if self.load_param_dict is None:
+            restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        else:
+            # associate checkpoint names with actual variables
+            load_var_dict = {}
+            for ckpt_var_name, curr_var_name in self.load_param_dict.items():
+                for curr_name, curr_var in all_vars.items():
+                    if curr_name == curr_var_name:
+                        load_var_dict[ckpt_var_name] = curr_var
+                        break
+
+            restore_vars = load_var_dict
+
+        restore_vars = self.filter_var_list(restore_vars)
+
+        # Ensure the vars to restored have the correct shape.
+        var_list = {}
+        for name, var in restore_vars.items():
+            var_shape = var.get_shape().as_list()
+            if var_shape == mapped_var_shapes[name]:
+                var_list[name] = var
+        return var_list
+
+    def remap_var_list(self, var_list):
+        """Map old vars in checkpoint to new vars in current session.
+
+        Args:
+            var_list (dict): var names mapped to variables (or some related
+            quantity, such as variable shapes).
+
+        Returns:
+            dict: New var names mapped to the corresponding restored var.
+
+        Examples:
+        >>>var_list
+        {'Weights': <tf.Variable>}
+        >>>self.load_param_dict
+        {'Weights': 'Filters'}
+        >>>self.remap_var_list(var_list)
+        {'Filters': <tf.Variable>}
+
+        """
+        if self.load_param_dict is None:
+            log.info('No variable mapping specified.')
+            return var_list
+        for old_name, new_name in self.load_param_dict.items():
+            for name in var_list:
+                if old_name == name:
+                    var_list[old_name] = var_list.pop(old_name)
+                    break
+        return var_list
+
+    def filter_var_list(self, var_list):
+        """Filter checkpoint vars for those to be restored.
+
+        Args:
+            checkpoint_vars (list): Vars that can be restored from checkpoint.
+            to_restore (list[str] or regex, optional): Selects vars to restore.
+
+        Returns:
+            list: Variables to be restored from checkpoint.
+
+        """
+        if not self.to_restore:
+            return var_list
+        elif isinstance(self.to_restore, re._pattern_type):
+            return {name: var for name, var in var_list.items()
+                    if self.to_restore.match(name)}
+        elif isinstance(self.to_restore, list):
+            return {name: var for name, var in var_list.items()
+                    if name in self.to_restore}
+        raise TypeError('to_restore ({}) unsupported.'.format(type(self.to_restore)))
 
     @property
     def tf_saver(self):
@@ -417,19 +517,16 @@ class DBInterface(object):
         try:
             count_recent = collfs_recent.find(query).count()
         except Exception as inst:
-            raise er.OperationFailure(inst.args[
-                                      0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
+            raise er.OperationFailure(inst.args[0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
         if count_recent > 0:  # get latest that matches query
-            ckpt_record_recent = coll_recent.find(query,
-                                                  sort=[('uploadDate', -1)])[0]
+            ckpt_record_recent = coll_recent.find(query, sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
             if ckpt_record is None or ckpt_record_recent['uploadDate'] > ckpt_record['uploadDate']:
                 loading_from = coll_recent
                 ckpt_record = ckpt_record_recent
 
         if count + count_recent == 0:  # no matches for query
-            log.warning(
-                'No matching checkpoint for query "{}"'.format(repr(query)))
+            log.warning('No matching checkpoint for query "{}"'.format(repr(query)))
             return
 
         database = loading_from._Collection__database
@@ -441,14 +538,12 @@ class DBInterface(object):
 
             # check if there is no local copy
             if not os.path.isfile(cache_filename):
-                log.info('No cache file at %s, loading from DB' %
-                         cache_filename)
+                log.info('No cache file at %s, loading from DB' % cache_filename)
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
                 load_dest = open(cache_filename, 'rwb+')
-                fsbucket = gridfs.GridFSBucket(database,
-                                               bucket_name=loading_from.name.split('.')[0])
+                fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
                     assert cache_filename.endswith('.tar')
@@ -495,14 +590,15 @@ class DBInterface(object):
         rec['step'] = step
 
         if len(train_res) > 0:
-            # TODO: also include error rate of the train set to monitor
-            # overfitting
+            # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items(
-            ) if k != 'optimizer' and k not in self.save_to_gfs]
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
+                    if k not in ['optimizer', '__grads__'] and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
+            if '__grads__' in train_res:
+                del train_res['__grads__']
             if 'optimizer' in train_res:
                 del train_res['optimizer']
             if 'train_results' not in rec:
@@ -513,10 +609,9 @@ class DBInterface(object):
         if len(valid_res) > 0:
             rec['validation_results'] = valid_res
             message = 'Validation -- '
-            message += ', '.join('{}: {}'.format(k,
-                                                 {_k: _v for _k, _v in v.items(
-                                                 ) if _k not in self.save_to_gfs}
-                                                 ) for k, v in valid_res.items())
+            message += ', '.join('{}: {}'.format(
+                k, {_k: _v for _k, _v in v.items()
+                if _k not in self.save_to_gfs}) for k, v in valid_res.items())
             log.info(message)
 
         if validation_only:
@@ -543,11 +638,9 @@ class DBInterface(object):
                     if 'train_results' not in save_to_gfs:
                         save_to_gfs['train_results'] = {}
                     if _k in train_res:
-                        save_to_gfs['train_results'][_k] = [
-                            r.pop(_k) for r in rec['train_results'] if _k in r]
+                        save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
                         if len(save_to_gfs['train_results'][_k]) == 1:
-                            save_to_gfs['train_results'][
-                                _k] == save_to_gfs['train_results'][_k][0]
+                            save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
                     if 'validation_results' not in save_to_gfs:
                         save_to_gfs['validation_results'] = {}
@@ -555,43 +648,37 @@ class DBInterface(object):
                         if _vk not in save_to_gfs['validation_results']:
                             save_to_gfs['validation_results'][_vk] = {}
                         if _k in valid_res[_vk]:
-                            save_to_gfs['validation_results'][
-                                _vk][_k] = valid_res[_vk].pop(_k)
+                            save_to_gfs['validation_results'][_vk][_k] = valid_res[_vk].pop(_k)
 
             save_rec = sonify(rec, skip=self._skip_check)
             make_mongo_safe(save_rec)
 
-            thread = threading.Thread(target=self._save_thread,
-                                      args=(save_filters_permanent,
-                                            save_filters_tmp,
-                                            save_rec,
-                                            step,
-                                            save_to_gfs))
+            coord = tf.train.Coordinator()
+            thread = CoordinatedThread(coord=coord,
+                                       target=self._save_thread,
+                                       args=(save_filters_permanent,
+                                             save_filters_tmp,
+                                             save_rec,
+                                             step,
+                                             save_to_gfs))
             thread.daemon = True
             thread.start()
             self.checkpoint_thread = thread
+            self.checkpoint_coord = coord
 
     def sync_with_host(self):
         if self.checkpoint_thread is not None:
-            self.checkpoint_thread.join()
-            self.checkpoint_thread = None
+            try:
+                self.checkpoint_coord.join([self.checkpoint_thread])
+            except Exception as error:
+                log.warning('A checkpoint thead raised an exception '
+                            'while saving a checkpoint.')
+                log.error(error)
+                raise
+            else:
+                self.checkpoint_thread = None
 
     def _save_thread(self, save_filters_permanent, save_filters_tmp, save_rec, step, save_to_gfs):
-
-        if self.collfs_rec:
-            save_rec['saved_filters'] = False
-            log.info('Inserting record into record database.')
-            outrec = self.collfs_rec._GridFS__files.insert_one(save_rec)
-
-            if not isinstance(outrec, ObjectId):
-                outrec = outrec.inserted_id
-
-            if save_to_gfs:
-                idval = str(outrec)
-                save_to_gfs_path = idval + "_fileitems"
-                self.collfs_rec.put(cPickle.dumps(
-                    save_to_gfs), filename=save_to_gfs_path, item_for=outrec)
-
         if save_filters_permanent or save_filters_tmp:
             save_rec['saved_filters'] = True
             save_path = os.path.join(self.cache_dir, 'checkpoint')
@@ -753,20 +840,19 @@ def test(sess,
     """
     # Collect args in a dict of lists
     test_args = {
-        'sess': sess,
         'queues': queues,
         'dbinterface': dbinterface,
         'validation_targets': validation_targets,
         'save_intermediate_freq': save_intermediate_freq}
 
     _ttargs = [{key: value[i] for (key, value) in test_args.items()}
-               for i in range(len(sess))]
+               for i in range(len(queues))]
 
     for ttarg in _ttargs:
 
-        ttarg['coord'], ttarg['threads'] = start_queues(ttarg['sess'])
+        ttarg['coord'], ttarg['threads'] = start_queues(sess)
         ttarg['dbinterface'].start_time_step = time.time()
-        validation_summary = run_targets_dict(ttarg['sess'],
+        validation_summary = run_targets_dict(sess,
                                               ttarg['validation_targets'],
                                               save_intermediate_freq=ttarg['save_intermediate_freq'],
                                               dbinterface=ttarg['dbinterface'],
@@ -776,8 +862,7 @@ def test(sess,
     for ttarg in _ttargs:
         ttarg['dbinterface'].sync_with_host()
         res.append(ttarg['dbinterface'].outrecs)
-        stop_queues(ttarg['sess'], ttarg['queues'],
-                    ttarg['coord'], ttarg['threads'])
+        stop_queues(sess, ttarg['queues'], ttarg['coord'], ttarg['threads'])
 
     return validation_summary, res
 
@@ -830,9 +915,7 @@ def test_from_params(load_params,
 
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
-            # with tf.variable_scope(param['model_params']['prefix']) as scope:
 
-            # print(scope.name)
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
             ld = ttarg['dbinterface'].load_data
@@ -865,7 +948,6 @@ def test_from_params(load_params,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize(no_scratch=True)
-            ttarg['sess'] = sess
             ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
 
         # Convert back to a dictionary of lists
@@ -877,9 +959,43 @@ def test_from_params(load_params,
         if dont_run:
             return test_args
 
-        res = test(**test_args)
+        res = test(sess, **test_args)
         sess.close()
         return res
+
+
+def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
+    """Define default minibatch training loop.
+
+    A training loop that performs minibatching with `num_minibatches`
+    minibatches.
+
+    Args:
+        sess (tf.Session): Current tensorflow session.
+        train_targets (dict): Target operations to be evaluated by `sess.run`.
+            By default, `base.train_from_params` inserts the following
+            targets to facilitate minibatching:
+            - `__grads__` (tf.Operation): Accumulates and stores gradients.
+            - `optimizer` (tf.Operation): Applies and zeros gradients.
+        num_minibatches (int): number of minibatches to use.
+        **loop_params (mapping): additional, user-defined kwargs to
+            be used in the training loop.
+
+    Returns:
+        dict: A dictionary containing train targets evaluated by the session.
+
+    """
+    assert all([required in targets for targets in train_targets
+                for required in ['__grads__', 'optimizer']])
+
+    # Perform minibatching
+    range_len = (int)(num_minibatches)
+    for minibatch in range(range_len - 1):
+        # Accumulate gradient for each minibatch
+        sess.run([target['__grads__'] for target in train_targets])
+
+    # Compute final targets (includes zeroing gradient accumulator variable)
+    return sess.run(train_targets)
 
 
 def train(sess,
@@ -888,12 +1004,12 @@ def train(sess,
           train_loop,
           train_targets,
           global_step,
+          num_minibatches=1,
           num_steps=float('inf'),
           thres_loss=DEFAULT_TRAIN_THRES_LOSS,
           validate_first=True,
           validation_targets=None):
-    """
-    Actually runs the training evaluation loop.
+    """Actually runs the training evaluation loop.
 
     :Args:
         - sess: (tesorflow.Session)
@@ -907,9 +1023,11 @@ def train(sess,
         - train_targets (dict of tensorflow nodes)
             Targets to train. One item in this dict must be "optimizer" or similar
             to make anything happen
+        - num_minibatches (int)
+            How many minibatches to use to before applying gradient update.
         - num_steps (int)
             How many steps to train to before quitting
-        - valid_targets (dict of tensorflow objects, default: None)
+        - validation_targets (dict of tensorflow objects, default: None)
             Objects on which validation will be computed
         - thres_loss (float, default: 100)
             If loss exceeds this during training, HiLossError is thrown
@@ -917,7 +1035,6 @@ def train(sess,
     """
     # Collect args in a dict of lists
     train_args = {
-        'sess': sess,
         'queues': queues,
         'num_steps': num_steps,
         'thres_loss': thres_loss,
@@ -926,6 +1043,7 @@ def train(sess,
         'dbinterface': dbinterface,
         'train_targets': train_targets,
         'validate_first': validate_first,
+        'num_minibatches': num_minibatches,
         'validation_targets': validation_targets}
 
     # Convert to a list of dicts
@@ -933,7 +1051,7 @@ def train(sess,
               for i in range(len(train_targets))]
 
     num_steps = [t['num_steps'] for t in trargs]
-    steps = [t['global_step'].eval(session=t['sess']) for t in trargs]
+    steps = [t['global_step'].eval(session=sess) for t in trargs]
 
     # Start queues and initial validation
     for (step, trarg) in zip(steps, trargs):
@@ -944,32 +1062,27 @@ def train(sess,
             return
 
         log.info('Training beginning ...')
-        trarg['coord'], trarg['threads'] = start_queues(trarg['sess'])
+        trarg['coord'], trarg['threads'] = start_queues(sess)
 
         if step == 0:
             trarg['dbinterface'].start_time_step = time.time()
             if trarg['validate_first']:
-                valid_res = run_targets_dict(trarg['sess'],
+                valid_res = run_targets_dict(sess,
                                              trarg['validation_targets'],
                                              dbinterface=trarg['dbinterface'])
-    sess = train_args['sess'][0]
     train_loop = train_args['train_loop'][0]
     train_targets = train_args['train_targets']
 
     # Run training
     while any(step < num_step for (step, num_step) in zip(steps, num_steps)):
 
-        # Make a single call to sess.run to produce a list of results.
         start_time_step = time.time()
-        if train_loop is not None:
-            train_results = train_loop(sess, train_targets)
-        else:
-            train_results = sess.run(train_targets)
+        train_results = train_loop(sess, train_targets, num_minibatches=trarg['num_minibatches'])
 
         for (step, trarg, train_res) in zip(steps, trargs, train_results):
 
             old_step = step
-            step = trarg['global_step'].eval(session=trarg['sess'])
+            step = trarg['global_step'].eval(session=sess)
 
             if step <= old_step:
                 raise NoChangeError('Your optimizer should have incremented the global step,'
@@ -980,7 +1093,7 @@ def train(sess,
 
             # Validation
             vtargs = trarg['validation_targets'] if step % trarg['dbinterface'].save_valid_freq == 0 else {}
-            valid_res = run_targets_dict(trarg['sess'], vtargs)
+            valid_res = run_targets_dict(sess, vtargs)
 
             # Save
             trarg['dbinterface'].start_time_step = start_time_step
@@ -988,17 +1101,16 @@ def train(sess,
                                       valid_res=valid_res,
                                       validation_only=False)
 
-        steps = [t['global_step'].eval(session=t['sess']) for t in trargs]
+        steps = [t['global_step'].eval(session=sess) for t in trargs]
 
     # Sync and close the session
     res = []
     for trarg in trargs:
-        stop_queues(trarg['sess'], trarg['queues'],
-                    trarg['coord'], trarg['threads'])
+        stop_queues(sess, trarg['queues'], trarg['coord'], trarg['threads'])
         trarg['dbinterface'].sync_with_host()
         res.append(trarg['dbinterface'].outrecs)
 
-    trargs[0]['sess'].close()
+    sess.close()
     return res
 
 
@@ -1199,10 +1311,10 @@ def train_from_params(save_params,
                                                        dtype=tf.int64, trainable=False,
                                                        initializer=tf.constant_initializer(0))
 
-                _, _, param, trarg = get_distributed_model(inputs,
-                                                           param['model_params'],
-                                                           param=param,
-                                                           trarg=trarg)
+                _, _, param, trarg = get_model(inputs,
+                                               param['model_params'],
+                                               param=param,
+                                               trarg=trarg)
 
                 tf.get_variable_scope().reuse_variables()
 
@@ -1231,6 +1343,8 @@ def train_from_params(save_params,
             prefix = param['model_params']['prefix'] + '/'
             all_vars = variables._all_saveable_objects()
             var_list = strip_prefix(prefix, all_vars)
+            for var in var_list:
+                print(var)
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
@@ -1238,8 +1352,7 @@ def train_from_params(save_params,
                                                global_step=trarg['global_step'],
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])
-            trarg['dbinterface'].initialize(no_scratch=True)
-            trarg['sess'] = sess
+            trarg['dbinterface'].initialize()
             trarg['queues'] = queues
 
         # Convert back to a dictionary of lists
@@ -1251,7 +1364,7 @@ def train_from_params(save_params,
         if dont_run:
             return train_args
 
-        return train(**train_args)
+        return train(sess, **train_args)
 
 
 def get_valid_targets_dict(validation_params,
@@ -1283,7 +1396,7 @@ def get_valid_targets_dict(validation_params,
         # scope_name = 'validation/%s' % vtarg
         scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
-            _mp, voutputs = get_distributed_model(vinputs, model_params)
+            _mp, voutputs = get_model(vinputs, model_params)
             check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
@@ -1327,21 +1440,19 @@ def get_validation_target(vinputs, voutputs,
                      'valid_loop': valid_loop,
                      'agg_func': validation_params['agg_func'],
                      'online_agg_func': validation_params['online_agg_func'],
-                     'num_steps': validation_params['num_steps'],
-                     }
+                     'num_steps': validation_params['num_steps']}
     return validation_params, valid_targets
 
 
 def get_data(func, queue_params=None, **data_params):
     data_provider = func(**data_params)
     input_ops = data_provider.init_ops()
-    assert len(input_ops) == data_params[
-        'n_threads'], (len(input_ops), data_params['n_threads'])
+    assert len(input_ops) == data_params['n_threads'], (len(input_ops), data_params['n_threads'])
     assert len(input_ops) > 0, len(input_ops)
     batch_size = data_params['batch_size']
     data_params['func'] = func
     enqueue_ops = []
-    queue = get_queue(input_ops[0], shape_flag = batch_size!=1, **queue_params)
+    queue = get_queue(input_ops[0], shape_flag=batch_size!=1, **queue_params)
     for input_op in input_ops:
         # enqueue_ops.append(queue.enqueue_many(input_op))
         if batch_size == 1:
@@ -1358,18 +1469,24 @@ def get_data(func, queue_params=None, **data_params):
 
 
 def split_input(inputs, num_gpus=1):
-    if num_gpus == 1:
+    if not isinstance(num_gpus, list):
+        n_gpus = num_gpus
+    else:
+        n_gpus = len(num_gpus)
+
+    if n_gpus == 1:
         return [inputs]
 
-    temp_args = {v: tf.split(
-        inputs[v], axis=0, num_or_size_splits=num_gpus) for v in inputs}
+    temp_args = {v: tf.split(inputs[v], axis=0, num_or_size_splits=num_gpus)
+                 for v in inputs}
+
     list_of_args = [{now_arg: temp_args[now_arg][ind]
-                     for now_arg in temp_args} for ind in xrange(num_gpus)]
+                     for now_arg in temp_args} for ind in xrange(n_gpus)]
 
     return list_of_args
 
 
-def get_model(input, func, seed=0, train=False, **model_params):
+def get_model_base(input, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
     outputs, cfg_final = func(inputs=input,
@@ -1379,16 +1496,29 @@ def get_model(input, func, seed=0, train=False, **model_params):
     return model_params, outputs
 
 
-def get_distributed_model(inputs, model_params, param=None, trarg=None):
-    """Return model and any other targets (loss + optimizer) specified."""
+def get_model(inputs, model_params, param=None, trarg=None):
+    """Return model and any other targets (loss + optimizer) specified.
+
+    Args:
+        inputs (tf.Operation): Model inputs provided by a tf.QueueRunner.
+        model_params (dict): Specifies model configuration and must contain:
+            'devices' (list): device specs (e.g. '/gpu:0')
+            'train' (bool): whether getting model for training
+        param (None, optional): Description.
+        trarg (None, optional): Description.
+        inputs ()
+
+    Returns:
+        tuple: Description.
+
+    """
     with tf.variable_scope(tf.get_variable_scope()):
 
         tower_outputs = []
         devices = model_params['devices']
         num_gpus = model_params['num_gpus']
         inputs = split_input(inputs, num_gpus)
-
-        # DEFAULT: Prepare loss and optimizer if training
+        # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
             assert param and trarg is not None
 
@@ -1406,7 +1536,7 @@ def get_distributed_model(inputs, model_params, param=None, trarg=None):
         for device, input in zip(devices, inputs):
             with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
 
-                model_params, output = get_model(input, **model_params)
+                model_params, output = get_model_base(input, **model_params)
                 tower_outputs.append(output)
 
                 tf.get_variable_scope().reuse_variables()
@@ -1423,12 +1553,10 @@ def get_distributed_model(inputs, model_params, param=None, trarg=None):
                     tower_losses.append(loss)
                     tower_grads.append(grad)
 
-    # with tf.variable_scope(tf.get_variable_scope()):
+    # Gather and aggregate outputs on the host (CPU).
+    output = aggregate_outputs(tower_outputs)
 
-    # Gather outputs on the host (CPU)
-    output = tf.concat(tower_outputs, axis=0)
-
-    # DEFAULT: Accumulate and average gradients on the host (CPU)
+    # DEFAULT: Accumulate and average gradients on the host (CPU).
     if model_params['train']:
 
         if param['train_params'].get('targets') is not None:
@@ -1437,12 +1565,21 @@ def get_distributed_model(inputs, model_params, param=None, trarg=None):
             ttarg = ttargs_func(input, output, **ttargs)
             trarg['train_targets'].update(ttarg)
 
+        # Aggregate loss.
         loss = tf.reduce_mean(tf.stack(tower_losses))
-        average_grads = average_gradients(tower_grads)
-        optimizer = optimizer_base.apply_gradients(average_grads,
-                                                   trarg['global_step'])
+
+        # Aggregate and accumulate gradients.
+        minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
+        grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+
+        # Apply accumulated gradients.
+        optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
+
+        # Prepare train_targets
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
+        if '__grads__' not in trarg['train_targets']:
+            trarg['train_targets']['__grads__'] = grads
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
         if 'learning_rate' not in trarg['train_targets']:
@@ -1505,23 +1642,6 @@ def get_optimizer_base(learning_rate,
     return optimizer_params, optimizer_base
 
 
-def average_gradients(tower_grads):
-    average_grads = []
-    for grads_and_vars in zip(*tower_grads):
-        # print(grads_and_vars)
-        grads = []
-        for g, _ in grads_and_vars:
-            # print(g.get_shape().as_list(), g)
-            grads.append(tf.expand_dims(g, axis=0))
-        grad = tf.concat(grads, axis=0)
-        grad = tf.reduce_mean(grad, axis=0)
-        # all variables are the same so we just use the first gpu variables
-        var = grads_and_vars[0][1]
-        grad_and_var = (grad, var)
-        average_grads.append(grad_and_var)
-    return average_grads
-
-
 def get_params():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--params', type=json.loads, default=None)
@@ -1556,6 +1676,12 @@ def parse_params(mode,
     all *_params must be the same and reflect the number of distinct models
     to be evaluated.
 
+    If an *_params arg does not satisfy the above requirements, `parse_params`
+    attempts to convert to the correct structure and logs any changes made.
+    If it is missing any necessary components, defaults defined at the top of
+    this module are used. If there exists an unresovlable conflict, an error
+    is raised, and the user will be forced to resolve it before continuing.
+
     """
     model_params = [model_params] if not isinstance(model_params,
                                                     list) else model_params
@@ -1583,7 +1709,10 @@ def parse_params(mode,
     # Ensure params is a dict of lists, using defaults when necessary.
     for name, param_list in params.items():
         if not param_list and not isinstance(param_list, bool):
-            param_list = DEFAULT_PARAMS[name]
+            if isinstance(DEFAULT_PARAMS[name], frozendict):
+                param_list = dict(DEFAULT_PARAMS[name])
+            else:
+                param_list = DEFAULT_PARAMS[name]
         if not isinstance(param_list, list):
             param_list = [copy.deepcopy(param_list) for _ in range(num_models)]
         if len(param_list) != num_models and len(param_list) == 1:
@@ -1591,59 +1720,108 @@ def parse_params(mode,
 
         for model_num, param in enumerate(param_list):
 
+            # Parse model_params.
             if name == 'model_params':
                 if 'seed' not in param:
                     param['seed'] = DEFAULT_MODEL_SEED
+                    log.info('No seed specified for model {}... '.format(model_num) +
+                             'Defaulting to seed: {}.'.format(DEFAULT_MODEL_SEED))
                 if 'prefix' not in param:
                     param['prefix'] = 'model_{}'.format(model_num)
+                    log.info('No prefix specified for model {}... '.format(model_num) +
+                             'Defaulting to prefix: {}.'.format(param['prefix']))
                 if 'train' not in param:
                     if mode == 'train':
                         param['train'] = True
                     else:
                         param['train'] = False
 
-                # Parse device specification
+                # Parse device specification.
                 if 'devices' not in param:
                     param['devices'] = [DEVICES.pop(0)]
+                    log.info('No devices specified for model {}... '.format(model_num) +
+                             'Defaulting to gpus: {}.'.format(param['devices']))
                 param['devices'] = format_devices(param['devices'])
 
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
-                assert param['num_gpus'] == len(param['devices'])
+                
+                if not isinstance(param['num_gpus'], list):
+                    assert param['num_gpus'] == len(param['devices']), (
+                       'num_gpus does not match the number of gpus specified in devices.')
+                else:
+                    assert len(param['num_gpus']) == len(param['devices']), (
+                       'num_gpus does not match the number of gpus specified in devices.')
 
+            # Parse train_params.
             if name == 'train_params':
                 if 'num_steps' not in param:
                     param['num_steps'] = DEFAULT_TRAIN_NUM_STEPS
+                    log.info('num_steps not specified for model {}... '.format(model_num) +
+                             'Defaulting num_steps to: {}.'.format(DEFAULT_TRAIN_NUM_STEPS))
                 if 'thres_loss' not in param:
                     param['thres_loss'] = DEFAULT_TRAIN_THRES_LOSS
+                    log.info('thres_loss not specified for model {}... '.format(model_num) +
+                             'Defaulting thres_loss to: {}.'.format(DEFAULT_TRAIN_THRES_LOSS))
                 if 'train_loop' not in param:
-                    param['train_loop'] = {'func': None}
+                    param['train_loop'] = {'func': train_loop}
+                    log.info('train_loop not specified for model {}... '.format(model_num) +
+                             'Using default training loop.')
                 if 'validate_first' not in param:
                     param['validate_first'] = True
+                    log.info('validate_fist not specified for model {}... '.format(model_num) +
+                             'Defaulting validate_first to: {}.'.format(param['validate_first']))
+
+                # Parse training data params (minibatching).
+                if 'minibatch_size' not in param:
+                    param['num_minibatches'] = 1
+                    param['minibatch_size'] = param['data_params']['batch_size']
+                    log.info('minibatch_size not specified for training data_params... ' +
+                             'Defaulting minibatch_size to: {} (identical to the batch size).'
+                             .format(param['data_params']['batch_size']))
+                else:
+                    batch_size = param['data_params']['batch_size']
+                    minibatch_size = param['minibatch_size']
+                    assert minibatch_size <= batch_size, (
+                           'Minibatch size cannot be larger than batch size.')
+
+                    num_minibatches = batch_size / float(minibatch_size)
+                    if num_minibatches % 1 != 0:
+                        num_minibatches = round(num_minibatches)
+                        minibatch_size = batch_size / num_minibatches
+                        log.warning('Minibatch size ({}) does not divide batch size ({}) evenly...'
+                                    .format(minibatch_size, batch_size))
+                        log.info('Rounding minibatch size to closest factor of batch size: {}'
+                                 .format(minibatch_size))
+                    param['minibatch_size'] = minibatch_size
+                    param['num_minibatches'] = num_minibatches
+                    param['queue_params']['batch_size'] = minibatch_size
 
         params[name] = param_list
 
         list_lens.append(len(param_list))
-        assert isinstance(
-            param_list, list), '{} should also be a list'.format(name)
+        assert isinstance(param_list, list), '{} should also be a list'.format(name)
         assert len(param_list) == num_models, '{} should have length'.format(num_models)
-    assert len(np.unique(list_lens)
-               ) == 1, 'All param lists should have be same length!'
+    assert len(np.unique(list_lens)) == 1, 'All param lists should have be same length!'
 
     # Append the model_prefix to non-unique exp_ids.
     for key in ['save_params', 'load_params']:
         unique_exp_ids = set(s.get('exp_id') for s in params[key])
         if None not in unique_exp_ids:
             if len(unique_exp_ids) == 1 and num_models != 1:
+                log.warning('Non-unique exp_ids detected in {} '.format(key) +
+                            'with multiple models.'.format(key))
                 for i, (p, mp) in enumerate(zip(params[key],
                                                 params['model_params'])):
                     p.update({'exp_id': p.get('exp_id') + '_' + mp['prefix']})
+                    log.info('Appending \'_{} to the exp_id of model number {}.'.
+                             format(mp['prefix'], i))
+                    log.info('New exp_id is: {}'.format(p.get('exp_id')))
 
             assert len(set(s['exp_id'] for s in params[key])) == num_models
 
-    # Prepare run_args to be passed to `base.(train|test)(**run_args)`.
+# Prepare run_args to be passed to `base.(train|test)(**run_args)`.
     run_args = {
-        'sess': num_models * [None],
         'queues': num_models * [None],
         'dbinterface': num_models * [None],
         'validation_targets': [dict() for _ in range(num_models)]}
@@ -1658,7 +1836,8 @@ def parse_params(mode,
             'num_steps': [p['num_steps'] for p in params['train_params']],
             'thres_loss': [p['thres_loss'] for p in params['train_params']],
             'train_loop': [p['train_loop']['func'] for p in params['train_params']],
-            'validate_first': [p['validate_first'] for p in params['train_params']]})
+            'validate_first': [p['validate_first'] for p in params['train_params']],
+            'num_minibatches': [p['num_minibatches'] for p in params['train_params']]})
 
     return params, run_args
 

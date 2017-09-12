@@ -52,8 +52,22 @@ testcol2_dist_multi = 'testcol2_dist_multi'
 
 
 def run_all_tests():
-    """Run all tests."""
+    """Run all tests.
 
+    This function drops all databases associated/created by the tests in the
+    module before running them.
+
+    TODO: The order in which these tests are run matters. For example, you must
+    run a training test before its corresponding test/validation test can be
+    run successfully.
+
+    TODO: The number of times a certain test is run will also affect its
+    outcome (e.g. some of the validation tests, which expect a certain number
+    of entries in the database).
+
+    TODO: Use unittests module and testCases to perform setUp and tearDown.
+
+    """
     remove_dbs()
     run_training_tests()
     run_custom_training_tests()
@@ -122,13 +136,6 @@ def test_training():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    # delete old collection if it exists
-    # conn[testdbname][testcol + '.files'].drop()
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-
     # set up the parameters
     params = {}
     params['model_params'] = {'func': model.mnist_tfutils}
@@ -159,7 +166,7 @@ def test_training():
                                                               'n_threads': 4},
                                               'queue_params': {'queue_type': 'fifo',
                                                                'batch_size': 100},
-                                              'num_steps': 100,
+                                              'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
     params['skip_check'] = True
 
@@ -169,9 +176,6 @@ def test_training():
     DEBUG = OrderedDict()
 
     # test if results are as expected
-
-    DEBUG['count0'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
-    DEBUG['distinct_filters0'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
 
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 26
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step') == [0, 200, 400]
@@ -190,10 +194,6 @@ def test_training():
                                                       'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
     assert conn['tfutils-test']['testcol.files'].distinct('exp_id') == ['training0']
 
-    DEBUG['count1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
-    DEBUG['distinct_filters1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
-    DEBUG['distinct_exp_id'] = conn['tfutils-test']['testcol.files'].distinct('exp_id')
-
     r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 1000})[0]
 
     asserts_for_record(r, params, train=True)
@@ -206,10 +206,6 @@ def test_training():
     base.train_from_params(**params)
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training1',
                                                       'saved_filters': True}).distinct('step') == [1200, 1400]
-    DEBUG['distinct_filters2'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training1', 'saved_filters': True}).distinct('step')
-    print(DEBUG)
-
-    return DEBUG
 
 
 def test_distributed_training():
@@ -224,13 +220,6 @@ def test_distributed_training():
     testcol = testcol_dist
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # delete old collection if it exists
-    # conn[testdbname][testcol + '.files'].drop()
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -292,12 +281,7 @@ def test_distributed_training():
     # actually run the training
     base.train_from_params(**params)
 
-    DEBUG = OrderedDict()
-
     # test if results are as expected
-
-    DEBUG['count0'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
-    DEBUG['distinct_filters0'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
 
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count() == 26
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step') == [0, 200, 400]
@@ -317,10 +301,6 @@ def test_distributed_training():
                                                       'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
     assert conn[testdbname][testcol + '.files'].distinct('exp_id') == ['training0']
 
-    DEBUG['count1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0'}).count()
-    DEBUG['distinct_filters1'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'saved_filters': True}).distinct('step')
-    DEBUG['distinct_exp_id'] = conn[testdbname][testcol + '.files'].distinct('exp_id')
-
     r = conn[testdbname][testcol + '.files'].find({'exp_id': 'training0', 'step': 1000})[0]
     asserts_for_record(r, params, train=True)
 
@@ -331,10 +311,6 @@ def test_distributed_training():
     base.train_from_params(**params)
     assert conn[testdbname][testcol + '.files'].find({'exp_id': 'training1',
                                                       'saved_filters': True}).distinct('step') == [1200, 1400]
-    DEBUG['distinct_filters2'] = conn[testdbname][testcol + '.files'].find({'exp_id': 'training1', 'saved_filters': True}).distinct('step')
-    print(DEBUG)
-
-    return DEBUG
 
 
 def test_multimodel_training():
@@ -349,13 +325,6 @@ def test_multimodel_training():
     testcol = testcol_multi
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # delete old collection if it exists
-    # conn[testdbname][testcol + '.files'].drop()
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -420,8 +389,6 @@ def test_multimodel_training():
     # actually run the training
     base.train_from_params(**params)
 
-    DEBUG = OrderedDict()
-
     # test if results are as expected
     for i in range(num_models):
         exp_id = 'training0_model_{}'.format(i)
@@ -431,9 +398,6 @@ def test_multimodel_training():
         asserts_for_record(r, params, train=True)
         r = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'step': 20})[0]
         asserts_for_record(r, params, train=True)
-
-        DEBUG['count0_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id}).count()
-        DEBUG['distinct_filters0_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step')
 
     # run another 500 steps of training on the same experiment id.
     params['train_params']['num_steps'] = 1000
@@ -446,10 +410,6 @@ def test_multimodel_training():
         assert conn[testdbname][testcol + '.files'].find({'exp_id': exp_id,
                                                           'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
         assert set(conn[testdbname][testcol + '.files'].distinct('exp_id')) == set('training0_model_{}'.format(i) for i in range(num_models))
-
-        DEBUG['count1_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id}).count()
-        DEBUG['distinct_filters1_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step')
-        DEBUG['distinct_exp_id'] = conn[testdbname][testcol + '.files'].distinct('exp_id')
 
         r = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'step': 1000})[0]
         asserts_for_record(r, params, train=True)
@@ -464,10 +424,6 @@ def test_multimodel_training():
     for i in range(num_models):
         exp_id = 'training1_model_{}'.format(i)
         assert conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step') == [1200, 1400]
-        DEBUG['distinct_filters2_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step')
-
-    print(DEBUG)
-    return DEBUG
 
 
 def test_distributed_multimodel_training():
@@ -482,13 +438,6 @@ def test_distributed_multimodel_training():
     testcol = testcol_dist_multi
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # delete old collection if it exists
-    # conn[testdbname][testcol + '.files'].drop()
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -555,8 +504,6 @@ def test_distributed_multimodel_training():
     # actually run the training
     base.train_from_params(**params)
 
-    DEBUG = OrderedDict()
-
     # test if results are as expected
     for i in range(num_models):
         exp_id = 'training0_model_{}'.format(i)
@@ -566,9 +513,6 @@ def test_distributed_multimodel_training():
         asserts_for_record(r, params, train=True)
         r = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'step': 20})[0]
         asserts_for_record(r, params, train=True)
-
-        DEBUG['count0_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id}).count()
-        DEBUG['distinct_filters0_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step')
 
     # run another 500 steps of training on the same experiment id.
     params['train_params']['num_steps'] = 1000
@@ -581,10 +525,6 @@ def test_distributed_multimodel_training():
         assert conn[testdbname][testcol + '.files'].find({'exp_id': exp_id,
                                                           'saved_filters': True}).distinct('step') == [0, 200, 400, 600, 800, 1000]
         assert set(conn[testdbname][testcol + '.files'].distinct('exp_id')) == set('training0_model_{}'.format(i) for i in range(num_models))
-
-        DEBUG['count1_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id}).count()
-        DEBUG['distinct_filters1_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step')
-        DEBUG['distinct_exp_id'] = conn[testdbname][testcol + '.files'].distinct('exp_id')
 
         r = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'step': 1000})[0]
         asserts_for_record(r, params, train=True)
@@ -599,21 +539,25 @@ def test_distributed_multimodel_training():
     for i in range(num_models):
         exp_id = 'training1_model_{}'.format(i)
         assert conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step') == [1200, 1400]
-        DEBUG['distinct_filters2_model_{}'.format(i)] = conn[testdbname][testcol + '.files'].find({'exp_id': exp_id, 'saved_filters': True}).distinct('step')
-
-    print(DEBUG)
-    return DEBUG
 
 
 def custom_train_loop(sess, train_targets, **loop_params):
-    """Custom training loop."""
-    num_models = len(train_targets)
-    print('CALLING CUSTOM TRAINING LOOP ...')
-    print('{} MODELS DETECTED'.format(num_models))
-    for i, target in enumerate(train_targets):
-        loss = sess.run(target['loss'])
-        print('Model {} has loss {}'.format(i, loss))
-    return sess.run(train_targets)
+    """Define Custom training loop.
+
+    Args:
+        sess (tf.Session): Current tensorflow session.
+        train_targets (list): Description.
+        **loop_params: Optional kwargs needed to perform custom train loop.
+
+    Returns:
+        dict: A dictionary containing train targets evaluated by the session.
+
+    """
+    print('Calling custom training loop...')
+    train_results = sess.run(train_targets)
+    for i, result in enumerate(train_results):
+        print('Model {} has loss {}'.format(i, result['loss']))
+    return train_results
 
 
 def test_custom_training():
@@ -635,10 +579,6 @@ def test_custom_training():
     testcol = testcol_cust
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # delete old collection if it exists
-    # coll = conn[testdbname][testcol + '.files']
-    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -720,10 +660,6 @@ def test_custom_distributed_training():
     conn = pm.MongoClient(host=testhost,
                           port=testport)
 
-    # delete old collection if it exists
-    # coll = conn[testdbname][testcol + '.files']
-    # coll.drop()
-
     # set up the parameters
     params = {}
     model_params = {'func': model.mnist_tfutils,
@@ -795,10 +731,6 @@ def test_custom_multimodel_training():
     testcol = testcol_cust_multi
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # delete old collection if it exists
-    # coll = conn[testdbname][testcol + '.files']
-    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -886,12 +818,6 @@ def test_custom_distributed_multimodel_training():
     testcol = testcol_cust_dist_multi
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # conn.drop_database(testdbname)
-    # nm = testdbname + '_' + testcol + '_training0'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
-    # nm = testdbname + '_' + testcol + '_training1'
-    # [conn.drop_database(x) for x in conn.database_names() if x.startswith(nm) and '___RECENT' in x]
 
     # set up the parameters
     params = {}
@@ -1043,9 +969,6 @@ def test_distributed_training_save():
     testcol_2 = testcol2_dist
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-    # delete old collection if it exists
-    # coll = conn[testdbname][testcol_2 + '.files']
-    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -1103,9 +1026,6 @@ def test_multimodel_training_save():
     testcol_2 = testcol2_multi
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-    # delete old collection if it exists
-    # coll = conn[testdbname][testcol_2 + '.files']
-    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -1169,10 +1089,6 @@ def test_distributed_multimodel_training_save():
     testcol_2 = testcol2_dist_multi
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # delete old collection if it exists
-    # coll = conn[testdbname][testcol_2 + '.files']
-    # coll.drop()
 
     # set up the parameters
     params = {}
@@ -1334,8 +1250,6 @@ def test_distributed_validation():
 
     conn = pm.MongoClient(host=testhost,
                           port=testport)
-
-    # conn[testdbname][testcol + '.files'].delete_many({'exp_id': 'validation0'})
 
     # actually run the model
     base.test_from_params(**params)
@@ -1501,7 +1415,7 @@ def test_distributed_multimodel_validation():
 
 
 def get_extraction_target(inputs, outputs, to_extract, **loss_params):
-    """Example validation target function.
+    """Produce validation target function.
 
     Example validation target function to use to provide targets for extracting features.
     This function also adds a standard "loss" target which you may or not may not want
@@ -1994,14 +1908,12 @@ def asserts_for_record(r, params, train=False):
         assert r['params']['loss_params']['loss_per_case_func']['objname'] == 'sparse_softmax_cross_entropy_with_logits'
         assert r['params']['loss_params']['targets'] == ['labels']
     else:
-        # **THIS IS INCONSISTENT WITH THE FINAL FORM OF MODEL_PARAMS USED DURING TEST_FROM_PARAMS
-        # assert 'train' not in r['params']['model_params']
         assert not r['params']['model_params']['train']
         assert 'train_params' not in r['params']
 
 
 def remove_dbs():
-    # delete old database if it exists
+    """Delete old test related databases if they exist."""
     conn = pm.MongoClient(host=testhost,
                           port=testport)
     print('Removing:')

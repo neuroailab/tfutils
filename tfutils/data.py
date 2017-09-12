@@ -673,8 +673,8 @@ def get_queue(nodes,
               batch_size=256,
               capacity=None,
               min_after_dequeue=None,
-              seed=0,
-              shape_flag = True):
+              shape_flag=True,
+              seed=0):
     """ A generic queue for reading data
         Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/
     """
