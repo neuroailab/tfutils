@@ -13,10 +13,11 @@ import unittest
 import tensorflow as tf
 
 sys.path.insert(0, "..")
-import base
-import data
-import model
-import optimizer
+
+import tfutils.base as base
+import tfutils.data as data
+import tfutils.model as model
+import tfutils.utils as utils
 
 
 # def logPoint(context):

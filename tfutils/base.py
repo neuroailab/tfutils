@@ -12,7 +12,6 @@ import copy
 import logging
 import tarfile
 import cPickle
-import threading
 from collections import OrderedDict
 
 import tqdm
@@ -25,11 +24,11 @@ from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.ops import variables
 import numpy as np
 
-import utils
-from data import get_queue
-from optimizer import ClipOptimizer
-from error import HiLossError, NoGlobalStepError, NoChangeError
-from utils import (sonify,
+import tfutils.utils as utils
+from tfutils.data import get_queue
+from tfutils.optimizer import ClipOptimizer
+from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
+from tfutils.utils import (sonify,
                    frozendict,
                    strip_prefix,
                    format_devices,
@@ -825,18 +824,18 @@ def test(sess,
     """
     Actually runs the testing evaluation loop.
 
-    :Args:
-        - sess: (tensorflow.Session)
-            Object in which to run calculations
-        - queues (list of CustomQueue)
-            Objects containing asynchronously queued data iterators
-        - dbinterface (DBInterface object)
-            Saver through which to save results
-        - valid_targets (dict of tensorflow objects)
-            Objects on which validation will be computed
-        - save_intermediate_freq (None or int)
-            How frequently to save intermediate results captured during test
+    Args:
+        sess (tensorflow.Session): Object in which to run calculations
+        queues (list of CustomQueue): Objects containing asynchronously queued data iterators
+        dbinterface (DBInterface object): Saver through which to save results
+        validation_targets (dict of tensorflow objects): Objects on which validation will be computed.
+        save_intermediate_freq (None or int): How frequently to save intermediate results captured during test
             None means no intermediate saving will be saved
+
+    Returns:
+        dict: Validation summary.
+        dict: Results.
+
     """
     # Collect args in a dict of lists
     test_args = {
@@ -967,16 +966,16 @@ def test_from_params(load_params,
 def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
     """Define default minibatch training loop.
 
-    A training loop that performs minibatching with `num_minibatches`
+    A training loop that performs minibatching with ``num_minibatches``
     minibatches.
 
     Args:
         sess (tf.Session): Current tensorflow session.
-        train_targets (dict): Target operations to be evaluated by `sess.run`.
-            By default, `base.train_from_params` inserts the following
+        train_targets (dict): Target operations to be evaluated by ``sess.run``.
+            By default, ``base.train_from_params`` inserts the following
             targets to facilitate minibatching:
-            - `__grads__` (tf.Operation): Accumulates and stores gradients.
-            - `optimizer` (tf.Operation): Applies and zeros gradients.
+                * ``__grads__`` (tf.Operation): Accumulates and stores gradients.
+                * ``optimizer`` (tf.Operation): Applies and zeros gradients.
         num_minibatches (int): number of minibatches to use.
         **loop_params (mapping): additional, user-defined kwargs to
             be used in the training loop.
@@ -1130,148 +1129,139 @@ def train_from_params(save_params,
     """
     Main training interface function.
 
-    :Args:
-        - saver_params (dict)
-            Dictionary of arguments for creating saver object (see Saver class)
+    Args:
+        save_params (dict): Dictionary of arguments for creating saver object (see Saver class).
+        model_params (dict): Containing function that produces model and arguments to that function.
+            model_params['func'] is the function producing the model.
+                The function's signature is:
+                Args:
+                    inputs: data object
+                    - `train` -- boolean if training is happening
+                    - `seed` -- seed for use in random generation of final config
+                Returns:
+                    (tf.Operations): train output tensorflow nodes
+                    - final configuration used in model
+            - Remaining items in model_params are dictionary of arguments massed to func.
 
-        - model_params (dict)
-            Containing function that produces model and arguments to that function.
-                - model_params['func'] is the function producing the model.
-                  The function's signature is:
+        train_params (dict): Containing params for data sources and targets in training:
+            - train_params['data'] contains params for the data
+                - train_params['data']['func'] is the function that constructs the data
+                  provider.   This dataprovider must be an instance of a subclass of
+                  tfutils.data.DataProviderBase.   Specifically, it must have a method
+                  called "init_ops" -- see documentation in tfutils/data.py.
+                - remainder of train_params['data'] are kwargs passed to func
+            - train_params['targets'] (optional) contains params for additional train targets
+                - train_params['targets']['func'] is a function that produces
+                  tensorflow nodes as training targets
+                - remainder of train_parms['targets'] are arguments to func
+            - train_params['queue_params'] is an optional dict of
+                  params used to specify creation for the queue, passed to the
+                  Queue.__init__ method.   Default is {}.
+        loss_params (dict): Parameters for to utils.get_loss function for specifying loss
+            - loss_params['targets'] is a string or a list of strings,
+              contain the names of inputs nodes that will be sent into the loss function
+              Must be provided
+            - loss_params['loss_per_case_func'] is the function used to calculate the loss.
+              Must be provided.
+              The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
+            - loss_params['loss_per_case_func_params'] is a dict including  help information about
+              how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
+              Default is {'_outputs': 'logits', '_targets_': 'labels'}
+                - If loss_params['loss_per_case_func_params'] is empty, the parameters for
+                  loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
+                  where 'outputs' is the output of the network, inputs is the input nodes,
+                  and targets is loss_params['targets'].
+                - Key value can have three choices:
+                  - '_outputs': the value of this key will be the name for 'outputs'.
+                  - '_targets_': name for '[inputs[t] for t in targets]'.
+                  - '_target_somename': name for 'inputs[somename]' is somename is inside targets.
+                - Parameters not mentioned by the key values will still be sent to the function as positional parameters.
+            - loss_params['agg_func'] is the aggregate function, default is None
+            - loss_params['loss_func_kwargs']. Keyword parameters sent to loss_params['loss_per_case_func']. Default is None.
+            - loss_params['agg_func_kwargs']. Keyword parameters sent to loss_params['agg_func']. Default is None.
+
+        learning_rate_params (dict): Parameters for specifying learning_rate:
+            - learning_rate_params['func'] is a function producing
+              tensorflow node acting as learning rate.
+              This function must accept argument "global_step".
+            - remainder of learning_rate_params are arguments to func.
+
+        optimizer_params (dict): Parameters for creating optimizer:
+            - optimizer_params['func'] is a function producing a
+              tensorflow optimizer object (like a subclass of tf.train.Optimizer)
+              - Must accept:
+                    "learning_rate" -- the result of the learning_rate_func call
+              - Must return object with a method called "minimize" with
+                the same call signature as tensorflow.train.Optimizer.minimize --- that is:
                     - Must accept:
-                        - "inputs" -- data object
-                        - "train" -- boolean if training is happening
-                        - "seed" -- seed for use in random generation of final config
+                        - "loss" -- result of loss_func call
+                        - "global_step" -- global step used for determine learning rate,
                     - Must return:
-                        - train output tensorflow nodes
-                        - final configuration used in model
-                - Remaining itmes in model_params are dictionary of arguments massed to func.
+                        - tensorflow node which computes gradients and applies
+                          them, and must increment "global_step"
+            - Remainder of optimizer_params (aside form "func") are arguments
+              to the optimizer func
 
-        - train_params (dict)
-            Containing params for data sources and targets in training:
-                - train_params['data'] contains params for the data
-                    - train_params['data']['func'] is the function that constructs the data
-                      provider.   This dataprovider must be an instance of a subclass of
-                      tfutils.data.DataProviderBase.   Specifically, it must have a method
-                      called "init_ops" -- see documentation in tfutils/data.py.
-                    - remainder of train_params['data'] are kwargs passed to func
-                - train_params['targets'] (optional) contains params for additional train targets
-                    - train_params['targets']['func'] is a function that produces
-                      tensorflow nodes as training targets
-                    - remainder of train_parms['targets'] are arguments to func
-                - train_params['queue_params'] is an optional dict of
-                      params used to specify creation for the queue, passed to the
-                      Queue.__init__ method.   Default is {}.
-    :Kwargs:
-        - loss_params (dict):
-            Parameters for to utils.get_loss function for specifying loss
-                - loss_params['targets'] is a string or a list of strings,
-                  contain the names of inputs nodes that will be sent into the loss function
-                  Must be provided
-                - loss_params['loss_per_case_func'] is the function used to calculate the loss.
-                  Must be provided.
-                  The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
-                - loss_params['loss_per_case_func_params'] is a dict including  help information about
-                  how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
-                  Default is {'_outputs': 'logits', '_targets_$all': 'labels'}
-                    - If loss_params['loss_per_case_func_params'] is empty, the parameters for
-                      loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
-                      where 'outputs' is the output of the network, inputs is the input nodes,
-                      and targets is loss_params['targets'].
-                    - Key value can have three choices:
-                      - '_outputs': the value of this key will be the name for 'outputs'.
-                      - '_targets_$all': name for '[inputs[t] for t in targets]'.
-                      - '_target_somename': name for 'inputs[somename]' is somename is inside targets.
-                    - Parameters not mentioned by the key values will still be sent to the function as positional parameters.
-                - loss_params['agg_func'] is the aggregate function, default is None
-                - loss_params['loss_func_kwargs']. Keyword parameters sent to loss_params['loss_per_case_func']. Default is None.
-                - loss_params['agg_func_kwargs']. Keyword parameters sent to loss_params['agg_func']. Default is None.
+        validation_params (dict): Dictionary of validation sources. The structure if this dictionary is:
+            {
+                <validation_target_name_1>: {
+                    'data': {
+                        'func': (callable) data source function for this validation,
+                        <kwarg1>: <value1> for 'func',
+                        ...
+                        },
+                    'targets': {
+                        'func': (callable) returning targets,
+                        <kwarg1>: <value1> for 'func',
+                        ...
+                        }
+                    'queue_params': (optional, dict) params for creating queue for
+                            this validation. NB: if this is NOT specified, queue params
+                            for this validation default to those used in constructing
+                            the training data queue.
+                    'num_steps': (int) number of batches of validation source to compute
+                    'agg_func': (optional, callable) how to aggregate validation results
+                            across batches after computation. Signature is:
+                                - one input argument: the list of validation batch results
+                                - one output: aggregated version
+                            Default is utils.identity_func
+                    'online_agg_func': (optional, callable) how to aggregate validation results
+                            on a per-batch basis. Siganture is:
+                                - three input arguments: (current aggregate, new result, step)
+                                - one output: new aggregated result
+                            One first step, current aggregate passed in is None.
+                            The final result is passed to the "agg_func".
+                            Default is utils.append_and_return
+                },
+                <validation_target_name_2>: ...
+            }
 
-        - learning_rate_params (dict)
-            Parameters for specifying learning_rate:
-                - learning_rate_params['func'] is a function producing
-                  tensorflow node acting as learning rate.
-                  This function must accept argument "global_step".
-                - remainder of learning_rate_params are arguments to func.
+        For each validation_target_name key, the targets are computed and then added to
+        the output dictionary to be computed every so often -- unlike train_targets which
+        are computed on each time step, these are computed on a basic controlled by the
+        valid_save_freq specific in the saver_params.
 
-        - optimizer_params (dict)
-            Parameters for creating optimizer:
-                - optimizer_params['func'] is a function producing a
-                  tensorflow optimizer object (like a subclass of tf.train.Optimizer)
-                  - Must accept:
-                        "learning_rate" -- the result of the learning_rate_func call
-                  - Must return object with a method called "minimize" with
-                    the same call signature as tensorflow.train.Optimizer.minimize --- that is:
-                        - Must accept:
-                            - "loss" -- result of loss_func call
-                            - "global_step" -- global step used for determine learning rate,
-                        - Must return:
-                            - tensorflow node which computes gradients and applies
-                              them, and must increment "global_step"
-                - Remainder of optimizer_params (aside form "func") are arguments
-                  to the optimizer func
-
-        - validation_params (dict)
-            Dictionary of validation sources. The structure if this dictionary is:
-
-                {
-                    <validation_target_name_1>: {
-                        'data': {
-                            'func': (callable) data source function for this validation,
-                            <kwarg1>: <value1> for 'func',
-                            ...
-                            },
-                        'targets': {
-                            'func': (callable) returning targets,
-                            <kwarg1>: <value1> for 'func',
-                            ...
-                            }
-                        'queue_params': (optional, dict) params for creating queue for
-                                this validation. NB: if this is NOT specified, queue params
-                                for this validation default to those used in constructing
-                                the training data queue.
-                        'num_steps': (int) number of batches of validation source to compute
-                        'agg_func': (optional, callable) how to aggregate validation results
-                                across batches after computation. Signature is:
-                                    - one input argument: the list of validation batch results
-                                    - one output: aggregated version
-                                Default is utils.identity_func
-                        'online_agg_func': (optional, callable) how to aggregate validation results
-                                on a per-batch basis. Siganture is:
-                                    - three input arguments: (current aggregate, new result, step)
-                                    - one output: new aggregated result
-                                One first step, current aggregate passed in is None.
-                                The final result is passed to the "agg_func".
-                                Default is utils.append_and_return
-                    },
-                    <validation_target_name_2>: ...
-                }
-
-            For each validation_target_name key, the targets are computed and then added to
-            the output dictionary to be computed every so often -- unlike train_targets which
-            are computed on each time step, these are computed on a basic controlled by the
-            valid_save_freq specific in the saver_params.
-
-        - queue_params (dict, defualt: None)
-            Dictionary of arguments to Queue object (see
+        queue_params (dict, defualt: None): Dictionary of arguments to Queue object (see
             tfutils.data.Queue documentation)
 
-        - thres_loss (float, default: 100)
-            If loss exceeds this during training, HiLossError is thrown
+        thres_loss (float, default: 100): If loss exceeds this during training, HiLossError is thrown
 
-        - num_steps (int or None, default: None)
-            How many total steps of the optimization are run.  If None, train is run until process is cancelled.
+        num_steps (int or None, default: None): How many total steps of the optimization are run.
+            If None, train is run until process is cancelled.
 
-      - load_params (dict)
-            Dictionary of arguments for loading model, if different from saver
-            (see Saver class)
+        load_params (dict): Dictionary of arguments for loading model, if different from saver
+            (see Saver class).
 
-        - log_device_placement (bool, default: False)
-            Whether to log device placement in tensorflow session
+        log_device_placement (bool, default: False): Whether to log device placement in tensorflow session
 
-        - inter_op_parallelism_threads (int, default: 40)
-            Inter op thread pool size (has to be set large enough to avoid deadlock
+        inter_op_parallelism_threads (int, default: 40): Inter op thread pool size (has to be set large enough to avoid deadlock
             when using multiple queues)
+
+    Deleted Parameters:
+        saver_params
+
+    Returns:
+        TYPE: Description.
 
     """
     params, train_args = parse_params('train',
@@ -1676,7 +1666,7 @@ def parse_params(mode,
     all *_params must be the same and reflect the number of distinct models
     to be evaluated.
 
-    If an *_params arg does not satisfy the above requirements, `parse_params`
+    If an *_params arg does not satisfy the above requirements, ``parse_params``
     attempts to convert to the correct structure and logs any changes made.
     If it is missing any necessary components, defaults defined at the top of
     this module are used. If there exists an unresovlable conflict, an error
@@ -1745,7 +1735,7 @@ def parse_params(mode,
 
                 if 'num_gpus' not in param:
                     param['num_gpus'] = len(param['devices'])
-                
+
                 if not isinstance(param['num_gpus'], list):
                     assert param['num_gpus'] == len(param['devices']), (
                        'num_gpus does not match the number of gpus specified in devices.')

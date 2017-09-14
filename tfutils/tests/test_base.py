@@ -16,7 +16,7 @@ import tensorflow as tf
 
 sys.path.insert(0, "..")
 
-import base
+import tfutils.base as base
 import tfutils.data as data
 import tfutils.model as model
 import tfutils.utils as utils

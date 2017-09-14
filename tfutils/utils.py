@@ -270,12 +270,12 @@ def format_devices(devices):
 
     Args:
         devices (list): A list of device strings.
-            If `devices is not a list, it is converted to one. The following
+            If ``devices`` is not a list, it is converted to one. The following
             rules are applied to each element in the list:
 
                 type: (int) -> '/gpu:{}'.format(int)
                 type: (str) -> /gpu:{}'.format(d) where d is first occurence
-                 of a digit
+                of a digit
 
     Returns:
         list: A sorted list of unique and properly formatted device strings.
@@ -335,16 +335,14 @@ def aggregate_outputs(tower_outputs):
     The elements of `tower_outputs` should have identical structure and
     correspond to the outputs of individual model replicas on separate
     devices (GPUs). Model replicate outputs are recursively searched until
-    a tensor `t` satisfying:
+    a tensor ``t`` satisfying:
 
-    ```python
         isinstance(t, tf.Tensor) -> True
-    ```
 
-    is found. Tensor `t` is then concatenated with all of its corresponding
+    is found. Tensor ``t`` is then concatenated with all of its corresponding
     replicates along the batch dimension (axis=0).
 
-    If `tower_outputs` is a list of length one, then the element it contains
+    If ``tower_outputs`` is a list of length one, then the element it contains
     is returned.
 
     Args:
