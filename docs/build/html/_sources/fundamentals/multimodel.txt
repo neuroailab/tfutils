@@ -1,5 +1,5 @@
 Multi-Model Training
-------------------
+--------------------
 
 .. code-block:: python
 

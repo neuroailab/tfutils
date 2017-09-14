@@ -33,6 +33,7 @@ already existing virtual environment, see the System-wide Install section.
 Or, if you would prefer to install using pip:
 
 .. code-block:: bash
+
     pip install git+https://github.com/neuroailab/tfutils.git
 
 To activate the virtual environment, type

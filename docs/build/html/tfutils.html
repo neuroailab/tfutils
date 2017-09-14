@@ -106,6 +106,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="fundamentals/multigpu.html">Multi-GPU Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fundamentals/multimodel.html">Multi-Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fundamentals/minibatching.html">Minibatching</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Package Reference</span></p>
 <ul class="current">
@@ -375,18 +376,18 @@ record.</p>
 
 <dl class="function">
 <dt id="tfutils.base.get_validation_target">
-<code class="descclassname">tfutils.base.</code><code class="descname">get_validation_target</code><span class="sig-paren">(</span><em>vinputs</em>, <em>voutputs</em>, <em>default_target_func=&lt;function get_loss_dict&gt;</em>, <em>default_target_params=&lt;frozendict {'loss_per_case_func': &lt;function sparse_softmax_cross_entropy_with_logits at 0x10f9866e0&gt;</em>, <em>'agg_func': &lt;function reduce_mean at 0x10f2918c0&gt;</em>, <em>'targets': ['labels']}&gt;</em>, <em>default_loop_func=None</em>, <em>default_loop_params=&lt;frozendict {}&gt;</em>, <em>agg_func=&lt;function identity_func&gt;</em>, <em>online_agg_func=&lt;function append_and_return&gt;</em>, <em>**validation_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_validation_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_validation_target" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">tfutils.base.</code><code class="descname">get_validation_target</code><span class="sig-paren">(</span><em>vinputs</em>, <em>voutputs</em>, <em>default_target_func=&lt;function get_loss_dict&gt;</em>, <em>default_target_params=&lt;frozendict {'loss_per_case_func': &lt;function sparse_softmax_cross_entropy_with_logits at 0x10f787578&gt;</em>, <em>'agg_func': &lt;function reduce_mean at 0x10f18e758&gt;</em>, <em>'targets': ['labels']}&gt;</em>, <em>default_loop_func=None</em>, <em>default_loop_params=&lt;frozendict {}&gt;</em>, <em>agg_func=&lt;function identity_func&gt;</em>, <em>online_agg_func=&lt;function append_and_return&gt;</em>, <em>**validation_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_validation_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_validation_target" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="function">
 <dt id="tfutils.base.parse_params">
 <code class="descclassname">tfutils.base.</code><code class="descname">parse_params</code><span class="sig-paren">(</span><em>mode</em>, <em>model_params</em>, <em>dont_run=False</em>, <em>skip_check=False</em>, <em>save_params=None</em>, <em>train_params=None</em>, <em>loss_params=None</em>, <em>load_params=None</em>, <em>optimizer_params=None</em>, <em>validation_params=None</em>, <em>learning_rate_params=None</em>, <em>log_device_placement=False</em>, <em>inter_op_parallelism_threads=40</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#parse_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.parse_params" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensure the params dictionary has the correct structure.</p>
-<p>Each <a href="#id1"><span class="problematic" id="id2">*</span></a>_params arg must be a list of dictionaries where the ith element
+<p>Each params arg must be a list of dictionaries where the ith element
 corresponds to parameters of the ith distinct model. Thus, the length of
-all <a href="#id3"><span class="problematic" id="id4">*</span></a>_params must be the same and reflect the number of distinct models
+all params must be the same and reflect the number of distinct models
 to be evaluated.</p>
-<p>If an <a href="#id5"><span class="problematic" id="id6">*</span></a>_params arg does not satisfy the above requirements, <code class="docutils literal"><span class="pre">parse_params</span></code>
+<p>If an params arg does not satisfy the above requirements, <code class="docutils literal"><span class="pre">parse_params</span></code>
 attempts to convert to the correct structure and logs any changes made.
 If it is missing any necessary components, defaults defined at the top of
 this module are used. If there exists an unresovlable conflict, an error
@@ -472,62 +473,21 @@ dict: Results.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Args:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>sess: (tesorflow.Session)</dt>
-<dd><p class="first last">Object in which to run calculations</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>queues (list of Queue)</dt>
-<dd><p class="first last">Objects containing asynchronously queued data iterators</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>dbinterface (DBInterface object)</dt>
-<dd><p class="first last">Saver through which to save results</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>train_loop (callable withs args: sess and train_targets)</dt>
-<dd><p class="first last">Callable that specifies a custom training loop</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>train_targets (dict of tensorflow nodes)</dt>
-<dd><p class="first last">Targets to train. One item in this dict must be &#8220;optimizer&#8221; or similar
-to make anything happen</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>num_minibatches (int)</dt>
-<dd><p class="first last">How many minibatches to use to before applying gradient update.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>num_steps (int)</dt>
-<dd><p class="first last">How many steps to train to before quitting</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>validation_targets (dict of tensorflow objects, default: None)</dt>
-<dd><p class="first last">Objects on which validation will be computed</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>thres_loss (float, default: 100)</dt>
-<dd><p class="first last">If loss exceeds this during training, HiLossError is thrown</p>
-</dd>
-</dl>
-</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>sess</strong> (<em>tesorflow.Session</em>) &#8211; Object in which to run calculations.</li>
+<li><strong>queues</strong> (<em>list of Queue</em>) &#8211; Objects containing asynchronously queued data iterators.</li>
+<li><strong>dbinterface</strong> (<em>DBInterface object</em>) &#8211; Saver through which to save results.</li>
+<li><strong>(callable withs args</strong> (<a class="reference internal" href="#tfutils.base.train_loop" title="tfutils.base.train_loop"><em>train_loop</em></a>) &#8211; sess and train_targets):
+Callable that specifies a custom training loop</li>
+<li><strong>train_targets</strong> (<em>dict of tensorflow nodes</em>) &#8211; Targets to train.
+One item in this dict must be &#8220;optimizer&#8221; or similar
+to make anything happen</li>
+<li><strong>num_minibatches</strong> (<em>int</em>) &#8211; How many minibatches to use to before applying gradient update.</li>
+<li><strong>num_steps</strong> (<em>int</em>) &#8211; How many steps to train to before quitting</li>
+<li><strong>(dict of tensorflow objects, default</strong> (<em>validation_targets</em>) &#8211; None):
+Objects on which validation will be computed</li>
+<li><strong>(float, default</strong> (<em>thres_loss</em>) &#8211; 100):
+If loss exceeds this during training, HiLossError is thrown</li>
 </ul>
 </td>
 </tr>
@@ -547,101 +507,77 @@ to make anything happen</p>
 <li><strong>save_params</strong> (<em>dict</em>) &#8211; Dictionary of arguments for creating saver object (see Saver class).</li>
 <li><strong>model_params</strong> (<em>dict</em>) &#8211; <p>Containing function that produces model and arguments to that function.
 model_params[&#8216;func&#8217;] is the function producing the model.</p>
-<blockquote>
-<div>The function&#8217;s signature is:
-Args:<blockquote>
-<div>inputs: data object
-- <cite>train</cite> &#8211; boolean if training is happening
-- <cite>seed</cite> &#8211; seed for use in random generation of final config</div></blockquote>
-<dl class="docutils">
-<dt>Returns:</dt>
-<dd>(tf.Operations): train output tensorflow nodes
-- final configuration used in model</dd>
-</dl>
-</div></blockquote>
-<ul>
-<li>Remaining items in model_params are dictionary of arguments massed to func.</li>
-</ul>
+<p>The function&#8217;s signature is:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>inputs: data object
+- ``train`` -- boolean if training is happening
+- ``seed`` -- seed for use in random generation of final config
+</pre></div>
+</div>
+<p>Returns:
+(tf.Operations): train output tensorflow nodes
+- final configuration used in model
+- Remaining items in model_params are dictionary of arguments massed to func.</p>
 </li>
-<li><strong>train_params</strong> (<em>dict</em>) &#8211; <p>Containing params for data sources and targets in training:
-- train_params[&#8216;data&#8217;] contains params for the data</p>
-<blockquote>
-<div><ul>
-<li>train_params[&#8216;data&#8217;][&#8216;func&#8217;] is the function that constructs the data
-provider.   This dataprovider must be an instance of a subclass of
-tfutils.data.DataProviderBase.   Specifically, it must have a method
+<li><strong>train_params</strong> (<em>dict</em>) &#8211; <p>Containing params for data sources and targets in training.</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">train_params['data']</span></code> contains params for the data</li>
+<li><code class="docutils literal"><span class="pre">train_params['data']['func']</span></code> is the function that constructs the data
+provider. This dataprovider must be an instance of a subclass of
+tfutils.data.DataProviderBase. Specifically, it must have a method
 called &#8220;init_ops&#8221; &#8211; see documentation in tfutils/data.py.</li>
-<li>remainder of train_params[&#8216;data&#8217;] are kwargs passed to func</li>
-</ul>
-</div></blockquote>
-<ul>
-<li><dl class="first docutils">
-<dt>train_params[&#8216;targets&#8217;] (optional) contains params for additional train targets</dt>
-<dd><ul class="first last">
-<li>train_params[&#8216;targets&#8217;][&#8216;func&#8217;] is a function that produces
+<li>Remainder of <code class="docutils literal"><span class="pre">train_params['data']</span></code> are kwargs passed to func.</li>
+<li><code class="docutils literal"><span class="pre">train_params['targets']</span></code> (optional) contains params for additional train targets</li>
+<li><code class="docutils literal"><span class="pre">train_params['targets']['func']</span></code> is a function that produces
 tensorflow nodes as training targets</li>
-<li>remainder of train_parms[&#8216;targets&#8217;] are arguments to func</li>
-</ul>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>train_params[&#8216;queue_params&#8217;] is an optional dict of</dt>
-<dd>params used to specify creation for the queue, passed to the
-Queue.__init__ method.   Default is {}.</dd>
-</dl>
-</li>
+<li>Remainder of <code class="docutils literal"><span class="pre">train_parms['targets']</span></code> are arguments to func.</li>
+<li><code class="docutils literal"><span class="pre">train_params['queue_params']</span></code> is an optional dict of
+params used to specify creation for the queue, passed to the
+Queue.__init__ method.   Default is {}.</li>
 </ul>
 </li>
-<li><strong>loss_params</strong> (<em>dict</em>) &#8211; <p>Parameters for to utils.get_loss function for specifying loss
-- loss_params[&#8216;targets&#8217;] is a string or a list of strings,</p>
-<blockquote>
-<div>contain the names of inputs nodes that will be sent into the loss function
-Must be provided</div></blockquote>
+<li><strong>loss_params</strong> (<em>dict</em>) &#8211; <p>Parameters for to utils.get_loss function for specifying loss.</p>
 <ul>
-<li>loss_params[&#8216;loss_per_case_func&#8217;] is the function used to calculate the loss.
-Must be provided.
-The parameters sent to this function is defined by loss_params[&#8216;loss_per_case_func_params&#8217;].</li>
-<li>loss_params[&#8216;loss_per_case_func_params&#8217;] is a dict including  help information about
+<li><a href="#id1"><span class="problematic" id="id2">``</span></a>loss_params[&#8216;targets&#8217;]` is a string or a list of strings,
+contain the names of inputs nodes that will be sent into the loss function</li>
+<li><code class="docutils literal"><span class="pre">loss_params['loss_per_case_func']</span></code> is the function used to calculate the loss.
+Must be provided. The parameters sent to this function is defined by loss_params[&#8216;loss_per_case_func_params&#8217;].</li>
+<li><code class="docutils literal"><span class="pre">loss_params['loss_per_case_func_params']</span></code> is a dict including  help information about
 how positional parameters should be sent to loss_params[&#8216;loss_per_case_func&#8217;] as named parameters.
-Default is {&#8216;_outputs&#8217;: &#8216;logits&#8217;, &#8216;_targets_&#8217;: &#8216;labels&#8217;}<blockquote>
-<div><ul>
-<li>If loss_params[&#8216;loss_per_case_func_params&#8217;] is empty, the parameters for
-loss_params[&#8216;loss_per_case_func&#8217;] will be (outputs, <a href="#id7"><span class="problematic" id="id8">*</span></a>[inputs[t] for t in targets], <a href="#id9"><span class="problematic" id="id10">**</span></a>loss_func_kwargs),
+Default is <code class="docutils literal"><span class="pre">{'_outputs':</span> <span class="pre">'logits',</span> <span class="pre">'_targets_':</span> <span class="pre">'labels'}</span></code></li>
+<li>If <code class="docutils literal"><span class="pre">loss_params['loss_per_case_func_params']</span></code> is empty, the parameters for
+loss_params[&#8216;loss_per_case_func&#8217;] will be (outputs, <a href="#id3"><span class="problematic" id="id4">*</span></a>[inputs[t] for t in targets], <a href="#id5"><span class="problematic" id="id6">**</span></a>loss_func_kwargs),
 where &#8216;outputs&#8217; is the output of the network, inputs is the input nodes,
-and targets is loss_params[&#8216;targets&#8217;].</li>
-<li>Key value can have three choices:
+and targets is <code class="docutils literal"><span class="pre">loss_params['targets']</span></code>.</li>
+</ul>
+<p>Key value can have three choices:
 - &#8216;_outputs&#8217;: the value of this key will be the name for &#8216;outputs&#8217;.
 - &#8216;_targets_&#8217;: name for &#8216;[inputs[t] for t in targets]&#8217;.
-- &#8216;_target_somename&#8217;: name for &#8216;inputs[somename]&#8217; is somename is inside targets.</li>
-<li>Parameters not mentioned by the key values will still be sent to the function as positional parameters.</li>
-</ul>
-</div></blockquote>
+- &#8216;_target_somename&#8217;: name for &#8216;inputs[somename]&#8217; is somename is inside targets.</p>
 </li>
-<li>loss_params[&#8216;agg_func&#8217;] is the aggregate function, default is None</li>
-<li>loss_params[&#8216;loss_func_kwargs&#8217;]. Keyword parameters sent to loss_params[&#8216;loss_per_case_func&#8217;]. Default is None.</li>
-<li>loss_params[&#8216;agg_func_kwargs&#8217;]. Keyword parameters sent to loss_params[&#8216;agg_func&#8217;]. Default is None.</li>
+<li><strong>Parameters not mentioned by the key values will still be sent to the function as positional parameters.</strong> (<em>-</em>) &#8211; <ul>
+<li><code class="docutils literal"><span class="pre">loss_params['agg_func']</span></code> is the aggregate function, default is None</li>
+<li><code class="docutils literal"><span class="pre">loss_params['loss_func_kwargs']</span></code>. Keyword parameters sent to loss_params[&#8216;loss_per_case_func&#8217;]. Default is None.</li>
+<li><a href="#id7"><span class="problematic" id="id8">``</span></a>loss_params[&#8216;agg_func_kwargs&#8217;]`. Keyword parameters sent to <a href="#id9"><span class="problematic" id="id10">``</span></a>loss_params[&#8216;agg_func&#8217;]. Default is None.</li>
 </ul>
 </li>
-<li><strong>learning_rate_params</strong> (<em>dict</em>) &#8211; <p>Parameters for specifying learning_rate:
-- learning_rate_params[&#8216;func&#8217;] is a function producing</p>
+<li><strong>learning_rate_params</strong> (<em>dict</em>) &#8211; <p>Parameters for specifying learning_rate.
+- <code class="xref py py-obj docutils literal"><span class="pre">learning_rate_params['func']</span></code> is a function producing</p>
 <blockquote>
-<div>tensorflow node acting as learning rate.
-This function must accept argument &#8220;global_step&#8221;.</div></blockquote>
+<div>tensorflow node acting as learning rate. This function must accept argument &#8220;global_step&#8221;.</div></blockquote>
 <ul>
 <li>remainder of learning_rate_params are arguments to func.</li>
 </ul>
 </li>
-<li><strong>optimizer_params</strong> (<em>dict</em>) &#8211; <p>Parameters for creating optimizer:
+<li><strong>optimizer_params</strong> (<em>dict</em>) &#8211; <p>Parameters for creating optimizer.
 - optimizer_params[&#8216;func&#8217;] is a function producing a</p>
 <blockquote>
-<div>tensorflow optimizer object (like a subclass of tf.train.Optimizer)
-- Must accept:<blockquote>
-<div>&#8220;learning_rate&#8221; &#8211; the result of the learning_rate_func call</div></blockquote>
+<div>tensorflow optimizer object (like a subclass of tf.train.Optimizer)</div></blockquote>
+<p>Must accept:
+- &#8220;learning_rate&#8221; &#8211; the result of the learning_rate_func call
+- Must return object with a method called &#8220;minimize&#8221; with</p>
+<blockquote>
+<div>the same call signature as tensorflow.train.Optimizer.minimize &#8212; that is:</div></blockquote>
 <ul>
-<li>Must return object with a method called &#8220;minimize&#8221; with
-the same call signature as tensorflow.train.Optimizer.minimize &#8212; that is:<blockquote>
-<div><ul>
 <li><dl class="first docutils">
 <dt>Must accept:</dt>
 <dd><ul class="first last">
@@ -651,7 +587,8 @@ the same call signature as tensorflow.train.Optimizer.minimize &#8212; that is:<
 </dd>
 </dl>
 </li>
-<li><dl class="first docutils">
+</ul>
+<dl class="docutils">
 <dt>Must return:</dt>
 <dd><ul class="first last">
 <li>tensorflow node which computes gradients and applies
@@ -659,21 +596,15 @@ them, and must increment &#8220;global_step&#8221;</li>
 </ul>
 </dd>
 </dl>
-</li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-</div></blockquote>
 <ul>
 <li>Remainder of optimizer_params (aside form &#8220;func&#8221;) are arguments
 to the optimizer func</li>
 </ul>
 </li>
-<li><strong>validation_params</strong> (<em>dict</em>) &#8211; <p>Dictionary of validation sources. The structure if this dictionary is:
-{</p>
-<blockquote>
-<div><dl class="docutils">
+<li><strong>validation_params</strong> (<em>dict</em>) &#8211; <p>Dictionary of validation sources. The structure if this dictionary is:</p>
+<dl class="docutils">
+<dt>{</dt>
+<dd><dl class="first docutils">
 <dt>&lt;validation_target_name_1&gt;: {</dt>
 <dd><dl class="first docutils">
 <dt>&#8216;data&#8217;: {</dt>
@@ -721,9 +652,10 @@ Default is utils.append_and_return</p>
 </dl>
 </dd>
 </dl>
-<p>},
+<p class="last">},
 &lt;validation_target_name_2&gt;: ...</p>
-</div></blockquote>
+</dd>
+</dl>
 <p>}</p>
 </li>
 <li><strong>each validation_target_name key, the targets are computed and then added to</strong> (<em>For</em>) &#8211; </li>
@@ -773,16 +705,11 @@ minibatches.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>sess</strong> (<em>tf.Session</em>) &#8211; Current tensorflow session.</li>
-<li><strong>train_targets</strong> (<em>dict</em>) &#8211; <p>Target operations to be evaluated by <code class="docutils literal"><span class="pre">sess.run</span></code>.
+<li><strong>train_targets</strong> (<em>dict</em>) &#8211; Target operations to be evaluated by <code class="docutils literal"><span class="pre">sess.run</span></code>.
 By default, <code class="docutils literal"><span class="pre">base.train_from_params</span></code> inserts the following
-targets to facilitate minibatching:</p>
-<blockquote>
-<div><ul>
-<li><code class="docutils literal"><span class="pre">__grads__</span></code> (tf.Operation): Accumulates and stores gradients.</li>
-<li><code class="docutils literal"><span class="pre">optimizer</span></code> (tf.Operation): Applies and zeros gradients.</li>
-</ul>
-</div></blockquote>
-</li>
+targets to facilitate minibatching:
+* <code class="docutils literal"><span class="pre">__grads__</span></code> (tf.Operation): Accumulates and stores gradients.
+* <code class="docutils literal"><span class="pre">optimizer</span></code> (tf.Operation): Applies and zeros gradients.</li>
 <li><strong>num_minibatches</strong> (<em>int</em>) &#8211; number of minibatches to use.</li>
 <li><strong>**loop_params</strong> (<em>mapping</em>) &#8211; additional, user-defined kwargs to
 be used in the training loop.</li>
@@ -1144,7 +1071,7 @@ serializing call to the <cite>next</cite> method of given iterator/generator.</p
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <dl class="attribute">
 <dt id="tfutils.model.ConvNet.CUSTOM_FUNC">
-<code class="descname">CUSTOM_FUNC</code><em class="property"> = [&lt;function conv at 0x122d2d488&gt;, &lt;function fc at 0x122d2d848&gt;, &lt;function global_pool at 0x122d2d8c0&gt;, &lt;function conv_bnf at 0x122d2d668&gt;, &lt;function depthsep_conv at 0x122d2d500&gt;, &lt;function depth_conv at 0x122d2d938&gt;, &lt;function avg_pool2d at 0x122d2d1b8&gt;]</em><a class="headerlink" href="#tfutils.model.ConvNet.CUSTOM_FUNC" title="Permalink to this definition">¶</a></dt>
+<code class="descname">CUSTOM_FUNC</code><em class="property"> = [&lt;function conv at 0x12435c938&gt;, &lt;function fc at 0x12435cc80&gt;, &lt;function global_pool at 0x12435cb90&gt;, &lt;function conv_bnf at 0x12435caa0&gt;, &lt;function depthsep_conv at 0x12435cd70&gt;, &lt;function depth_conv at 0x12435ced8&gt;, &lt;function avg_pool2d at 0x12435c050&gt;]</em><a class="headerlink" href="#tfutils.model.ConvNet.CUSTOM_FUNC" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">

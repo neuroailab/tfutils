@@ -19,7 +19,7 @@ TFUtils is compatible with: **Python 2.7**.
 
 .. toctree::
    :hidden:
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Introduction
 
    introduction/overview.rst
@@ -28,17 +28,18 @@ TFUtils is compatible with: **Python 2.7**.
 
 .. toctree::
    :hidden:
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Fundamentals
 
    fundamentals/multigpu.rst
    fundamentals/multimodel.rst
+   fundamentals/minibatching.rst
 
 Contents
 --------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Package Reference
 
    modules.rst

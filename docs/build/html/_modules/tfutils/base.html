@@ -105,6 +105,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/minibatching.html">Minibatching</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Package Reference</span></p>
 <ul>
@@ -1138,8 +1139,8 @@
 <span class="sd">        train_targets (dict): Target operations to be evaluated by ``sess.run``.</span>
 <span class="sd">            By default, ``base.train_from_params`` inserts the following</span>
 <span class="sd">            targets to facilitate minibatching:</span>
-<span class="sd">                * ``__grads__`` (tf.Operation): Accumulates and stores gradients.</span>
-<span class="sd">                * ``optimizer`` (tf.Operation): Applies and zeros gradients.</span>
+<span class="sd">            * ``__grads__`` (tf.Operation): Accumulates and stores gradients.</span>
+<span class="sd">            * ``optimizer`` (tf.Operation): Applies and zeros gradients.</span>
 <span class="sd">        num_minibatches (int): number of minibatches to use.</span>
 <span class="sd">        **loop_params (mapping): additional, user-defined kwargs to</span>
 <span class="sd">            be used in the training loop.</span>
@@ -1174,25 +1175,23 @@
           <span class="n">validation_targets</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Actually runs the training evaluation loop.</span>
 
-<span class="sd">    :Args:</span>
-<span class="sd">        - sess: (tesorflow.Session)</span>
-<span class="sd">            Object in which to run calculations</span>
-<span class="sd">        - queues (list of Queue)</span>
-<span class="sd">            Objects containing asynchronously queued data iterators</span>
-<span class="sd">        - dbinterface (DBInterface object)</span>
-<span class="sd">            Saver through which to save results</span>
-<span class="sd">        - train_loop (callable withs args: sess and train_targets)</span>
+<span class="sd">    Args:</span>
+<span class="sd">        sess (tesorflow.Session):</span>
+<span class="sd">            Object in which to run calculations.</span>
+<span class="sd">        queues (list of Queue): Objects containing asynchronously queued data iterators.</span>
+
+<span class="sd">        dbinterface (DBInterface object): Saver through which to save results.</span>
+
+<span class="sd">        train_loop (callable withs args: sess and train_targets):</span>
 <span class="sd">            Callable that specifies a custom training loop</span>
-<span class="sd">        - train_targets (dict of tensorflow nodes)</span>
-<span class="sd">            Targets to train. One item in this dict must be &quot;optimizer&quot; or similar</span>
+<span class="sd">        train_targets (dict of tensorflow nodes): Targets to train.</span>
+<span class="sd">            One item in this dict must be &quot;optimizer&quot; or similar</span>
 <span class="sd">            to make anything happen</span>
-<span class="sd">        - num_minibatches (int)</span>
-<span class="sd">            How many minibatches to use to before applying gradient update.</span>
-<span class="sd">        - num_steps (int)</span>
-<span class="sd">            How many steps to train to before quitting</span>
-<span class="sd">        - validation_targets (dict of tensorflow objects, default: None)</span>
+<span class="sd">        num_minibatches (int): How many minibatches to use to before applying gradient update.</span>
+<span class="sd">        num_steps (int): How many steps to train to before quitting</span>
+<span class="sd">        validation_targets (dict of tensorflow objects, default: None):</span>
 <span class="sd">            Objects on which validation will be computed</span>
-<span class="sd">        - thres_loss (float, default: 100)</span>
+<span class="sd">        thres_loss (float, default: 100):</span>
 <span class="sd">            If loss exceeds this during training, HiLossError is thrown</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1295,78 +1294,95 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        save_params (dict): Dictionary of arguments for creating saver object (see Saver class).</span>
+
 <span class="sd">        model_params (dict): Containing function that produces model and arguments to that function.</span>
 <span class="sd">            model_params[&#39;func&#39;] is the function producing the model.</span>
-<span class="sd">                The function&#39;s signature is:</span>
-<span class="sd">                Args:</span>
-<span class="sd">                    inputs: data object</span>
-<span class="sd">                    - `train` -- boolean if training is happening</span>
-<span class="sd">                    - `seed` -- seed for use in random generation of final config</span>
-<span class="sd">                Returns:</span>
-<span class="sd">                    (tf.Operations): train output tensorflow nodes</span>
-<span class="sd">                    - final configuration used in model</span>
+
+<span class="sd">            The function&#39;s signature is:</span>
+<span class="sd">            ::</span>
+
+<span class="sd">                inputs: data object</span>
+<span class="sd">                - ``train`` -- boolean if training is happening</span>
+<span class="sd">                - ``seed`` -- seed for use in random generation of final config</span>
+
+<span class="sd">            Returns:</span>
+<span class="sd">            (tf.Operations): train output tensorflow nodes</span>
+<span class="sd">            - final configuration used in model</span>
 <span class="sd">            - Remaining items in model_params are dictionary of arguments massed to func.</span>
 
-<span class="sd">        train_params (dict): Containing params for data sources and targets in training:</span>
-<span class="sd">            - train_params[&#39;data&#39;] contains params for the data</span>
-<span class="sd">                - train_params[&#39;data&#39;][&#39;func&#39;] is the function that constructs the data</span>
-<span class="sd">                  provider.   This dataprovider must be an instance of a subclass of</span>
-<span class="sd">                  tfutils.data.DataProviderBase.   Specifically, it must have a method</span>
-<span class="sd">                  called &quot;init_ops&quot; -- see documentation in tfutils/data.py.</span>
-<span class="sd">                - remainder of train_params[&#39;data&#39;] are kwargs passed to func</span>
-<span class="sd">            - train_params[&#39;targets&#39;] (optional) contains params for additional train targets</span>
-<span class="sd">                - train_params[&#39;targets&#39;][&#39;func&#39;] is a function that produces</span>
-<span class="sd">                  tensorflow nodes as training targets</span>
-<span class="sd">                - remainder of train_parms[&#39;targets&#39;] are arguments to func</span>
-<span class="sd">            - train_params[&#39;queue_params&#39;] is an optional dict of</span>
-<span class="sd">                  params used to specify creation for the queue, passed to the</span>
-<span class="sd">                  Queue.__init__ method.   Default is {}.</span>
-<span class="sd">        loss_params (dict): Parameters for to utils.get_loss function for specifying loss</span>
-<span class="sd">            - loss_params[&#39;targets&#39;] is a string or a list of strings,</span>
+<span class="sd">        train_params (dict): Containing params for data sources and targets in training.</span>
+
+<span class="sd">            - ``train_params[&#39;data&#39;]`` contains params for the data</span>
+
+<span class="sd">            - ``train_params[&#39;data&#39;][&#39;func&#39;]`` is the function that constructs the data</span>
+<span class="sd">              provider. This dataprovider must be an instance of a subclass of</span>
+<span class="sd">              tfutils.data.DataProviderBase. Specifically, it must have a method</span>
+<span class="sd">              called &quot;init_ops&quot; -- see documentation in tfutils/data.py.</span>
+
+<span class="sd">            - Remainder of ``train_params[&#39;data&#39;]`` are kwargs passed to func.</span>
+
+<span class="sd">            - ``train_params[&#39;targets&#39;]`` (optional) contains params for additional train targets</span>
+
+<span class="sd">            - ``train_params[&#39;targets&#39;][&#39;func&#39;]`` is a function that produces</span>
+<span class="sd">              tensorflow nodes as training targets</span>
+
+<span class="sd">            - Remainder of ``train_parms[&#39;targets&#39;]`` are arguments to func.</span>
+
+<span class="sd">            - ``train_params[&#39;queue_params&#39;]`` is an optional dict of</span>
+<span class="sd">              params used to specify creation for the queue, passed to the</span>
+<span class="sd">              Queue.__init__ method.   Default is {}.</span>
+
+<span class="sd">        loss_params (dict): Parameters for to utils.get_loss function for specifying loss.</span>
+
+<span class="sd">            - ``loss_params[&#39;targets&#39;]` is a string or a list of strings,</span>
 <span class="sd">              contain the names of inputs nodes that will be sent into the loss function</span>
-<span class="sd">              Must be provided</span>
-<span class="sd">            - loss_params[&#39;loss_per_case_func&#39;] is the function used to calculate the loss.</span>
-<span class="sd">              Must be provided.</span>
-<span class="sd">              The parameters sent to this function is defined by loss_params[&#39;loss_per_case_func_params&#39;].</span>
-<span class="sd">            - loss_params[&#39;loss_per_case_func_params&#39;] is a dict including  help information about</span>
+
+<span class="sd">            - ``loss_params[&#39;loss_per_case_func&#39;]`` is the function used to calculate the loss.</span>
+<span class="sd">              Must be provided. The parameters sent to this function is defined by loss_params[&#39;loss_per_case_func_params&#39;].</span>
+
+<span class="sd">            - ``loss_params[&#39;loss_per_case_func_params&#39;]`` is a dict including  help information about</span>
 <span class="sd">              how positional parameters should be sent to loss_params[&#39;loss_per_case_func&#39;] as named parameters.</span>
-<span class="sd">              Default is {&#39;_outputs&#39;: &#39;logits&#39;, &#39;_targets_&#39;: &#39;labels&#39;}</span>
-<span class="sd">                - If loss_params[&#39;loss_per_case_func_params&#39;] is empty, the parameters for</span>
-<span class="sd">                  loss_params[&#39;loss_per_case_func&#39;] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),</span>
-<span class="sd">                  where &#39;outputs&#39; is the output of the network, inputs is the input nodes,</span>
-<span class="sd">                  and targets is loss_params[&#39;targets&#39;].</span>
-<span class="sd">                - Key value can have three choices:</span>
-<span class="sd">                  - &#39;_outputs&#39;: the value of this key will be the name for &#39;outputs&#39;.</span>
-<span class="sd">                  - &#39;_targets_&#39;: name for &#39;[inputs[t] for t in targets]&#39;.</span>
-<span class="sd">                  - &#39;_target_somename&#39;: name for &#39;inputs[somename]&#39; is somename is inside targets.</span>
-<span class="sd">                - Parameters not mentioned by the key values will still be sent to the function as positional parameters.</span>
-<span class="sd">            - loss_params[&#39;agg_func&#39;] is the aggregate function, default is None</span>
-<span class="sd">            - loss_params[&#39;loss_func_kwargs&#39;]. Keyword parameters sent to loss_params[&#39;loss_per_case_func&#39;]. Default is None.</span>
-<span class="sd">            - loss_params[&#39;agg_func_kwargs&#39;]. Keyword parameters sent to loss_params[&#39;agg_func&#39;]. Default is None.</span>
+<span class="sd">              Default is ``{&#39;_outputs&#39;: &#39;logits&#39;, &#39;_targets_&#39;: &#39;labels&#39;}``</span>
 
-<span class="sd">        learning_rate_params (dict): Parameters for specifying learning_rate:</span>
-<span class="sd">            - learning_rate_params[&#39;func&#39;] is a function producing</span>
-<span class="sd">              tensorflow node acting as learning rate.</span>
-<span class="sd">              This function must accept argument &quot;global_step&quot;.</span>
-<span class="sd">            - remainder of learning_rate_params are arguments to func.</span>
+<span class="sd">            - If ``loss_params[&#39;loss_per_case_func_params&#39;]`` is empty, the parameters for</span>
+<span class="sd">              loss_params[&#39;loss_per_case_func&#39;] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),</span>
+<span class="sd">              where &#39;outputs&#39; is the output of the network, inputs is the input nodes,</span>
+<span class="sd">              and targets is ``loss_params[&#39;targets&#39;]``.</span>
 
-<span class="sd">        optimizer_params (dict): Parameters for creating optimizer:</span>
+<span class="sd">            Key value can have three choices:</span>
+<span class="sd">            - &#39;_outputs&#39;: the value of this key will be the name for &#39;outputs&#39;.</span>
+<span class="sd">            - &#39;_targets_&#39;: name for &#39;[inputs[t] for t in targets]&#39;.</span>
+<span class="sd">            - &#39;_target_somename&#39;: name for &#39;inputs[somename]&#39; is somename is inside targets.</span>
+
+<span class="sd">        - Parameters not mentioned by the key values will still be sent to the function as positional parameters.</span>
+<span class="sd">            - ``loss_params[&#39;agg_func&#39;]`` is the aggregate function, default is None</span>
+<span class="sd">            - ``loss_params[&#39;loss_func_kwargs&#39;]``. Keyword parameters sent to loss_params[&#39;loss_per_case_func&#39;]. Default is None.</span>
+<span class="sd">            - ``loss_params[&#39;agg_func_kwargs&#39;]`. Keyword parameters sent to ``loss_params[&#39;agg_func&#39;]. Default is None.</span>
+
+<span class="sd">        learning_rate_params (dict): Parameters for specifying learning_rate.</span>
+<span class="sd">                - :obj:`learning_rate_params[&#39;func&#39;]` is a function producing</span>
+<span class="sd">                  tensorflow node acting as learning rate. This function must accept argument &quot;global_step&quot;.</span>
+<span class="sd">                - remainder of learning_rate_params are arguments to func.</span>
+
+<span class="sd">        optimizer_params (dict): Parameters for creating optimizer.</span>
 <span class="sd">            - optimizer_params[&#39;func&#39;] is a function producing a</span>
 <span class="sd">              tensorflow optimizer object (like a subclass of tf.train.Optimizer)</span>
-<span class="sd">              - Must accept:</span>
-<span class="sd">                    &quot;learning_rate&quot; -- the result of the learning_rate_func call</span>
-<span class="sd">              - Must return object with a method called &quot;minimize&quot; with</span>
-<span class="sd">                the same call signature as tensorflow.train.Optimizer.minimize --- that is:</span>
-<span class="sd">                    - Must accept:</span>
-<span class="sd">                        - &quot;loss&quot; -- result of loss_func call</span>
-<span class="sd">                        - &quot;global_step&quot; -- global step used for determine learning rate,</span>
-<span class="sd">                    - Must return:</span>
-<span class="sd">                        - tensorflow node which computes gradients and applies</span>
-<span class="sd">                          them, and must increment &quot;global_step&quot;</span>
+
+<span class="sd">            Must accept:</span>
+<span class="sd">            - &quot;learning_rate&quot; -- the result of the learning_rate_func call</span>
+<span class="sd">            - Must return object with a method called &quot;minimize&quot; with</span>
+<span class="sd">              the same call signature as tensorflow.train.Optimizer.minimize --- that is:</span>
+<span class="sd">            - Must accept:</span>
+<span class="sd">                * &quot;loss&quot; -- result of loss_func call</span>
+<span class="sd">                * &quot;global_step&quot; -- global step used for determine learning rate,</span>
+<span class="sd">            Must return:</span>
+<span class="sd">                * tensorflow node which computes gradients and applies</span>
+<span class="sd">                  them, and must increment &quot;global_step&quot;</span>
 <span class="sd">            - Remainder of optimizer_params (aside form &quot;func&quot;) are arguments</span>
 <span class="sd">              to the optimizer func</span>
 
 <span class="sd">        validation_params (dict): Dictionary of validation sources. The structure if this dictionary is:</span>
+
 <span class="sd">            {</span>
 <span class="sd">                &lt;validation_target_name_1&gt;: {</span>
 <span class="sd">                    &#39;data&#39;: {</span>
@@ -1825,12 +1841,12 @@
                  <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Ensure the params dictionary has the correct structure.</span>
 
-<span class="sd">    Each *_params arg must be a list of dictionaries where the ith element</span>
+<span class="sd">    Each params arg must be a list of dictionaries where the ith element</span>
 <span class="sd">    corresponds to parameters of the ith distinct model. Thus, the length of</span>
-<span class="sd">    all *_params must be the same and reflect the number of distinct models</span>
+<span class="sd">    all params must be the same and reflect the number of distinct models</span>
 <span class="sd">    to be evaluated.</span>
 
-<span class="sd">    If an *_params arg does not satisfy the above requirements, ``parse_params``</span>
+<span class="sd">    If an params arg does not satisfy the above requirements, ``parse_params``</span>
 <span class="sd">    attempts to convert to the correct structure and logs any changes made.</span>
 <span class="sd">    If it is missing any necessary components, defaults defined at the top of</span>
 <span class="sd">    this module are used. If there exists an unresovlable conflict, an error</span>
