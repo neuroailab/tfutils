@@ -1,0 +1,8 @@
+TFUtils is a python utility package designed for coordinating neural network experiments
+
+- constructing, runing and monitoring neural network models
+- facilitating multi-model and multi-gpu training
+- retrieving data from data sources
+- interfacing with common databases
+
+TFUtils is compatible with: **Python 2.7**.

@@ -1,0 +1,362 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.optimizer &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="TFUtils 0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">TFUtils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>tfutils.optimizer</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tfutils.optimizer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Default Optimizer to be used with tfutils.</span>
+
+<span class="sd">The ClipOptimizer class adds support for gradient clipping, gradient</span>
+<span class="sd">aggregation across devices and gradient accumulation useful for</span>
+<span class="sd">performing minibatching (accumulating and aggregating</span>
+<span class="sd">gradients for multiple batches before applying a gradient update).</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="kn">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;tfutils&#39;</span><span class="p">)</span>
+<span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ClipOptimizer"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer">[docs]</a><span class="k">class</span> <span class="nc">ClipOptimizer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">optimizer_class</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">trainable_names</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">*</span><span class="n">optimizer_args</span><span class="p">,</span> <span class="o">**</span><span class="n">optimizer_kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">optimizer_class</span><span class="p">(</span><span class="o">*</span><span class="n">optimizer_args</span><span class="p">,</span> <span class="o">**</span><span class="n">optimizer_kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clip</span> <span class="o">=</span> <span class="n">clip</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trainable_names</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="n">trainable_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">trainable_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">trainable_names</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainable_names</span> <span class="o">=</span> <span class="n">trainable_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="ClipOptimizer.compute_gradients"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.compute_gradients">[docs]</a>    <span class="k">def</span> <span class="nf">compute_gradients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">train_vars</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainable_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;All trainable vars:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">([</span><span class="n">var</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">TRAINABLE_VARIABLES</span><span class="p">)]))</span>
+            <span class="n">train_vars</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">scope_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainable_names</span><span class="p">:</span>
+                <span class="n">new_vars</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">TRAINABLE_VARIABLES</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope_name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The scope name, {}, you specified does not contain any trainable variables.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">scope_name</span><span class="p">))</span>
+                <span class="n">train_vars</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Variables to be trained:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">([</span><span class="n">var</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">train_vars</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">train_vars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">=</span> <span class="n">train_vars</span>
+
+        <span class="n">gvs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">compute_gradients</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span>
+                                                <span class="n">var_list</span><span class="o">=</span><span class="n">train_vars</span><span class="p">,</span>
+                                                <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clip</span><span class="p">:</span>
+            <span class="c1"># gradient clipping. Some gradients returned are &#39;None&#39; because</span>
+            <span class="c1"># no relation between the variable and loss; so we skip those.</span>
+            <span class="n">gvs</span> <span class="o">=</span> <span class="p">[(</span><span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">),</span> <span class="n">var</span><span class="p">)</span>
+                   <span class="k">for</span> <span class="n">grad</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">gvs</span> <span class="k">if</span> <span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">gvs</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ClipOptimizer.aggregate_gradients"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.aggregate_gradients">[docs]</a>    <span class="k">def</span> <span class="nf">aggregate_gradients</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">grads_and_vars</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;average&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;average&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cls</span><span class="o">.</span><span class="n">average_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unsupported aggregation method: {}.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">method</span><span class="p">))</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ClipOptimizer.average_gradients"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.average_gradients">[docs]</a>    <span class="k">def</span> <span class="nf">average_gradients</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">tower_grads</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Average a list of (grads, vars) produced by `compute_gradients`.&quot;&quot;&quot;</span>
+        <span class="n">average_grads</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">grads_and_vars</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">tower_grads</span><span class="p">):</span>
+            <span class="c1"># print(grads_and_vars)</span>
+            <span class="n">grads</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">g</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">grads_and_vars</span><span class="p">:</span>
+                <span class="c1"># print(g.get_shape().as_list(), g)</span>
+                <span class="n">grads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+            <span class="n">grad</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">grad</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># all variables are the same so we just use the first gpu variables</span>
+            <span class="n">var</span> <span class="o">=</span> <span class="n">grads_and_vars</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">grad_and_var</span> <span class="o">=</span> <span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">var</span><span class="p">)</span>
+            <span class="n">average_grads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">grad_and_var</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">average_grads</span></div>
+
+<div class="viewcode-block" id="ClipOptimizer.accumulate_gradients"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.accumulate_gradients">[docs]</a>    <span class="k">def</span> <span class="nf">accumulate_gradients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">minibatch_grads</span><span class="p">,</span> <span class="n">num_minibatches</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Accumulate gradients for `num_minibatches` minibatches.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">trainable_variables</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span> <span class="o">=</span> <span class="p">[(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">initialized_value</span><span class="p">()),</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">trainable</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+                <span class="n">var</span><span class="p">)</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span><span class="p">]</span>
+
+        <span class="c1"># Add 1/num_minibatches * minibatch_grads to current gradients.</span>
+        <span class="n">grads</span> <span class="o">=</span> <span class="p">[(</span><span class="n">gv</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">assign_add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="n">mgv</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">num_minibatches</span><span class="p">)),</span> <span class="n">gv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                 <span class="k">for</span> <span class="p">(</span><span class="n">gv</span><span class="p">,</span> <span class="n">mgv</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span><span class="p">,</span> <span class="n">minibatch_grads</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">grads</span></div>
+
+<div class="viewcode-block" id="ClipOptimizer.apply_gradients"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.apply_gradients">[docs]</a>    <span class="k">def</span> <span class="nf">apply_gradients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grads_and_vars</span><span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Apply gradients to model variables specified in `grads_and_vars`.</span>
+
+<span class="sd">        `apply_gradients` returns an op that calls</span>
+<span class="sd">        `tf.train.Optimizer.apply_gradients` and then zeros the gradient</span>
+<span class="sd">        variables stored in `self.grads_and_vars`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            grads_and_vars (list): Description.</span>
+<span class="sd">            global_step (None, optional): tensorflow global_step variable.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (tf.Operation): Applies gradient update to model followed by an</span>
+<span class="sd">                internal gradient zeroing operation to `self.grads_and_vars`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># grads_and_vars = self.aggregate_gradients(grads_and_vars, method=&#39;average&#39;)</span>
+        <span class="n">optimize</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">,</span>
+                                                   <span class="n">global_step</span><span class="o">=</span><span class="n">global_step</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">optimize</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()]</span></div>
+
+<div class="viewcode-block" id="ClipOptimizer.zero_grad"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.zero_grad">[docs]</a>    <span class="k">def</span> <span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span> <span class="o">=</span> <span class="p">[(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">trainable</span><span class="o">=</span><span class="bp">False</span><span class="p">),</span>
+                <span class="n">var</span><span class="p">)</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">var_list</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">gv</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">gv</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+                <span class="k">for</span> <span class="n">gv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grads_and_vars</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="ClipOptimizer.minimize"><a class="viewcode-back" href="../../tfutils.html#tfutils.optimizer.ClipOptimizer.minimize">[docs]</a>    <span class="k">def</span> <span class="nf">minimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">global_step</span><span class="p">):</span>
+        <span class="n">train_vars</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainable_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;All trainable vars:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">([</span><span class="n">var</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">TRAINABLE_VARIABLES</span><span class="p">)]))</span>
+            <span class="n">train_vars</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">scope_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainable_names</span><span class="p">:</span>
+                <span class="n">new_vars</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">GraphKeys</span><span class="o">.</span><span class="n">TRAINABLE_VARIABLES</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">scope_name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;The scope name, {}, you specified does not contain any trainable variables.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">scope_name</span><span class="p">))</span>
+                <span class="n">train_vars</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Variables to be trained:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">([</span><span class="n">var</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">train_vars</span><span class="p">]))</span>
+        <span class="n">grads_and_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_gradients</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">var_list</span><span class="o">=</span><span class="n">train_vars</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="n">grads_and_vars</span><span class="p">,</span>
+                                               <span class="n">global_step</span><span class="o">=</span><span class="n">global_step</span><span class="p">)</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

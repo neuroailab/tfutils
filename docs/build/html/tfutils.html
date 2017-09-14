@@ -1,0 +1,1648 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.base &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="TFUtils 0.1 documentation" href="index.html"/>
+        <link rel="up" title="tfutils" href="modules.html"/>
+        <link rel="prev" title="tfutils" href="modules.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fundamentals/multimodel.html">Multi-Model Training</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">tfutils</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">TFUtils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="modules.html">tfutils</a> &raquo;</li>
+      
+    <li>tfutils.base</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/tfutils.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-tfutils.base">
+<span id="tfutils-base"></span><h1>tfutils.base<a class="headerlink" href="#module-tfutils.base" title="Permalink to this headline">¶</a></h1>
+<p>base.py</p>
+<dl class="class">
+<dt id="tfutils.base.DBInterface">
+<em class="property">class </em><code class="descclassname">tfutils.base.</code><code class="descname">DBInterface</code><span class="sig-paren">(</span><em>params=None</em>, <em>save_params=None</em>, <em>load_params=None</em>, <em>sess=None</em>, <em>global_step=None</em>, <em>cache_dir=None</em>, <em>*tfsaver_args</em>, <em>**tfsaver_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="tfutils.base.DBInterface.filter_var_list">
+<code class="descname">filter_var_list</code><span class="sig-paren">(</span><em>var_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.filter_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.filter_var_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filter checkpoint vars for those to be restored.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>checkpoint_vars</strong> (<em>list</em>) &#8211; Vars that can be restored from checkpoint.</li>
+<li><strong>to_restore</strong> (<em>list[str] or regex, optional</em>) &#8211; Selects vars to restore.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Variables to be restored from checkpoint.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.get_restore_vars">
+<code class="descname">get_restore_vars</code><span class="sig-paren">(</span><em>save_file</em>, <em>all_vars=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.get_restore_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.get_restore_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create the <cite>var_list</cite> init argument to tf.Saver from save_file.</p>
+<p>Extracts the subset of variables from tf.global_variables that match the
+name and shape of variables saved in the checkpoint file, and returns these
+as a list of variables to restore.</p>
+<p>To support multi-model training, a model prefix is prepended to all
+tf global_variable names, although this prefix is stripped from
+all variables before they are saved to a checkpoint. Thus,</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>save_file</strong> &#8211; path of tf.train.Saver checkpoint.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">checkpoint variables.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.initialize">
+<code class="descname">initialize</code><span class="sig-paren">(</span><em>no_scratch=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch record then uses tf&#8217;s saver.restore.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.load_from_db">
+<code class="descname">load_from_db</code><span class="sig-paren">(</span><em>query</em>, <em>cache_filters=False</em>, <em>collfs=None</em>, <em>collfs_recent=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.load_from_db"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.load_from_db" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load checkpoint from the database.</p>
+<p>Checks the recent and regular checkpoint fs to find the latest one
+matching the query. Returns the GridOut obj corresponding to the
+record.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>query</strong> &#8211; dict expressing MongoDB query</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.load_rec">
+<code class="descname">load_rec</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.load_rec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.load_rec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.remap_var_list">
+<code class="descname">remap_var_list</code><span class="sig-paren">(</span><em>var_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.remap_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.remap_var_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map old vars in checkpoint to new vars in current session.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>var_list</strong> (<em>dict</em>) &#8211; var names mapped to variables (or some related</li>
+<li><strong>such as variable shapes).</strong> (<em>quantity,</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">New var names mapped to the corresponding restored var.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Examples:
+&gt;&gt;&gt;var_list
+{&#8216;Weights&#8217;: &lt;tf.Variable&gt;}
+&gt;&gt;&gt;self.load_param_dict
+{&#8216;Weights&#8217;: &#8216;Filters&#8217;}
+&gt;&gt;&gt;self.remap_var_list(var_list)
+{&#8216;Filters&#8217;: &lt;tf.Variable&gt;}</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.save">
+<code class="descname">save</code><span class="sig-paren">(</span><em>train_res=None</em>, <em>valid_res=None</em>, <em>step=None</em>, <em>validation_only=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Actually save record into DB and makes local filter caches.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.base.DBInterface.sync_with_host">
+<code class="descname">sync_with_host</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#DBInterface.sync_with_host"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.DBInterface.sync_with_host" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.base.DBInterface.tf_saver">
+<code class="descname">tf_saver</code><a class="headerlink" href="#tfutils.base.DBInterface.tf_saver" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.check_model_equivalence">
+<code class="descclassname">tfutils.base.</code><code class="descname">check_model_equivalence</code><span class="sig-paren">(</span><em>m1</em>, <em>m2</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#check_model_equivalence"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.check_model_equivalence" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO: fill this in to make it stronger.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_data">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_data</code><span class="sig-paren">(</span><em>func</em>, <em>queue_params=None</em>, <em>**data_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_learning_rate">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_learning_rate</code><span class="sig-paren">(</span><em>global_step</em>, <em>func=&lt;function exponential_decay&gt;</em>, <em>**learning_rate_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_learning_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_learning_rate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_loss">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_loss</code><span class="sig-paren">(</span><em>train_inputs, train_outputs, targets=['labels'], agg_func=&lt;function reduce_mean&gt;, loss_per_case_func=&lt;function sparse_softmax_cross_entropy_with_logits&gt;, **loss_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_loss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_model">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_model</code><span class="sig-paren">(</span><em>inputs</em>, <em>model_params</em>, <em>param=None</em>, <em>trarg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return model and any other targets (loss + optimizer) specified.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>inputs</strong> (<em>tf.Operation</em>) &#8211; Model inputs provided by a tf.QueueRunner.</li>
+<li><strong>model_params</strong> (<em>dict</em>) &#8211; Specifies model configuration and must contain:
+&#8216;devices&#8217; (list): device specs (e.g. &#8216;/gpu:0&#8217;)
+&#8216;train&#8217; (bool): whether getting model for training</li>
+<li><strong>param</strong> (<em>None, optional</em>) &#8211; Description.</li>
+<li><strong>trarg</strong> (<em>None, optional</em>) &#8211; Description.</li>
+<li><strong>()</strong> (<em>inputs</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Description.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_model_base">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_model_base</code><span class="sig-paren">(</span><em>input</em>, <em>func</em>, <em>seed=0</em>, <em>train=False</em>, <em>**model_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_model_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_model_base" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_optimizer">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_optimizer</code><span class="sig-paren">(</span><em>learning_rate</em>, <em>loss</em>, <em>global_step</em>, <em>optimizer_params</em>, <em>default_optimizer_params=&lt;frozendict {'momentum': 0.9</em>, <em>'optimizer_class': &lt;class 'tensorflow.python.training.momentum.MomentumOptimizer'&gt;}&gt;</em>, <em>default_optimizer_func=&lt;class 'tfutils.optimizer.ClipOptimizer'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_optimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_optimizer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_optimizer_base">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_optimizer_base</code><span class="sig-paren">(</span><em>learning_rate</em>, <em>optimizer_params</em>, <em>default_optimizer_params=&lt;frozendict {'momentum': 0.9</em>, <em>'optimizer_class': &lt;class 'tensorflow.python.training.momentum.MomentumOptimizer'&gt;}&gt;</em>, <em>default_optimizer_func=&lt;class 'tfutils.optimizer.ClipOptimizer'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_optimizer_base"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_optimizer_base" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_params">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_valid_targets_dict">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_valid_targets_dict</code><span class="sig-paren">(</span><em>validation_params</em>, <em>model_params</em>, <em>loss_params</em>, <em>queue_params</em>, <em>cfg_final=None</em>, <em>**params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_valid_targets_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_valid_targets_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for creating validation target operations.</p>
+<p>NB: this function may modify validation_params.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.get_validation_target">
+<code class="descclassname">tfutils.base.</code><code class="descname">get_validation_target</code><span class="sig-paren">(</span><em>vinputs</em>, <em>voutputs</em>, <em>default_target_func=&lt;function get_loss_dict&gt;</em>, <em>default_target_params=&lt;frozendict {'loss_per_case_func': &lt;function sparse_softmax_cross_entropy_with_logits at 0x10f9866e0&gt;</em>, <em>'agg_func': &lt;function reduce_mean at 0x10f2918c0&gt;</em>, <em>'targets': ['labels']}&gt;</em>, <em>default_loop_func=None</em>, <em>default_loop_params=&lt;frozendict {}&gt;</em>, <em>agg_func=&lt;function identity_func&gt;</em>, <em>online_agg_func=&lt;function append_and_return&gt;</em>, <em>**validation_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#get_validation_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.get_validation_target" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.parse_params">
+<code class="descclassname">tfutils.base.</code><code class="descname">parse_params</code><span class="sig-paren">(</span><em>mode</em>, <em>model_params</em>, <em>dont_run=False</em>, <em>skip_check=False</em>, <em>save_params=None</em>, <em>train_params=None</em>, <em>loss_params=None</em>, <em>load_params=None</em>, <em>optimizer_params=None</em>, <em>validation_params=None</em>, <em>learning_rate_params=None</em>, <em>log_device_placement=False</em>, <em>inter_op_parallelism_threads=40</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#parse_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.parse_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure the params dictionary has the correct structure.</p>
+<p>Each <a href="#id1"><span class="problematic" id="id2">*</span></a>_params arg must be a list of dictionaries where the ith element
+corresponds to parameters of the ith distinct model. Thus, the length of
+all <a href="#id3"><span class="problematic" id="id4">*</span></a>_params must be the same and reflect the number of distinct models
+to be evaluated.</p>
+<p>If an <a href="#id5"><span class="problematic" id="id6">*</span></a>_params arg does not satisfy the above requirements, <code class="docutils literal"><span class="pre">parse_params</span></code>
+attempts to convert to the correct structure and logs any changes made.
+If it is missing any necessary components, defaults defined at the top of
+this module are used. If there exists an unresovlable conflict, an error
+is raised, and the user will be forced to resolve it before continuing.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.predict">
+<code class="descclassname">tfutils.base.</code><code class="descname">predict</code><span class="sig-paren">(</span><em>step</em>, <em>results</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.run_targets">
+<code class="descclassname">tfutils.base.</code><code class="descname">run_targets</code><span class="sig-paren">(</span><em>sess</em>, <em>dbinterface</em>, <em>target_name</em>, <em>target</em>, <em>valid_loop</em>, <em>num_steps</em>, <em>online_agg_func</em>, <em>agg_func</em>, <em>save_intermediate_freq=None</em>, <em>validation_only=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#run_targets"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.run_targets" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO:  this code resembles train() function, possible want to unify.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.run_targets_dict">
+<code class="descclassname">tfutils.base.</code><code class="descname">run_targets_dict</code><span class="sig-paren">(</span><em>sess</em>, <em>targets</em>, <em>save_intermediate_freq=None</em>, <em>dbinterface=None</em>, <em>validation_only=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#run_targets_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.run_targets_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for actually computing validation results.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.split_input">
+<code class="descclassname">tfutils.base.</code><code class="descname">split_input</code><span class="sig-paren">(</span><em>inputs</em>, <em>num_gpus=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#split_input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.split_input" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.start_queues">
+<code class="descclassname">tfutils.base.</code><code class="descname">start_queues</code><span class="sig-paren">(</span><em>sess</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#start_queues"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.start_queues" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for starting queues before running processes.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.stop_queues">
+<code class="descclassname">tfutils.base.</code><code class="descname">stop_queues</code><span class="sig-paren">(</span><em>sess</em>, <em>queues</em>, <em>coord</em>, <em>threads</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#stop_queues"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.stop_queues" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for stopping queues cleanly.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.test">
+<code class="descclassname">tfutils.base.</code><code class="descname">test</code><span class="sig-paren">(</span><em>sess</em>, <em>queues</em>, <em>dbinterface</em>, <em>validation_targets</em>, <em>save_intermediate_freq=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.test" title="Permalink to this definition">¶</a></dt>
+<dd><p>Actually runs the testing evaluation loop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sess</strong> (<em>tensorflow.Session</em>) &#8211; Object in which to run calculations</li>
+<li><strong>queues</strong> (<em>list of CustomQueue</em>) &#8211; Objects containing asynchronously queued data iterators</li>
+<li><strong>dbinterface</strong> (<em>DBInterface object</em>) &#8211; Saver through which to save results</li>
+<li><strong>validation_targets</strong> (<em>dict of tensorflow objects</em>) &#8211; Objects on which validation will be computed.</li>
+<li><strong>save_intermediate_freq</strong> (<em>None or int</em>) &#8211; How frequently to save intermediate results captured during test
+None means no intermediate saving will be saved</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Validation summary.
+dict: Results.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.test_from_params">
+<code class="descclassname">tfutils.base.</code><code class="descname">test_from_params</code><span class="sig-paren">(</span><em>load_params</em>, <em>model_params</em>, <em>validation_params</em>, <em>log_device_placement=False</em>, <em>save_params=None</em>, <em>dont_run=False</em>, <em>skip_check=False</em>, <em>inter_op_parallelism_threads=40</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#test_from_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.test_from_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main testing interface function.</p>
+<p>Same as train_from_parameters; but just performs testing without training.</p>
+<p>For documentation, see argument descriptions in train_from_params.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.train">
+<code class="descclassname">tfutils.base.</code><code class="descname">train</code><span class="sig-paren">(</span><em>sess</em>, <em>queues</em>, <em>dbinterface</em>, <em>train_loop</em>, <em>train_targets</em>, <em>global_step</em>, <em>num_minibatches=1</em>, <em>num_steps=inf</em>, <em>thres_loss=100</em>, <em>validate_first=True</em>, <em>validation_targets=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.train" title="Permalink to this definition">¶</a></dt>
+<dd><p>Actually runs the training evaluation loop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Args:</th><td class="field-body"><ul class="first last">
+<li><dl class="first docutils">
+<dt>sess: (tesorflow.Session)</dt>
+<dd><p class="first last">Object in which to run calculations</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>queues (list of Queue)</dt>
+<dd><p class="first last">Objects containing asynchronously queued data iterators</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>dbinterface (DBInterface object)</dt>
+<dd><p class="first last">Saver through which to save results</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>train_loop (callable withs args: sess and train_targets)</dt>
+<dd><p class="first last">Callable that specifies a custom training loop</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>train_targets (dict of tensorflow nodes)</dt>
+<dd><p class="first last">Targets to train. One item in this dict must be &#8220;optimizer&#8221; or similar
+to make anything happen</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>num_minibatches (int)</dt>
+<dd><p class="first last">How many minibatches to use to before applying gradient update.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>num_steps (int)</dt>
+<dd><p class="first last">How many steps to train to before quitting</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>validation_targets (dict of tensorflow objects, default: None)</dt>
+<dd><p class="first last">Objects on which validation will be computed</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>thres_loss (float, default: 100)</dt>
+<dd><p class="first last">If loss exceeds this during training, HiLossError is thrown</p>
+</dd>
+</dl>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.train_from_params">
+<code class="descclassname">tfutils.base.</code><code class="descname">train_from_params</code><span class="sig-paren">(</span><em>save_params</em>, <em>model_params</em>, <em>train_params</em>, <em>loss_params=None</em>, <em>learning_rate_params=None</em>, <em>optimizer_params=None</em>, <em>validation_params=None</em>, <em>log_device_placement=False</em>, <em>load_params=None</em>, <em>dont_run=False</em>, <em>skip_check=False</em>, <em>inter_op_parallelism_threads=40</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#train_from_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.train_from_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main training interface function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>save_params</strong> (<em>dict</em>) &#8211; Dictionary of arguments for creating saver object (see Saver class).</li>
+<li><strong>model_params</strong> (<em>dict</em>) &#8211; <p>Containing function that produces model and arguments to that function.
+model_params[&#8216;func&#8217;] is the function producing the model.</p>
+<blockquote>
+<div>The function&#8217;s signature is:
+Args:<blockquote>
+<div>inputs: data object
+- <cite>train</cite> &#8211; boolean if training is happening
+- <cite>seed</cite> &#8211; seed for use in random generation of final config</div></blockquote>
+<dl class="docutils">
+<dt>Returns:</dt>
+<dd>(tf.Operations): train output tensorflow nodes
+- final configuration used in model</dd>
+</dl>
+</div></blockquote>
+<ul>
+<li>Remaining items in model_params are dictionary of arguments massed to func.</li>
+</ul>
+</li>
+<li><strong>train_params</strong> (<em>dict</em>) &#8211; <p>Containing params for data sources and targets in training:
+- train_params[&#8216;data&#8217;] contains params for the data</p>
+<blockquote>
+<div><ul>
+<li>train_params[&#8216;data&#8217;][&#8216;func&#8217;] is the function that constructs the data
+provider.   This dataprovider must be an instance of a subclass of
+tfutils.data.DataProviderBase.   Specifically, it must have a method
+called &#8220;init_ops&#8221; &#8211; see documentation in tfutils/data.py.</li>
+<li>remainder of train_params[&#8216;data&#8217;] are kwargs passed to func</li>
+</ul>
+</div></blockquote>
+<ul>
+<li><dl class="first docutils">
+<dt>train_params[&#8216;targets&#8217;] (optional) contains params for additional train targets</dt>
+<dd><ul class="first last">
+<li>train_params[&#8216;targets&#8217;][&#8216;func&#8217;] is a function that produces
+tensorflow nodes as training targets</li>
+<li>remainder of train_parms[&#8216;targets&#8217;] are arguments to func</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>train_params[&#8216;queue_params&#8217;] is an optional dict of</dt>
+<dd>params used to specify creation for the queue, passed to the
+Queue.__init__ method.   Default is {}.</dd>
+</dl>
+</li>
+</ul>
+</li>
+<li><strong>loss_params</strong> (<em>dict</em>) &#8211; <p>Parameters for to utils.get_loss function for specifying loss
+- loss_params[&#8216;targets&#8217;] is a string or a list of strings,</p>
+<blockquote>
+<div>contain the names of inputs nodes that will be sent into the loss function
+Must be provided</div></blockquote>
+<ul>
+<li>loss_params[&#8216;loss_per_case_func&#8217;] is the function used to calculate the loss.
+Must be provided.
+The parameters sent to this function is defined by loss_params[&#8216;loss_per_case_func_params&#8217;].</li>
+<li>loss_params[&#8216;loss_per_case_func_params&#8217;] is a dict including  help information about
+how positional parameters should be sent to loss_params[&#8216;loss_per_case_func&#8217;] as named parameters.
+Default is {&#8216;_outputs&#8217;: &#8216;logits&#8217;, &#8216;_targets_&#8217;: &#8216;labels&#8217;}<blockquote>
+<div><ul>
+<li>If loss_params[&#8216;loss_per_case_func_params&#8217;] is empty, the parameters for
+loss_params[&#8216;loss_per_case_func&#8217;] will be (outputs, <a href="#id7"><span class="problematic" id="id8">*</span></a>[inputs[t] for t in targets], <a href="#id9"><span class="problematic" id="id10">**</span></a>loss_func_kwargs),
+where &#8216;outputs&#8217; is the output of the network, inputs is the input nodes,
+and targets is loss_params[&#8216;targets&#8217;].</li>
+<li>Key value can have three choices:
+- &#8216;_outputs&#8217;: the value of this key will be the name for &#8216;outputs&#8217;.
+- &#8216;_targets_&#8217;: name for &#8216;[inputs[t] for t in targets]&#8217;.
+- &#8216;_target_somename&#8217;: name for &#8216;inputs[somename]&#8217; is somename is inside targets.</li>
+<li>Parameters not mentioned by the key values will still be sent to the function as positional parameters.</li>
+</ul>
+</div></blockquote>
+</li>
+<li>loss_params[&#8216;agg_func&#8217;] is the aggregate function, default is None</li>
+<li>loss_params[&#8216;loss_func_kwargs&#8217;]. Keyword parameters sent to loss_params[&#8216;loss_per_case_func&#8217;]. Default is None.</li>
+<li>loss_params[&#8216;agg_func_kwargs&#8217;]. Keyword parameters sent to loss_params[&#8216;agg_func&#8217;]. Default is None.</li>
+</ul>
+</li>
+<li><strong>learning_rate_params</strong> (<em>dict</em>) &#8211; <p>Parameters for specifying learning_rate:
+- learning_rate_params[&#8216;func&#8217;] is a function producing</p>
+<blockquote>
+<div>tensorflow node acting as learning rate.
+This function must accept argument &#8220;global_step&#8221;.</div></blockquote>
+<ul>
+<li>remainder of learning_rate_params are arguments to func.</li>
+</ul>
+</li>
+<li><strong>optimizer_params</strong> (<em>dict</em>) &#8211; <p>Parameters for creating optimizer:
+- optimizer_params[&#8216;func&#8217;] is a function producing a</p>
+<blockquote>
+<div>tensorflow optimizer object (like a subclass of tf.train.Optimizer)
+- Must accept:<blockquote>
+<div>&#8220;learning_rate&#8221; &#8211; the result of the learning_rate_func call</div></blockquote>
+<ul>
+<li>Must return object with a method called &#8220;minimize&#8221; with
+the same call signature as tensorflow.train.Optimizer.minimize &#8212; that is:<blockquote>
+<div><ul>
+<li><dl class="first docutils">
+<dt>Must accept:</dt>
+<dd><ul class="first last">
+<li>&#8220;loss&#8221; &#8211; result of loss_func call</li>
+<li>&#8220;global_step&#8221; &#8211; global step used for determine learning rate,</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Must return:</dt>
+<dd><ul class="first last">
+<li>tensorflow node which computes gradients and applies
+them, and must increment &#8220;global_step&#8221;</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<ul>
+<li>Remainder of optimizer_params (aside form &#8220;func&#8221;) are arguments
+to the optimizer func</li>
+</ul>
+</li>
+<li><strong>validation_params</strong> (<em>dict</em>) &#8211; <p>Dictionary of validation sources. The structure if this dictionary is:
+{</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&lt;validation_target_name_1&gt;: {</dt>
+<dd><dl class="first docutils">
+<dt>&#8216;data&#8217;: {</dt>
+<dd>&#8216;func&#8217;: (callable) data source function for this validation,
+&lt;kwarg1&gt;: &lt;value1&gt; for &#8216;func&#8217;,
+...
+},</dd>
+<dt>&#8216;targets&#8217;: {</dt>
+<dd>&#8216;func&#8217;: (callable) returning targets,
+&lt;kwarg1&gt;: &lt;value1&gt; for &#8216;func&#8217;,
+...
+}</dd>
+<dt>&#8216;queue_params&#8217;: (optional, dict) params for creating queue for</dt>
+<dd>this validation. NB: if this is NOT specified, queue params
+for this validation default to those used in constructing
+the training data queue.</dd>
+</dl>
+<p>&#8216;num_steps&#8217;: (int) number of batches of validation source to compute
+&#8216;agg_func&#8217;: (optional, callable) how to aggregate validation results</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>across batches after computation. Signature is:</dt>
+<dd><ul class="first last">
+<li>one input argument: the list of validation batch results</li>
+<li>one output: aggregated version</li>
+</ul>
+</dd>
+</dl>
+<p>Default is utils.identity_func</p>
+</div></blockquote>
+<dl class="last docutils">
+<dt>&#8216;online_agg_func&#8217;: (optional, callable) how to aggregate validation results</dt>
+<dd><dl class="first docutils">
+<dt>on a per-batch basis. Siganture is:</dt>
+<dd><ul class="first last">
+<li>three input arguments: (current aggregate, new result, step)</li>
+<li>one output: new aggregated result</li>
+</ul>
+</dd>
+</dl>
+<p class="last">One first step, current aggregate passed in is None.
+The final result is passed to the &#8220;agg_func&#8221;.
+Default is utils.append_and_return</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>},
+&lt;validation_target_name_2&gt;: ...</p>
+</div></blockquote>
+<p>}</p>
+</li>
+<li><strong>each validation_target_name key, the targets are computed and then added to</strong> (<em>For</em>) &#8211; </li>
+<li><strong>output dictionary to be computed every so often -- unlike train_targets which</strong> (<em>the</em>) &#8211; </li>
+<li><strong>computed on each time step, these are computed on a basic controlled by the</strong> (<em>are</em>) &#8211; </li>
+<li><strong>specific in the saver_params.</strong> (<em>valid_save_freq</em>) &#8211; </li>
+<li><strong>(dict, defualt</strong> (<em>queue_params</em>) &#8211; None): Dictionary of arguments to Queue object (see
+tfutils.data.Queue documentation)</li>
+<li><strong>(float, default</strong> (<em>thres_loss</em>) &#8211; 100): If loss exceeds this during training, HiLossError is thrown</li>
+<li><strong>(int or None, default</strong> (<em>num_steps</em>) &#8211; None): How many total steps of the optimization are run.
+If None, train is run until process is cancelled.</li>
+<li><strong>load_params</strong> (<em>dict</em>) &#8211; Dictionary of arguments for loading model, if different from saver
+(see Saver class).</li>
+<li><strong>(bool, default</strong> (<em>log_device_placement</em>) &#8211; False): Whether to log device placement in tensorflow session</li>
+<li><strong>(int, default</strong> (<em>inter_op_parallelism_threads</em>) &#8211; 40): Inter op thread pool size (has to be set large enough to avoid deadlock
+when using multiple queues)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>Deleted Parameters:</dt>
+<dd>saver_params</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Description.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">TYPE</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.base.train_loop">
+<code class="descclassname">tfutils.base.</code><code class="descname">train_loop</code><span class="sig-paren">(</span><em>sess</em>, <em>train_targets</em>, <em>num_minibatches=1</em>, <em>**loop_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/base.html#train_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.base.train_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define default minibatch training loop.</p>
+<p>A training loop that performs minibatching with <code class="docutils literal"><span class="pre">num_minibatches</span></code>
+minibatches.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sess</strong> (<em>tf.Session</em>) &#8211; Current tensorflow session.</li>
+<li><strong>train_targets</strong> (<em>dict</em>) &#8211; <p>Target operations to be evaluated by <code class="docutils literal"><span class="pre">sess.run</span></code>.
+By default, <code class="docutils literal"><span class="pre">base.train_from_params</span></code> inserts the following
+targets to facilitate minibatching:</p>
+<blockquote>
+<div><ul>
+<li><code class="docutils literal"><span class="pre">__grads__</span></code> (tf.Operation): Accumulates and stores gradients.</li>
+<li><code class="docutils literal"><span class="pre">optimizer</span></code> (tf.Operation): Applies and zeros gradients.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><strong>num_minibatches</strong> (<em>int</em>) &#8211; number of minibatches to use.</li>
+<li><strong>**loop_params</strong> (<em>mapping</em>) &#8211; additional, user-defined kwargs to
+be used in the training loop.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A dictionary containing train targets evaluated by the session.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.data">
+<span id="tfutils-data"></span><h1>tfutils.data<a class="headerlink" href="#module-tfutils.data" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="tfutils.data.Coordinator">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">Coordinator</code><span class="sig-paren">(</span><em>itr</em>, <em>tid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#Coordinator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.Coordinator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="tfutils.data.Coordinator.next">
+<code class="descname">next</code><span class="sig-paren">(</span><em>j</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#Coordinator.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.Coordinator.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.DataProviderBase">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">DataProviderBase</code><a class="reference internal" href="_modules/tfutils/data.html#DataProviderBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.DataProviderBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Base class for all data provider objects.   This class must be subclassed to have a
+functional data provider.</p>
+<dl class="method">
+<dt id="tfutils.data.DataProviderBase.init_ops">
+<code class="descname">init_ops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#DataProviderBase.init_ops"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.DataProviderBase.init_ops" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method is required of all data providers.   It returns a list of tensorflow
+operations that provide data, and which will be enqueued by the functions in base.py</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.HDF5DataReader">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">HDF5DataReader</code><span class="sig-paren">(</span><em>hdf5source</em>, <em>sourcelist</em>, <em>batch_size</em>, <em>subslice=None</em>, <em>mini_batch_size=None</em>, <em>preprocess=None</em>, <em>postprocess=None</em>, <em>pad=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="tfutils.data.HDF5DataReader.get_batch">
+<code class="descname">get_batch</code><span class="sig-paren">(</span><em>cbn</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader.get_batch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader.get_batch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.HDF5DataReader.get_data">
+<code class="descname">get_data</code><span class="sig-paren">(</span><em>dsource</em>, <em>sliceval</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader.get_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.HDF5DataReader.get_next_batch">
+<code class="descname">get_next_batch</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader.get_next_batch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader.get_next_batch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.HDF5DataReader.increment_batch_num">
+<code class="descname">increment_batch_num</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader.increment_batch_num"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader.increment_batch_num" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.data.HDF5DataReader.labels">
+<code class="descname">labels</code><a class="headerlink" href="#tfutils.data.HDF5DataReader.labels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.HDF5DataReader.next">
+<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.HDF5DataReader.set_epoch_batch">
+<code class="descname">set_epoch_batch</code><span class="sig-paren">(</span><em>epoch</em>, <em>batch_num</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#HDF5DataReader.set_epoch_batch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.HDF5DataReader.set_epoch_batch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.ImageNet">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">ImageNet</code><span class="sig-paren">(</span><em>data_path</em>, <em>group='train'</em>, <em>batch_size=1</em>, <em>crop_size=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ImageNet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ImageNet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.data.HDF5DataReader" title="tfutils.data.HDF5DataReader"><code class="xref py py-class docutils literal"><span class="pre">tfutils.data.HDF5DataReader</span></code></a></p>
+<dl class="attribute">
+<dt id="tfutils.data.ImageNet.N_TRAIN">
+<code class="descname">N_TRAIN</code><em class="property"> = 1281167</em><a class="headerlink" href="#tfutils.data.ImageNet.N_TRAIN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.data.ImageNet.N_TRAIN_VAL">
+<code class="descname">N_TRAIN_VAL</code><em class="property"> = 50000</em><a class="headerlink" href="#tfutils.data.ImageNet.N_TRAIN_VAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.data.ImageNet.N_VAL">
+<code class="descname">N_VAL</code><em class="property"> = 50000</em><a class="headerlink" href="#tfutils.data.ImageNet.N_VAL" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.ImageNet.postproc_img">
+<code class="descname">postproc_img</code><span class="sig-paren">(</span><em>ims</em>, <em>f</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ImageNet.postproc_img"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ImageNet.postproc_img" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.ImageNet.postproc_labels">
+<code class="descname">postproc_labels</code><span class="sig-paren">(</span><em>labels</em>, <em>f</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ImageNet.postproc_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ImageNet.postproc_labels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.ImageNetTF">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">ImageNetTF</code><span class="sig-paren">(</span><em>source_dirs</em>, <em>crop_size=224</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ImageNetTF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ImageNetTF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.data.TFRecordsParallelByFileProvider" title="tfutils.data.TFRecordsParallelByFileProvider"><code class="xref py py-class docutils literal"><span class="pre">tfutils.data.TFRecordsParallelByFileProvider</span></code></a></p>
+<dl class="method">
+<dt id="tfutils.data.ImageNetTF.postprocess_images">
+<code class="descname">postprocess_images</code><span class="sig-paren">(</span><em>ims</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ImageNetTF.postprocess_images"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ImageNetTF.postprocess_images" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.Item">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">Item</code><span class="sig-paren">(</span><em>coordinator</em>, <em>j</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#Item"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.Item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="tfutils.data.Item.next">
+<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#Item.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.Item.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.MNIST">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">MNIST</code><span class="sig-paren">(</span><em>data_path=None</em>, <em>group='train'</em>, <em>batch_size=100</em>, <em>n_threads=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#MNIST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.MNIST" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="tfutils.data.MNIST.init_ops">
+<code class="descname">init_ops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#MNIST.init_ops"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.MNIST.init_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.MNIST.next">
+<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#MNIST.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.MNIST.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.ParallelByFileProviderBase">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">ParallelByFileProviderBase</code><span class="sig-paren">(</span><em>source_paths</em>, <em>n_threads=1</em>, <em>shuffle=False</em>, <em>shuffle_seed=0</em>, <em>postprocess=None</em>, <em>read_args=None</em>, <em>read_kwargs=None</em>, <em>trans_dicts=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ParallelByFileProviderBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ParallelByFileProviderBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.data.DataProviderBase" title="tfutils.data.DataProviderBase"><code class="xref py py-class docutils literal"><span class="pre">tfutils.data.DataProviderBase</span></code></a></p>
+<dl class="method">
+<dt id="tfutils.data.ParallelByFileProviderBase.apply_postprocessing">
+<code class="descname">apply_postprocessing</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ParallelByFileProviderBase.apply_postprocessing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ParallelByFileProviderBase.apply_postprocessing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.ParallelByFileProviderBase.get_input_op">
+<code class="descname">get_input_op</code><span class="sig-paren">(</span><em>fq</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ParallelByFileProviderBase.get_input_op"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ParallelByFileProviderBase.get_input_op" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is the main method that returns a tensorflow data reading operation.</p>
+<p>This method will get called n_threads * n_attrs times in the method init_ops (see above).
+Specifically, it is called once for each thread id and each attribute group.</p>
+<dl class="docutils">
+<dt>The arguments are:</dt>
+<dd><dl class="first last docutils">
+<dt>fq:  filename queue object.  When run in a tf session, this object will act</dt>
+<dd>as a queue of filenames.  When fq.dequeue() is called in a tf.Session, it
+will produce the next filename to begin reading from.   Note: it only makes
+sense to dequeue from fq if the current file being read has been completed.</dd>
+<dt><a href="#id11"><span class="problematic" id="id12">*</span></a>args: any position arguments to the reader.  these are specified on a</dt>
+<dd>per-attribute-group basis (eg. across thread ids, calls for the same attribute
+group will get the same args).</dd>
+<dt><a href="#id13"><span class="problematic" id="id14">*</span></a>kwargs: any keyward arguments to the reader.  like for <a href="#id15"><span class="problematic" id="id16">*</span></a>args, these are specified</dt>
+<dd>on a per-attribute-group basis.</dd>
+</dl>
+</dd>
+</dl>
+<p>As an example of this method, see the TFRecordParallelByFileProvider.get_input_ops.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.data.ParallelByFileProviderBase.init_ops">
+<code class="descname">init_ops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ParallelByFileProviderBase.init_ops"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ParallelByFileProviderBase.init_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.ParallelBySliceProvider">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">ParallelBySliceProvider</code><span class="sig-paren">(</span><em>basefunc</em>, <em>kwargs</em>, <em>mode='block'</em>, <em>batch_size=256</em>, <em>n_threads=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ParallelBySliceProvider"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ParallelBySliceProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.data.DataProviderBase" title="tfutils.data.DataProviderBase"><code class="xref py py-class docutils literal"><span class="pre">tfutils.data.DataProviderBase</span></code></a></p>
+<p>Data provider for handling parallelization by records within one large randomly-accessible file.
+See an example of usage in tfutils/tests/test_data_hdf5.py.</p>
+<dl class="method">
+<dt id="tfutils.data.ParallelBySliceProvider.init_ops">
+<code class="descname">init_ops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#ParallelBySliceProvider.init_ops"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.ParallelBySliceProvider.init_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.TFRecordsParallelByFileProvider">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">TFRecordsParallelByFileProvider</code><span class="sig-paren">(</span><em>source_dirs</em>, <em>batch_size=256</em>, <em>meta_dicts=None</em>, <em>postprocess=None</em>, <em>trans_dicts=None</em>, <em>file_pattern='*.tfrecords'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#TFRecordsParallelByFileProvider"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.TFRecordsParallelByFileProvider" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.data.ParallelByFileProviderBase" title="tfutils.data.ParallelByFileProviderBase"><code class="xref py py-class docutils literal"><span class="pre">tfutils.data.ParallelByFileProviderBase</span></code></a></p>
+<dl class="method">
+<dt id="tfutils.data.TFRecordsParallelByFileProvider.get_input_op">
+<code class="descname">get_input_op</code><span class="sig-paren">(</span><em>fq</em>, <em>parsers</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#TFRecordsParallelByFileProvider.get_input_op"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.TFRecordsParallelByFileProvider.get_input_op" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.add_standard_postprocessing">
+<code class="descclassname">tfutils.data.</code><code class="descname">add_standard_postprocessing</code><span class="sig-paren">(</span><em>postprocess</em>, <em>meta_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#add_standard_postprocessing"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.add_standard_postprocessing" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.complete_metadata">
+<code class="descclassname">tfutils.data.</code><code class="descname">complete_metadata</code><span class="sig-paren">(</span><em>meta_dicts</em>, <em>parsed_meta_dicts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#complete_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.complete_metadata" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.get_data_paths">
+<code class="descclassname">tfutils.data.</code><code class="descname">get_data_paths</code><span class="sig-paren">(</span><em>paths</em>, <em>file_pattern='*.tfrecords'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#get_data_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.get_data_paths" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.get_parser">
+<code class="descclassname">tfutils.data.</code><code class="descname">get_parser</code><span class="sig-paren">(</span><em>shape</em>, <em>dtype</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#get_parser"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.get_parser" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.get_queue">
+<code class="descclassname">tfutils.data.</code><code class="descname">get_queue</code><span class="sig-paren">(</span><em>nodes</em>, <em>queue_type='fifo'</em>, <em>batch_size=256</em>, <em>capacity=None</em>, <em>min_after_dequeue=None</em>, <em>shape_flag=True</em>, <em>seed=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#get_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.get_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>A generic queue for reading data
+Built on top of <a class="reference external" href="https://indico.io/blog/tensorflow-data-input-part2-extensions/">https://indico.io/blog/tensorflow-data-input-part2-extensions/</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.get_unique_labels">
+<code class="descclassname">tfutils.data.</code><code class="descname">get_unique_labels</code><span class="sig-paren">(</span><em>larray</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#get_unique_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.get_unique_labels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.isin">
+<code class="descclassname">tfutils.data.</code><code class="descname">isin</code><span class="sig-paren">(</span><em>X</em>, <em>Y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#isin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.isin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indices of elements in a numpy array that appear in another.
+Fast routine for determining indices of elements in numpy array <cite>X</cite> that
+appear in numpy array <cite>Y</cite>, returning a boolean array <cite>Z</cite> such that:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="n">Y</span>
+</pre></div>
+</div>
+<dl class="docutils">
+<dt><strong>Parameters</strong></dt>
+<dd><dl class="first last docutils">
+<dt><strong>X</strong></dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">numpy array</span><dd>Numpy array to comapare to numpy array <cite>Y</cite>.  For each
+element of <cite>X</cite>, ask if it is in <cite>Y</cite>.</dd>
+<dt><strong>Y</strong></dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">numpy array</span><dd>Numpy array to which numpy array <cite>X</cite> is compared.  For each
+element of <cite>X</cite>, ask if it is in <cite>Y</cite>.</dd>
+</dl>
+</dd>
+<dt><strong>Returns</strong></dt>
+<dd><dl class="first last docutils">
+<dt><strong>b</strong></dt>
+ <span class="classifier-delimiter">:</span> <span class="classifier">numpy array (bool)</span><dd>Boolean numpy array, <cite>len(b) = len(X)</cite>.</dd>
+</dl>
+</dd>
+<dt><strong>See Also:</strong></dt>
+<dd><code class="xref py py-func docutils literal"><span class="pre">tabular.fast.recarrayisin()</span></code>,
+<code class="xref py py-func docutils literal"><span class="pre">tabular.fast.arraydifference()</span></code></dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.merge_meta">
+<code class="descclassname">tfutils.data.</code><code class="descname">merge_meta</code><span class="sig-paren">(</span><em>meta_dicts</em>, <em>trans_dicts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#merge_meta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.merge_meta" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.parse_standard_tfmeta">
+<code class="descclassname">tfutils.data.</code><code class="descname">parse_standard_tfmeta</code><span class="sig-paren">(</span><em>paths</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#parse_standard_tfmeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.parse_standard_tfmeta" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.perminverse">
+<code class="descclassname">tfutils.data.</code><code class="descname">perminverse</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#perminverse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.perminverse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fast inverse of a (numpy) permutation.</p>
+<p>From yamutils</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.data.random_cycle">
+<code class="descclassname">tfutils.data.</code><code class="descname">random_cycle</code><span class="sig-paren">(</span><em>ls</em>, <em>rng</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#random_cycle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.random_cycle" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="class">
+<dt id="tfutils.data.threadsafe_iter">
+<em class="property">class </em><code class="descclassname">tfutils.data.</code><code class="descname">threadsafe_iter</code><span class="sig-paren">(</span><em>it</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#threadsafe_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.threadsafe_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Takes an iterator/generator and makes it thread-safe by
+serializing call to the <cite>next</cite> method of given iterator/generator.</p>
+<dl class="method">
+<dt id="tfutils.data.threadsafe_iter.next">
+<code class="descname">next</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/data.html#threadsafe_iter.next"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.data.threadsafe_iter.next" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.error">
+<span id="tfutils-error"></span><h1>tfutils.error<a class="headerlink" href="#module-tfutils.error" title="Permalink to this headline">¶</a></h1>
+<dl class="exception">
+<dt id="tfutils.error.HiLossError">
+<em class="property">exception </em><code class="descclassname">tfutils.error.</code><code class="descname">HiLossError</code><a class="reference internal" href="_modules/tfutils/error.html#HiLossError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.error.HiLossError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="tfutils.error.NoChangeError">
+<em class="property">exception </em><code class="descclassname">tfutils.error.</code><code class="descname">NoChangeError</code><a class="reference internal" href="_modules/tfutils/error.html#NoChangeError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.error.NoChangeError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="tfutils.error.NoGlobalStepError">
+<em class="property">exception </em><code class="descclassname">tfutils.error.</code><code class="descname">NoGlobalStepError</code><a class="reference internal" href="_modules/tfutils/error.html#NoGlobalStepError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.error.NoGlobalStepError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="tfutils.error.RepoIsDirtyError">
+<em class="property">exception </em><code class="descclassname">tfutils.error.</code><code class="descname">RepoIsDirtyError</code><a class="reference internal" href="_modules/tfutils/error.html#RepoIsDirtyError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.error.RepoIsDirtyError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="tfutils.error.ThreadError">
+<em class="property">exception </em><code class="descclassname">tfutils.error.</code><code class="descname">ThreadError</code><a class="reference internal" href="_modules/tfutils/error.html#ThreadError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.error.ThreadError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">exceptions.Exception</span></code></p>
+<p>Exception class to raise if a thread has an issue.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.model">
+<span id="tfutils-model"></span><h1>tfutils.model<a class="headerlink" href="#module-tfutils.model" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="tfutils.model.ConvNet">
+<em class="property">class </em><code class="descclassname">tfutils.model.</code><code class="descname">ConvNet</code><span class="sig-paren">(</span><em>defaults=None</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#ConvNet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.ConvNet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="attribute">
+<dt id="tfutils.model.ConvNet.CUSTOM_FUNC">
+<code class="descname">CUSTOM_FUNC</code><em class="property"> = [&lt;function conv at 0x122d2d488&gt;, &lt;function fc at 0x122d2d848&gt;, &lt;function global_pool at 0x122d2d8c0&gt;, &lt;function conv_bnf at 0x122d2d668&gt;, &lt;function depthsep_conv at 0x122d2d500&gt;, &lt;function depth_conv at 0x122d2d938&gt;, &lt;function avg_pool2d at 0x122d2d1b8&gt;]</em><a class="headerlink" href="#tfutils.model.ConvNet.CUSTOM_FUNC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.model.ConvNet.INTERNAL_FUNC">
+<code class="descname">INTERNAL_FUNC</code><em class="property"> = ['arg_scope', '_func_wrapper', '_val2list', 'layer', '_reuse_scope_name', '__call__', '_get_func']</em><a class="headerlink" href="#tfutils.model.ConvNet.INTERNAL_FUNC" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.model.ConvNet.arg_scope">
+<code class="descname">arg_scope</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#ConvNet.arg_scope"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.ConvNet.arg_scope" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the arg_scope.</p>
+<p>Pass a dict of {&lt;func_name&gt;: {&lt;arg_name&gt;: &lt;arg_value&gt;, ...}, ...}. These
+values will then override the default values for the specified functions
+whenever that function is called.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.model.ConvNet.layer">
+<code class="descname">layer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwds</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#ConvNet.layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.ConvNet.layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the scope. Can be used with <cite>with</cite>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.alexnet">
+<code class="descclassname">tfutils.model.</code><code class="descname">alexnet</code><span class="sig-paren">(</span><em>train=True</em>, <em>norm=True</em>, <em>seed=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#alexnet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.alexnet" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.alexnet_tfutils">
+<code class="descclassname">tfutils.model.</code><code class="descname">alexnet_tfutils</code><span class="sig-paren">(</span><em>inputs</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#alexnet_tfutils"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.alexnet_tfutils" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.avg_pool2d">
+<code class="descclassname">tfutils.model.</code><code class="descname">avg_pool2d</code><span class="sig-paren">(</span><em>inp</em>, <em>kernel_size</em>, <em>stride=2</em>, <em>padding='VALID'</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#avg_pool2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.avg_pool2d" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.conv">
+<code class="descclassname">tfutils.model.</code><code class="descname">conv</code><span class="sig-paren">(</span><em>inp, out_depth, ksize=[3, 3], strides=[1, 1, 1, 1], padding='SAME', kernel_init='xavier', kernel_init_kwargs=None, bias=0, weight_decay=None, activation='relu', batch_norm=True, name='conv'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#conv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.conv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.conv_bnf">
+<code class="descclassname">tfutils.model.</code><code class="descname">conv_bnf</code><span class="sig-paren">(</span><em>inp, out_depth, ksize=[3, 3], strides=[1, 1, 1, 1], padding='SAME', kernel_init='xavier', kernel_init_kwargs=None, bias=0, weight_decay=None, activation='relu6', batch_norm=True, train_bn=True, name='conv_bnf'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#conv_bnf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.conv_bnf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.depth_conv">
+<code class="descclassname">tfutils.model.</code><code class="descname">depth_conv</code><span class="sig-paren">(</span><em>inp</em>, <em>multiplier=1</em>, <em>ksize=3</em>, <em>strides=1</em>, <em>padding='SAME'</em>, <em>kernel_init='xavier'</em>, <em>kernel_init_kwargs=None</em>, <em>bias=1</em>, <em>activation='relu6'</em>, <em>weight_decay=None</em>, <em>batch_norm=True</em>, <em>train_bn=True</em>, <em>name='depth_conv'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#depth_conv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.depth_conv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.depthsep_conv">
+<code class="descclassname">tfutils.model.</code><code class="descname">depthsep_conv</code><span class="sig-paren">(</span><em>inp</em>, <em>out_depth</em>, <em>multiplier=1</em>, <em>ksize=3</em>, <em>strides=1</em>, <em>dep_padding='SAME'</em>, <em>sep_padding='SAME'</em>, <em>batch_norm=True</em>, <em>train_bn=True</em>, <em>name='depthsep_conv'</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#depthsep_conv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.depthsep_conv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.fc">
+<code class="descclassname">tfutils.model.</code><code class="descname">fc</code><span class="sig-paren">(</span><em>inp</em>, <em>out_depth</em>, <em>kernel_init='xavier'</em>, <em>kernel_init_kwargs=None</em>, <em>bias=1</em>, <em>weight_decay=None</em>, <em>activation='relu'</em>, <em>batch_norm=True</em>, <em>dropout=None</em>, <em>dropout_seed=None</em>, <em>name='fc'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#fc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.fc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.global_pool">
+<code class="descclassname">tfutils.model.</code><code class="descname">global_pool</code><span class="sig-paren">(</span><em>inp</em>, <em>kind='avg'</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#global_pool"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.global_pool" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.initializer">
+<code class="descclassname">tfutils.model.</code><code class="descname">initializer</code><span class="sig-paren">(</span><em>kind='xavier'</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#initializer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.initializer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.mnist">
+<code class="descclassname">tfutils.model.</code><code class="descname">mnist</code><span class="sig-paren">(</span><em>train=True</em>, <em>seed=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#mnist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.mnist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.model.mnist_tfutils">
+<code class="descclassname">tfutils.model.</code><code class="descname">mnist_tfutils</code><span class="sig-paren">(</span><em>inputs</em>, <em>train=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/model.html#mnist_tfutils"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.model.mnist_tfutils" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.optimizer">
+<span id="tfutils-optimizer"></span><h1>tfutils.optimizer<a class="headerlink" href="#module-tfutils.optimizer" title="Permalink to this headline">¶</a></h1>
+<p>Default Optimizer to be used with tfutils.</p>
+<p>The ClipOptimizer class adds support for gradient clipping, gradient
+aggregation across devices and gradient accumulation useful for
+performing minibatching (accumulating and aggregating
+gradients for multiple batches before applying a gradient update).</p>
+<dl class="class">
+<dt id="tfutils.optimizer.ClipOptimizer">
+<em class="property">class </em><code class="descclassname">tfutils.optimizer.</code><code class="descname">ClipOptimizer</code><span class="sig-paren">(</span><em>optimizer_class</em>, <em>clip=True</em>, <em>trainable_names=None</em>, <em>*optimizer_args</em>, <em>**optimizer_kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="tfutils.optimizer.ClipOptimizer.accumulate_gradients">
+<code class="descname">accumulate_gradients</code><span class="sig-paren">(</span><em>minibatch_grads</em>, <em>num_minibatches=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.accumulate_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.accumulate_gradients" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accumulate gradients for <cite>num_minibatches</cite> minibatches.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.optimizer.ClipOptimizer.aggregate_gradients">
+<em class="property">classmethod </em><code class="descname">aggregate_gradients</code><span class="sig-paren">(</span><em>grads_and_vars</em>, <em>method='average'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.aggregate_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.aggregate_gradients" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.optimizer.ClipOptimizer.apply_gradients">
+<code class="descname">apply_gradients</code><span class="sig-paren">(</span><em>grads_and_vars</em>, <em>global_step=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.apply_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.apply_gradients" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply gradients to model variables specified in <cite>grads_and_vars</cite>.</p>
+<p><cite>apply_gradients</cite> returns an op that calls
+<cite>tf.train.Optimizer.apply_gradients</cite> and then zeros the gradient
+variables stored in <cite>self.grads_and_vars</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grads_and_vars</strong> (<em>list</em>) &#8211; Description.</li>
+<li><strong>global_step</strong> (<em>None, optional</em>) &#8211; tensorflow global_step variable.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>Applies gradient update to model followed by an</dt>
+<dd><p class="first last">internal gradient zeroing operation to <cite>self.grads_and_vars</cite>.</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">(tf.Operation)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.optimizer.ClipOptimizer.average_gradients">
+<em class="property">classmethod </em><code class="descname">average_gradients</code><span class="sig-paren">(</span><em>tower_grads</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.average_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.average_gradients" title="Permalink to this definition">¶</a></dt>
+<dd><p>Average a list of (grads, vars) produced by <cite>compute_gradients</cite>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.optimizer.ClipOptimizer.compute_gradients">
+<code class="descname">compute_gradients</code><span class="sig-paren">(</span><em>loss</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.compute_gradients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.compute_gradients" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.optimizer.ClipOptimizer.minimize">
+<code class="descname">minimize</code><span class="sig-paren">(</span><em>loss</em>, <em>global_step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.minimize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.minimize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.optimizer.ClipOptimizer.zero_grad">
+<code class="descname">zero_grad</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/optimizer.html#ClipOptimizer.zero_grad"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.optimizer.ClipOptimizer.zero_grad" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.utils">
+<span id="tfutils-utils"></span><h1>tfutils.utils<a class="headerlink" href="#module-tfutils.utils" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="tfutils.utils.CoordinatedThread">
+<em class="property">class </em><code class="descclassname">tfutils.utils.</code><code class="descname">CoordinatedThread</code><span class="sig-paren">(</span><em>coord=None</em>, <em>group=None</em>, <em>target=None</em>, <em>name=None</em>, <em>args=()</em>, <em>kwargs={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#CoordinatedThread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.CoordinatedThread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></code></p>
+<p>A thread class coordinated by tf.train.Coordinator.</p>
+<dl class="method">
+<dt id="tfutils.utils.CoordinatedThread.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#CoordinatedThread.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.CoordinatedThread.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the thread&#8217;s main activity.</p>
+<p>You may override this method in a subclass. The standard run() method
+invokes the callable object passed to the object&#8217;s constructor as the
+target argument, if any, with sequential and keyword arguments taken
+from the args and kwargs arguments, respectively.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.aggregate_outputs">
+<code class="descclassname">tfutils.utils.</code><code class="descname">aggregate_outputs</code><span class="sig-paren">(</span><em>tower_outputs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#aggregate_outputs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.aggregate_outputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return aggregated model replicate outputs.</p>
+<p>The elements of <cite>tower_outputs</cite> should have identical structure and
+correspond to the outputs of individual model replicas on separate
+devices (GPUs). Model replicate outputs are recursively searched until
+a tensor <code class="docutils literal"><span class="pre">t</span></code> satisfying:</p>
+<blockquote>
+<div>isinstance(t, tf.Tensor) -&gt; True</div></blockquote>
+<p>is found. Tensor <code class="docutils literal"><span class="pre">t</span></code> is then concatenated with all of its corresponding
+replicates along the batch dimension (axis=0).</p>
+<p>If <code class="docutils literal"><span class="pre">tower_outputs</span></code> is a list of length one, then the element it contains
+is returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tower_outputs</strong> (<em>list</em>) &#8211; The outputs of individual model replicas.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The aggregated output with a structure identical to the replicate outputs.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">TypeError</span></code> &#8211; Aggregation not supported for given type.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">tower_outputs</span><span class="p">)</span>
+<span class="go">[{&#39;tensor&#39;: &lt;tf.Tensor &#39;softmax_linear/fc/output:0&#39; shape=(50, 10) dtype=float32&gt;},</span>
+<span class="go">{&#39;tensor&#39;: &lt;tf.Tensor &#39;softmax_linear_1/fc/output:0&#39; shape=(50, 10) dtype=float32&gt;}]</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">aggegrate_ouputs</span><span class="p">(</span><span class="n">tower_outputs</span><span class="p">))</span>
+<span class="go">{&#39;tensor&#39;: &lt;tf.Tensor &#39;concat:0&#39; shape=(100, 10) dtype=float32&gt;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.append_and_return">
+<code class="descclassname">tfutils.utils.</code><code class="descname">append_and_return</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#append_and_return"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.append_and_return" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.format_devices">
+<code class="descclassname">tfutils.utils.</code><code class="descname">format_devices</code><span class="sig-paren">(</span><em>devices</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#format_devices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.format_devices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return list of proper device (gpu) strings.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>devices</strong> (<em>list</em>) &#8211; <p>A list of device strings.
+If <code class="docutils literal"><span class="pre">devices</span></code> is not a list, it is converted to one. The following
+rules are applied to each element in the list:</p>
+<blockquote>
+<div>type: (int) -&gt; &#8216;/gpu:{}&#8217;.format(int)
+type: (str) -&gt; /gpu:{}&#8217;.format(d) where d is first occurence
+of a digit</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A sorted list of unique and properly formatted device strings.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">TypeError</span></code> &#8211; Invalid device specification.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.utils.frozendict">
+<em class="property">class </em><code class="descclassname">tfutils.utils.</code><code class="descname">frozendict</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#frozendict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.frozendict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">_abcoll.Mapping</span></code></p>
+<p>An immuatable dictionary.</p>
+<p>An immutable wrapper around dictionaries that implements the complete <code class="xref py py-class docutils literal"><span class="pre">collections.Mapping</span></code>
+interface. It can be used as a drop-in replacement for dictionaries where immutability is desired.</p>
+<p>from <a class="reference external" href="https://pypi.python.org/pypi/frozendict">https://pypi.python.org/pypi/frozendict</a></p>
+<dl class="method">
+<dt id="tfutils.utils.frozendict.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><em>**add_or_replace</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#frozendict.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.frozendict.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.utils.frozendict.dict_cls">
+<code class="descname">dict_cls</code><a class="headerlink" href="#tfutils.utils.frozendict.dict_cls" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal"><span class="pre">dict</span></code></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.get_available_gpus">
+<code class="descclassname">tfutils.utils.</code><code class="descname">get_available_gpus</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#get_available_gpus"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.get_available_gpus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.get_loss">
+<code class="descclassname">tfutils.utils.</code><code class="descname">get_loss</code><span class="sig-paren">(</span><em>inputs</em>, <em>outputs</em>, <em>targets</em>, <em>loss_per_case_func</em>, <em>loss_per_case_func_params={'_targets_$all': 'labels'</em>, <em>'_outputs': 'logits'}</em>, <em>agg_func=None</em>, <em>loss_func_kwargs=None</em>, <em>agg_func_kwargs=None</em>, <em>**loss_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#get_loss"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.get_loss" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.get_loss_dict">
+<code class="descclassname">tfutils.utils.</code><code class="descname">get_loss_dict</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#get_loss_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.get_loss_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.get_saver_pb2_v2_files">
+<code class="descclassname">tfutils.utils.</code><code class="descname">get_saver_pb2_v2_files</code><span class="sig-paren">(</span><em>prefix</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#get_saver_pb2_v2_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.get_saver_pb2_v2_files" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.git_info">
+<code class="descclassname">tfutils.utils.</code><code class="descname">git_info</code><span class="sig-paren">(</span><em>repo</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#git_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.git_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return information about a git repo.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>repo</strong> (<em>git.Repo</em>) &#8211; The git repo to be investigated.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Git repo information</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.identity_func">
+<code class="descclassname">tfutils.utils.</code><code class="descname">identity_func</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#identity_func"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.identity_func" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.isstring">
+<code class="descclassname">tfutils.utils.</code><code class="descname">isstring</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#isstring"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.isstring" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.jsonize">
+<code class="descclassname">tfutils.utils.</code><code class="descname">jsonize</code><span class="sig-paren">(</span><em>x</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#jsonize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.jsonize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return version of x that can be serialized trivally to json format.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.make_mongo_safe">
+<code class="descclassname">tfutils.utils.</code><code class="descname">make_mongo_safe</code><span class="sig-paren">(</span><em>_d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#make_mongo_safe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.make_mongo_safe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a json-izable actually safe for insertion into Mongo.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>_d</strong> (<em>dict</em>) &#8211; a dictionary to make safe for Mongo.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.mean_dict">
+<code class="descclassname">tfutils.utils.</code><code class="descname">mean_dict</code><span class="sig-paren">(</span><em>y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#mean_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.mean_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.reduce_mean">
+<code class="descclassname">tfutils.utils.</code><code class="descname">reduce_mean</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#reduce_mean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.reduce_mean" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.reduce_mean_dict">
+<code class="descclassname">tfutils.utils.</code><code class="descname">reduce_mean_dict</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#reduce_mean_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.reduce_mean_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.sonify">
+<code class="descclassname">tfutils.utils.</code><code class="descname">sonify</code><span class="sig-paren">(</span><em>arg</em>, <em>memo=None</em>, <em>skip=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#sonify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.sonify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return version of arg that can be trivally serialized to json format.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>arg</strong> (<em>object</em>) &#8211; an argument to sonify.</li>
+<li><strong>memo</strong> (<em>dict, optional</em>) &#8211; A dictionary to contain args. Defaults to None.</li>
+<li><strong>skip</strong> (<em>bool, optional</em>) &#8211; Skip git repo info check. Defaults to False.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Sonified return argument.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal"><span class="pre">TypeError</span></code> &#8211; Cannot sonify argument type.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.strip_prefix">
+<code class="descclassname">tfutils.utils.</code><code class="descname">strip_prefix</code><span class="sig-paren">(</span><em>prefix</em>, <em>all_vars</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#strip_prefix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.strip_prefix" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.strip_prefix_from_name">
+<code class="descclassname">tfutils.utils.</code><code class="descname">strip_prefix_from_name</code><span class="sig-paren">(</span><em>prefix</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#strip_prefix_from_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.strip_prefix_from_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.verify_pb2_v2_files">
+<code class="descclassname">tfutils.utils.</code><code class="descname">verify_pb2_v2_files</code><span class="sig-paren">(</span><em>cache_prefix</em>, <em>ckpt_record</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#verify_pb2_v2_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.verify_pb2_v2_files" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.version_check_and_info">
+<code class="descclassname">tfutils.utils.</code><code class="descname">version_check_and_info</code><span class="sig-paren">(</span><em>module</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#version_check_and_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.version_check_and_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return either git info or standard module version if not a git repo.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>module</strong> (<em>module</em>) &#8211; python module object to get info for.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">dictionary of info</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.utils.version_info">
+<code class="descclassname">tfutils.utils.</code><code class="descname">version_info</code><span class="sig-paren">(</span><em>module</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/utils.html#version_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.utils.version_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get version of a standard python module.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>module</strong> (<em>module</em>) &#8211; python module object to get version info for.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">dictionary of version info.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="modules.html" class="btn btn-neutral" title="tfutils" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

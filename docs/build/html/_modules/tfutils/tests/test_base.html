@@ -1,0 +1,948 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.tests.test_base &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="TFUtils 0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">TFUtils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>tfutils.tests.test_base</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tfutils.tests.test_base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Test base module.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">errno</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">cPickle</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">unittest</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
+
+<span class="kn">import</span> <span class="nn">gridfs</span>
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="kn">as</span> <span class="nn">tf</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">tfutils.base</span> <span class="kn">as</span> <span class="nn">base</span>
+<span class="kn">import</span> <span class="nn">tfutils.data</span> <span class="kn">as</span> <span class="nn">data</span>
+<span class="kn">import</span> <span class="nn">tfutils.model</span> <span class="kn">as</span> <span class="nn">model</span>
+<span class="kn">import</span> <span class="nn">tfutils.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
+
+
+<span class="n">num_batches_per_epoch</span> <span class="o">=</span> <span class="mi">10000</span> <span class="o">//</span> <span class="mi">256</span>
+
+
+<div class="viewcode-block" id="setUpModule"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.setUpModule">[docs]</a><span class="k">def</span> <span class="nf">setUpModule</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Set up module once, before any TestCases are run.&quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="tearDownModule"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.tearDownModule">[docs]</a><span class="k">def</span> <span class="nf">tearDownModule</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Tear down module after all TestCases are run.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="TestBase"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase">[docs]</a><span class="k">class</span> <span class="nc">TestBase</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+
+    <span class="n">port</span> <span class="o">=</span> <span class="mi">29101</span>
+    <span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+    <span class="n">database_name</span> <span class="o">=</span> <span class="s1">&#39;_tfutils&#39;</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestBase.setUpClass"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.setUpClass">[docs]</a>    <span class="k">def</span> <span class="nf">setUpClass</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up class once before any test methods are run.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">__name__</span><span class="p">,</span> <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">]))</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Open primary MongoDB connection.</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">cls</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+                                       <span class="n">port</span><span class="o">=</span><span class="n">cls</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">collection_name</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">collection</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">database_name</span><span class="p">][</span><span class="n">cls</span><span class="o">.</span><span class="n">collection_name</span><span class="p">]</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestBase.tearDownClass"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.tearDownClass">[docs]</a>    <span class="k">def</span> <span class="nf">tearDownClass</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Tear down class after all test methods have run.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">remove_database</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">database_name</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">drop_database</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">database_names</span><span class="p">()</span>
+         <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">database_name</span><span class="p">)]</span>
+
+        <span class="c1"># TODO: Remove cache, if desired.</span>
+
+        <span class="c1"># Close primary MongoDB connection.</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TestBase.setUp"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.setUp">[docs]</a>    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up class before each test method is executed.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="TestBase.tearDown"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.tearDown">[docs]</a>    <span class="k">def</span> <span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Tear Down is called after each test method is executed.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestBase.setup_params"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.setup_params">[docs]</a>    <span class="k">def</span> <span class="nf">setup_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Specify training params with a specific exp_id.&quot;&quot;&quot;</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+            <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+            <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">database_name</span><span class="p">,</span>
+            <span class="s1">&#39;collname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">,</span>
+            <span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span>
+            <span class="s1">&#39;save_valid_freq&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+            <span class="s1">&#39;save_filters_freq&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                            <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                            <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+            <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+            <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;decay_steps&#39;</span><span class="p">:</span> <span class="n">num_batches_per_epoch</span><span class="p">,</span>
+            <span class="s1">&#39;decay_rate&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+            <span class="s1">&#39;staircase&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;validation_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;valid0&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                    <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;test&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">utils</span><span class="o">.</span><span class="n">mean_dict</span><span class="p">}}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;skip_check&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+<div class="viewcode-block" id="TestBase.test_training"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.test_training">[docs]</a>    <span class="k">def</span> <span class="nf">test_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Illustrate training.</span>
+
+<span class="sd">        This test illustrates how basic training is performed using the</span>
+<span class="sd">        tfutils.base.train_from_params function.  This is the first in a sequence of</span>
+<span class="sd">        interconnected tests. It creates a pretrained model that is used by</span>
+<span class="sd">        the next few tests (test_validation and test_feature_extraction).</span>
+
+<span class="sd">        As can be seen by looking at how the test checks for correctness, after the</span>
+<span class="sd">        training is run, results of training, including (intermittently) the full</span>
+<span class="sd">        variables needed to re-initialize the tensorflow model, are stored in a</span>
+<span class="sd">        MongoDB.</span>
+
+<span class="sd">        Also see docstring of the tfutils.base.train_from_params function for more detailed</span>
+<span class="sd">        information about usage.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">exp_id</span> <span class="o">=</span> <span class="s1">&#39;training0&#39;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span>
+
+        <span class="c1"># Run training.</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Test if results are as expected.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_as_expected</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">26</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">400</span><span class="p">])</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c1"># Run another 500 steps of training on the same experiment id.</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;num_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1000</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Test if results are as expected.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_as_expected</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="mi">51</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">1000</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">distinct</span><span class="p">(</span><span class="s1">&#39;exp_id&#39;</span><span class="p">),</span> <span class="p">[</span><span class="n">exp_id</span><span class="p">])</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c1"># Run 500 more steps but save to a new experiment id.</span>
+        <span class="n">new_exp_id</span> <span class="o">=</span> <span class="s1">&#39;training1&#39;</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;num_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1500</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;load_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">}</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;exp_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_exp_id</span>
+
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assert_step</span><span class="p">(</span><span class="n">new_exp_id</span><span class="p">,</span> <span class="p">[</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">1400</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="TestBase.test_custom_training"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.test_custom_training">[docs]</a>    <span class="k">def</span> <span class="nf">test_custom_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Illustrate training with custom training loop.</span>
+
+<span class="sd">        This test illustrates how basic training is performed with a custom</span>
+<span class="sd">        training loop using the tfutils.base.train_from_params function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">exp_id</span> <span class="o">=</span> <span class="s1">&#39;training0&#39;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span>
+
+        <span class="c1"># Add a custom train_loop to use during training.</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;train_loop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">custom_train_loop</span><span class="p">}</span>
+
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestBase.test_training_save"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.test_training_save">[docs]</a>    <span class="k">def</span> <span class="nf">test_training_save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Illustrate saving to the grid file system during training time.&quot;&quot;&quot;</span>
+        <span class="n">exp_id</span> <span class="o">=</span> <span class="s1">&#39;training_save&#39;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span>
+
+        <span class="c1"># Modify a few of the save parameters.</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;save_valid_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3000</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;save_filters_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">30000</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3000</span>
+
+        <span class="c1"># Specify additional save_params for saving to gfs.</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;save_to_gfs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;first_image&#39;</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;targets&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_first_image_target</span><span class="p">}</span>
+
+        <span class="c1"># Actually run the training.</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Check that the first image has been saved.</span>
+        <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;train_results&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;$exists&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}}</span>
+        <span class="n">train_steps</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">train_steps</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">train_steps</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;_id&#39;</span><span class="p">]</span>
+        <span class="n">fn</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;item_for&#39;</span><span class="p">:</span> <span class="n">idx</span><span class="p">})[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span>
+        <span class="n">fs</span> <span class="o">=</span> <span class="n">gridfs</span><span class="o">.</span><span class="n">GridFS</span><span class="p">(</span><span class="n">coll</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">)</span>
+        <span class="n">fh</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">get_last_version</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+        <span class="n">saved_data</span> <span class="o">=</span> <span class="n">cPickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c1"># Assert as expected.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;train_results&#39;</span><span class="p">,</span> <span class="n">saved_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;first_image&#39;</span><span class="p">,</span> <span class="n">saved_data</span><span class="p">[</span><span class="s1">&#39;train_results&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">saved_data</span><span class="p">[</span><span class="s1">&#39;train_results&#39;</span><span class="p">][</span><span class="s1">&#39;first_image&#39;</span><span class="p">]),</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">saved_data</span><span class="p">[</span><span class="s1">&#39;train_results&#39;</span><span class="p">][</span><span class="s1">&#39;first_image&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">,))</span></div>
+
+<div class="viewcode-block" id="TestBase.test_validation"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.test_validation">[docs]</a>    <span class="k">def</span> <span class="nf">test_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Illustrate validation.</span>
+
+<span class="sd">        This is a test illustrating how to compute performance on a trained model on a new dataset,</span>
+<span class="sd">        using the tfutils.base.test_from_params function.  This test assumes that test_training function</span>
+<span class="sd">        has run first (to provide a pre-trained model to validate).</span>
+
+<span class="sd">        After the test is run, results from the validation are stored in the MongoDB.</span>
+<span class="sd">        (The test shows how the record can be loaded for inspection.)</span>
+
+<span class="sd">        See the docstring of tfutils.base.test_from_params for more detailed information on usage.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Specify the parameters for the validation.</span>
+        <span class="n">exp_id</span> <span class="o">=</span> <span class="s1">&#39;training0&#39;</span>
+        <span class="n">val_exp_id</span> <span class="o">=</span> <span class="s1">&#39;validation0&#39;</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">exp_id</span><span class="p">)</span>
+
+        <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;train_params&#39;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">)</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;load_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">}</span>
+
+        <span class="c1"># Actually run the model.</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">test_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># ... specifically, there is now a record containing the validation0 performance results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">})</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># ... here&#39;s how to load the record:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+        <span class="c1"># ... check that the recorrectly ties to the id information for the</span>
+        <span class="c1"># pre-trained model it was supposed to validate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;validates&#39;</span><span class="p">])</span>
+        <span class="n">idval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">})[</span><span class="mi">50</span><span class="p">][</span><span class="s1">&#39;_id&#39;</span><span class="p">]</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">})[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;validates&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">idval</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestBase.test_feature_extraction"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.test_feature_extraction">[docs]</a>    <span class="k">def</span> <span class="nf">test_feature_extraction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Illustrate feature extraction.</span>
+
+<span class="sd">        This is a test illustrating how to perform feature extraction using</span>
+<span class="sd">        tfutils.base.test_from_params.</span>
+<span class="sd">        The basic idea is to specify a validation target that is simply the actual output of</span>
+<span class="sd">        the model at some layer. (See the &quot;get_extraction_target&quot; function above as well.)</span>
+<span class="sd">        This test assumes that test_train has run first.</span>
+
+<span class="sd">        After the test is run, the results of the feature extraction are saved in the Grid</span>
+<span class="sd">        File System associated with the mongo database, with one file per batch of feature</span>
+<span class="sd">        results.  See how the features are accessed by reading the test code below.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># set up parameters</span>
+        <span class="n">exp_id</span> <span class="o">=</span> <span class="s1">&#39;validation1&#39;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="TestBase.assert_count"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.assert_count">[docs]</a>    <span class="k">def</span> <span class="nf">assert_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">count</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">})</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span>
+            <span class="n">count</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestBase.assert_step"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.assert_step">[docs]</a>    <span class="k">def</span> <span class="nf">assert_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;saved_filters&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">})</span>
+                <span class="o">.</span><span class="n">distinct</span><span class="p">(</span><span class="s1">&#39;step&#39;</span><span class="p">),</span>
+            <span class="n">step</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestBase.assert_as_expected"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.assert_as_expected">[docs]</a>    <span class="k">def</span> <span class="nf">assert_as_expected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_count</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">count</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_step</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestBase.remove_directory"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.remove_directory">[docs]</a>    <span class="k">def</span> <span class="nf">remove_directory</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a directory.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing directory: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">))</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Directory successfully removed.&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestBase.remove_database"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.remove_database">[docs]</a>    <span class="k">def</span> <span class="nf">remove_database</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">database_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a MonogoDB database.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing database: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database_name</span><span class="p">))</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">drop_database</span><span class="p">(</span><span class="n">database_name</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Database successfully removed.&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestBase.remove_collection"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.remove_collection">[docs]</a>    <span class="k">def</span> <span class="nf">remove_collection</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">collection_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a MonogoDB collection.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing collection: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">collection_name</span><span class="p">))</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">database_name</span><span class="p">][</span><span class="n">collection_name</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Collection successfully removed.&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestBase.remove_document"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.remove_document">[docs]</a>    <span class="k">def</span> <span class="nf">remove_document</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">document</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="TestBase.makedirs"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.makedirs">[docs]</a>    <span class="k">def</span> <span class="nf">makedirs</span><span class="p">(</span><span class="nb">dir</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="nb">dir</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">errno</span><span class="o">.</span><span class="n">EEXIST</span><span class="p">:</span>
+                <span class="k">raise</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="TestBase.get_first_image_target"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.get_first_image_target">[docs]</a>    <span class="k">def</span> <span class="nf">get_first_image_target</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="o">**</span><span class="n">ttarg_params</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return target for saving the first image of every batch.</span>
+
+<span class="sd">        Used in test_training_save test to test save_to_gfs option.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;first_image&#39;</span><span class="p">:</span> <span class="n">inputs</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]}</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="TestBase.get_extraction_target"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.get_extraction_target">[docs]</a>    <span class="k">def</span> <span class="nf">get_extraction_target</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">to_extract</span><span class="p">,</span> <span class="o">**</span><span class="n">loss_params</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Produce validation target function.</span>
+
+<span class="sd">        Example validation target function to use to provide targets for extracting features.</span>
+<span class="sd">        This function also adds a standard &quot;loss&quot; target which you may or not may not want</span>
+
+<span class="sd">        The to_extract argument must be a dictionary of the form</span>
+<span class="sd">              {name_for_saving: name_of_actual_tensor, ...}</span>
+<span class="sd">        where the &quot;name_for_saving&quot; is a human-friendly name you want to save extracted</span>
+<span class="sd">        features under, and name_of_actual_tensor is a name of the tensor in the tensorflow</span>
+<span class="sd">        graph outputing the features desired to be extracted.  To figure out what the names</span>
+<span class="sd">        of the tensors you want to extract are &quot;to_extract&quot; argument,  uncomment the</span>
+<span class="sd">        commented-out lines, which will print a list of all available tensor names.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">op</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span> <span class="k">for</span> <span class="n">op</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_graph</span><span class="p">()</span><span class="o">.</span><span class="n">get_operations</span><span class="p">()]</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]</span>
+
+        <span class="n">r</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">r&#39;__GPU__\d/&#39;</span><span class="p">)</span>
+        <span class="n">_targets</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="n">name_without_gpu_prefix</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">save_name</span><span class="p">,</span> <span class="n">actual_name</span> <span class="ow">in</span> <span class="n">to_extract</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">actual_name</span> <span class="ow">in</span> <span class="n">name_without_gpu_prefix</span><span class="p">:</span>
+                    <span class="n">tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_graph</span><span class="p">()</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">_targets</span><span class="p">[</span><span class="n">save_name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_targets</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">targets</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_loss</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="o">**</span><span class="n">loss_params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">targets</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="TestBase.custom_train_loop"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.custom_train_loop">[docs]</a>    <span class="k">def</span> <span class="nf">custom_train_loop</span><span class="p">(</span><span class="n">sess</span><span class="p">,</span> <span class="n">train_targets</span><span class="p">,</span> <span class="o">**</span><span class="n">loop_params</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Define Custom training loop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sess (tf.Session): Current tensorflow session.</span>
+<span class="sd">            train_targets (list): Description.</span>
+<span class="sd">            **loop_params: Optional kwargs needed to perform custom train loop.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing train targets evaluated by the session.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">train_results</span> <span class="o">=</span> <span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">train_targets</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">train_results</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Model {} has loss {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">train_results</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="TestBase.asserts_for_record"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestBase.asserts_for_record">[docs]</a>    <span class="k">def</span> <span class="nf">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;saved_filters&#39;</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;_saver_write_version&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;_saver_num_data_files&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="nb">type</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;duration&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="nb">float</span>
+
+        <span class="n">should_contain</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">,</span> <span class="s1">&#39;load_params&#39;</span><span class="p">,</span>
+                          <span class="s1">&#39;model_params&#39;</span><span class="p">,</span> <span class="s1">&#39;validation_params&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">should_contain</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="n">vk</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;validation_params&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">vk1</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;validation_results&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">vk</span><span class="p">)</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="n">vk1</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;seed&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;func&#39;</span><span class="p">][</span><span class="s1">&#39;modname&#39;</span><span class="p">])</span>
+        <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;func&#39;</span><span class="p">][</span><span class="s1">&#39;modname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;tfutils.model&#39;</span>
+        <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;func&#39;</span><span class="p">][</span><span class="s1">&#39;objname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;mnist_tfutils&#39;</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">([</span><span class="s1">&#39;hidden1&#39;</span><span class="p">,</span> <span class="s1">&#39;hidden2&#39;</span><span class="p">,</span> <span class="s1">u&#39;softmax_linear&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span>
+            <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;cfg_final&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="n">_k</span> <span class="o">=</span> <span class="n">vk</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">should_contain</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;agg_func&#39;</span><span class="p">,</span> <span class="s1">&#39;data_params&#39;</span><span class="p">,</span> <span class="s1">&#39;num_steps&#39;</span><span class="p">,</span>
+                          <span class="s1">&#39;online_agg_func&#39;</span><span class="p">,</span> <span class="s1">&#39;queue_params&#39;</span><span class="p">,</span> <span class="s1">&#39;targets&#39;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">should_contain</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span>
+            <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;validation_params&#39;</span><span class="p">][</span><span class="n">_k</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">train</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;train&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">True</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;num_steps&#39;</span><span class="p">,</span> <span class="s1">&#39;queue_params&#39;</span><span class="p">]:</span>
+                <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="n">k</span><span class="p">]</span> <span class="o">==</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="n">k</span><span class="p">]</span>
+
+            <span class="n">should_contain</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;loss_params&#39;</span><span class="p">,</span> <span class="s1">&#39;optimizer_params&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;train_params&#39;</span><span class="p">,</span> <span class="s1">&#39;learning_rate_params&#39;</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="nb">set</span><span class="p">(</span><span class="n">should_contain</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">==</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;thres_loss&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">100</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;data_params&#39;</span><span class="p">][</span><span class="s1">&#39;func&#39;</span><span class="p">][</span><span class="s1">&#39;modname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;tfutils.data&#39;</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;data_params&#39;</span><span class="p">][</span><span class="s1">&#39;func&#39;</span><span class="p">][</span><span class="s1">&#39;objname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;MNIST&#39;</span>
+
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_params&#39;</span><span class="p">][</span><span class="s1">&#39;agg_func&#39;</span><span class="p">][</span><span class="s1">&#39;modname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;tensorflow.python.ops.math_ops&#39;</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_params&#39;</span><span class="p">][</span><span class="s1">&#39;agg_func&#39;</span><span class="p">][</span><span class="s1">&#39;objname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;reduce_mean&#39;</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_per_case_func&#39;</span><span class="p">][</span><span class="s1">&#39;modname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;tensorflow.python.ops.nn_ops&#39;</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_per_case_func&#39;</span><span class="p">][</span><span class="s1">&#39;objname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;sparse_softmax_cross_entropy_with_logits&#39;</span>
+            <span class="k">assert</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;loss_params&#39;</span><span class="p">][</span><span class="s1">&#39;targets&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">][</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;train&#39;</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="s1">&#39;train_params&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">]</span></div></div>
+
+
+<div class="viewcode-block" id="TestDistributedModel"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestDistributedModel">[docs]</a><span class="k">class</span> <span class="nc">TestDistributedModel</span><span class="p">(</span><span class="n">TestBase</span><span class="p">):</span>
+
+<div class="viewcode-block" id="TestDistributedModel.setup_params"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestDistributedModel.setup_params">[docs]</a>    <span class="k">def</span> <span class="nf">setup_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">):</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">,</span>
+            <span class="s1">&#39;devices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;/gpu:0&#39;</span><span class="p">,</span> <span class="s1">&#39;/gpu:1&#39;</span><span class="p">]}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+            <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+            <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">database_name</span><span class="p">,</span>
+            <span class="s1">&#39;collname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">,</span>
+            <span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span>
+            <span class="s1">&#39;save_valid_freq&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+            <span class="s1">&#39;save_filters_freq&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+            <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+            <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;decay_steps&#39;</span><span class="p">:</span> <span class="n">num_batches_per_epoch</span><span class="p">,</span>
+            <span class="s1">&#39;decay_rate&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+            <span class="s1">&#39;staircase&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;validation_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;valid0&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                    <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;test&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">utils</span><span class="o">.</span><span class="n">mean_dict</span><span class="p">}}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;skip_check&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">return</span> <span class="n">params</span></div></div>
+
+
+<div class="viewcode-block" id="TestMultiModel"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestMultiModel">[docs]</a><span class="k">class</span> <span class="nc">TestMultiModel</span><span class="p">(</span><span class="n">TestBase</span><span class="p">):</span>
+
+<div class="viewcode-block" id="TestMultiModel.setup_params"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestMultiModel.setup_params">[docs]</a>    <span class="k">def</span> <span class="nf">setup_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">):</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">},</span>
+            <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">}]</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+            <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+            <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">database_name</span><span class="p">,</span>
+            <span class="s1">&#39;collname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">,</span>
+            <span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span>
+            <span class="s1">&#39;save_valid_freq&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+            <span class="s1">&#39;save_filters_freq&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                            <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                            <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+            <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+            <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;decay_steps&#39;</span><span class="p">:</span> <span class="n">num_batches_per_epoch</span><span class="p">,</span>
+            <span class="s1">&#39;decay_rate&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+            <span class="s1">&#39;staircase&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;validation_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;valid0&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                    <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;test&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">utils</span><span class="o">.</span><span class="n">mean_dict</span><span class="p">}}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;skip_check&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+<div class="viewcode-block" id="TestMultiModel.test_training"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestMultiModel.test_training">[docs]</a>    <span class="k">def</span> <span class="nf">test_training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">base_exp_id</span> <span class="o">=</span> <span class="s1">&#39;training0&#39;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">base_exp_id</span><span class="p">)</span>
+        <span class="n">num_models</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Actually run the training.</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Test if results are as expected.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_models</span><span class="p">):</span>
+            <span class="n">exp_id</span> <span class="o">=</span> <span class="n">base_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_as_expected</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">26</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">400</span><span class="p">])</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c1"># Run another 500 steps of training on the same experiment id.</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;num_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1000</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Test if results are as expected.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_models</span><span class="p">):</span>
+            <span class="n">exp_id</span> <span class="o">=</span> <span class="n">base_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_as_expected</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="mi">51</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">600</span><span class="p">,</span> <span class="mi">800</span><span class="p">,</span> <span class="mi">1000</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertItemsEqual</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">distinct</span><span class="p">(</span><span class="s1">&#39;exp_id&#39;</span><span class="p">),</span>
+                <span class="p">[</span><span class="n">base_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_models</span><span class="p">)])</span>
+
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c1"># Run 500 more steps but save to a new experiment id.</span>
+        <span class="n">new_exp_id</span> <span class="o">=</span> <span class="s1">&#39;training1&#39;</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;num_steps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1500</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;load_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">base_exp_id</span><span class="p">}</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;exp_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_exp_id</span>
+
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_models</span><span class="p">):</span>
+            <span class="n">exp_id</span> <span class="o">=</span> <span class="n">new_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assert_step</span><span class="p">(</span><span class="n">exp_id</span><span class="p">,</span> <span class="p">[</span><span class="mi">1200</span><span class="p">,</span> <span class="mi">1400</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="TestMultiModel.test_training_save"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestMultiModel.test_training_save">[docs]</a>    <span class="k">def</span> <span class="nf">test_training_save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Illustrate saving to the grid file system during training time.&quot;&quot;&quot;</span>
+        <span class="n">base_exp_id</span> <span class="o">=</span> <span class="s1">&#39;training_save&#39;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">base_exp_id</span><span class="p">)</span>
+        <span class="n">num_models</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">])</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;save_to_gfs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;first_image&#39;</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;save_valid_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3000</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;save_filters_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">30000</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">][</span><span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3000</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">][</span><span class="s1">&#39;targets&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_first_image_target</span><span class="p">}</span>
+
+        <span class="c1"># Actually run the training.</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Check that the first image has been saved.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_models</span><span class="p">):</span>
+            <span class="n">exp_id</span> <span class="o">=</span> <span class="n">base_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">coll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span> <span class="s1">&#39;train_results&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;$exists&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}}</span>
+            <span class="n">train_steps</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">train_steps</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="mi">5</span><span class="p">)</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">train_steps</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;_id&#39;</span><span class="p">]</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;item_for&#39;</span><span class="p">:</span> <span class="n">idx</span><span class="p">})[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span>
+            <span class="n">fs</span> <span class="o">=</span> <span class="n">gridfs</span><span class="o">.</span><span class="n">GridFS</span><span class="p">(</span><span class="n">coll</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">)</span>
+            <span class="n">fh</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">get_last_version</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+            <span class="n">saved_data</span> <span class="o">=</span> <span class="n">cPickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+            <span class="n">fh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;train_results&#39;</span><span class="p">,</span> <span class="n">saved_data</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;first_image&#39;</span><span class="p">,</span> <span class="n">saved_data</span><span class="p">[</span><span class="s1">&#39;train_results&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">saved_data</span><span class="p">[</span><span class="s1">&#39;train_results&#39;</span><span class="p">][</span><span class="s1">&#39;first_image&#39;</span><span class="p">]),</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">saved_data</span><span class="p">[</span><span class="s1">&#39;train_results&#39;</span><span class="p">][</span><span class="s1">&#39;first_image&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">,))</span></div>
+
+<div class="viewcode-block" id="TestMultiModel.test_validation"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestMultiModel.test_validation">[docs]</a>    <span class="k">def</span> <span class="nf">test_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c1"># Specify the parameters for the validation.</span>
+        <span class="n">base_exp_id</span> <span class="o">=</span> <span class="s1">&#39;training0&#39;</span>
+        <span class="n">base_val_exp_id</span> <span class="o">=</span> <span class="s1">&#39;validation0&#39;</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup_params</span><span class="p">(</span><span class="n">base_exp_id</span><span class="p">)</span>
+        <span class="n">num_models</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">])</span>
+
+        <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;train_params&#39;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">)</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;load_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">base_val_exp_id</span><span class="p">}</span>
+
+        <span class="c1"># Actually run the model</span>
+        <span class="n">base</span><span class="o">.</span><span class="n">test_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Check that the results are correct.</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_models</span><span class="p">):</span>
+            <span class="n">exp_id</span> <span class="o">=</span> <span class="n">base_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">val_exp_id</span> <span class="o">=</span> <span class="n">base_val_exp_id</span> <span class="o">+</span> <span class="s1">&#39;_model_{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="c1"># ... specifically, there is now a record containing the validation0 performance results</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">})</span><span class="o">.</span><span class="n">count</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># ... here&#39;s how to load the record:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">})[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">asserts_for_record</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+            <span class="c1"># ... check that the recorrectly ties to the id information for the</span>
+            <span class="c1"># pre-trained model it was supposed to validate</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;validates&#39;</span><span class="p">])</span>
+            <span class="n">idval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">})[</span><span class="mi">50</span><span class="p">][</span><span class="s1">&#39;_id&#39;</span><span class="p">]</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection</span><span class="p">[</span><span class="s1">&#39;files&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">val_exp_id</span><span class="p">})[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;validates&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">idval</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TestDistributedMulti"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestDistributedMulti">[docs]</a><span class="k">class</span> <span class="nc">TestDistributedMulti</span><span class="p">(</span><span class="n">TestMultiModel</span><span class="p">):</span>
+
+<div class="viewcode-block" id="TestDistributedMulti.setup_params"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_base.TestDistributedMulti.setup_params">[docs]</a>    <span class="k">def</span> <span class="nf">setup_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_id</span><span class="p">):</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">,</span>
+             <span class="s1">&#39;devices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;/gpu:0&#39;</span><span class="p">,</span> <span class="s1">&#39;/gpu:1&#39;</span><span class="p">]},</span>
+            <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">,</span>
+             <span class="s1">&#39;devices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;/gpu:2&#39;</span><span class="p">,</span> <span class="s1">&#39;/gpu:3&#39;</span><span class="p">]}]</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span>
+            <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
+            <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">database_name</span><span class="p">,</span>
+            <span class="s1">&#39;collname&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_name</span><span class="p">,</span>
+            <span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span>
+            <span class="s1">&#39;save_valid_freq&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+            <span class="s1">&#39;save_filters_freq&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                            <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                            <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+            <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+            <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;decay_steps&#39;</span><span class="p">:</span> <span class="n">num_batches_per_epoch</span><span class="p">,</span>
+            <span class="s1">&#39;decay_rate&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+            <span class="s1">&#39;staircase&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;validation_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;valid0&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                    <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;test&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">utils</span><span class="o">.</span><span class="n">mean_dict</span><span class="p">}}</span>
+
+        <span class="n">params</span><span class="p">[</span><span class="s1">&#39;skip_check&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+
+        <span class="k">return</span> <span class="n">params</span></div></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

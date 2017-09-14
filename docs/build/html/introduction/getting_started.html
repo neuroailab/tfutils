@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Getting Started &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="TFUtils 0.1 documentation" href="../index.html"/>
+        <link rel="next" title="Multi-GPU Training" href="../fundamentals/multigpu.html"/>
+        <link rel="prev" title="Installation" href="installation.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fundamentals/multimodel.html">Multi-Model Training</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tfutils.html">tfutils package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../tfutils.tests.html">tfutils.tests package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#module-tfutils.tests.test">tfutils.tests.test module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#tfutils-tests-test-base-module">tfutils.tests.test_base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#module-tfutils.tests.test_data_hdf5">tfutils.tests.test_data_hdf5 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#module-tfutils.tests.test_data_tfrecords">tfutils.tests.test_data_tfrecords module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#tfutils-tests-test-dbinterface-module">tfutils.tests.test_dbinterface module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#module-tfutils.tests.test_utils">tfutils.tests.test_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../tfutils.tests.html#module-tfutils.tests">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.base">tfutils.base module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#tfutils-benchmark-module">tfutils.benchmark module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.data">tfutils.data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.error">tfutils.error module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.model">tfutils.model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.optimizer">tfutils.optimizer module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.utils">tfutils.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils.version">tfutils.version module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tfutils.html#module-tfutils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">TFUtils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/introduction/getting_started.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<p><strong>&#8220;Hello World&#8221; - TFUtils style</strong></p>
+<p>We will take our first steps with TFUtils by training the cononical <em>MNIST</em>
+network and saving the results to a MongoDB database (The following assumes
+you have successfully completed the installation process).</p>
+<div class="section" id="configuring-mongodb">
+<h2>Configuring MongoDB<a class="headerlink" href="#configuring-mongodb" title="Permalink to this headline">¶</a></h2>
+<p>Before we can begin training MNIST, we must locate a running instance of
+MongoDB and determine the port it is listening to (by default, MongoDB
+is set to listen on port <code class="docutils literal"><span class="pre">27017</span></code>).</p>
+<p>To verify that an instance of MongoDB is running on your machine, type</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">$ps</span> aux <span class="p">|</span> grep mongod
+</pre></div>
+</div>
+<p>which should produce an output resembling</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>root      <span class="m">8030</span>  0.3  0.8 <span class="m">13326208376</span> <span class="m">1165680</span> ? Sl   Aug07 170:37 /usr/bin/mongod -f /etc/mongod.conf
+</pre></div>
+</div>
+<p>Look for the lines:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">...</span>
+<span class="c1"># network interfaces</span>
+<span class="n">net</span><span class="p">:</span>
+  <span class="n">port</span><span class="p">:</span> <span class="mi">29101</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>in the mongod configuration file (<code class="docutils literal"><span class="pre">/etc/mongod.conf</span></code> above) to determine the port,</p>
+<p>These tests show basic procedures for training, validating, and extracting features from
+models.</p>
+<p>Note about MongoDB:</p>
+<p>The tests require a MongoDB instance to be available on the port defined by &#8220;testport&#8221; in
+the code below. This db can either be local to where you run these tests (and therefore
+on &#8216;localhost&#8217; by default) or it can be running somewhere else and then by ssh-tunneled on
+the relevant port to the host where you run these tests. [That is, before testing, you&#8217;d run</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ssh -f -N -L  <span class="o">[</span>testport<span class="o">]</span>:localhost:<span class="o">[</span>testport<span class="o">]</span> <span class="o">[</span>username<span class="o">]</span>@mongohost.xx.xx
+</pre></div>
+</div>
+<p>on the machine where you&#8217;re running these tests. <code class="docutils literal"><span class="pre">[mongohost]</span></code> is the where the mongodb
+instance is running.</p>
+</div>
+<div class="section" id="specifying-an-experiment">
+<h2>Specifying an Experiment<a class="headerlink" href="#specifying-an-experiment" title="Permalink to this headline">¶</a></h2>
+<p>Now that we have a database ready to store our training results, let&#8217;s specify
+how they will be saved. Critically, any experiment executed by
+TFUtils can be uniquely identified by the following 5-tuple:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="22%" />
+<col width="53%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">host</span></code></td>
+<td colspan="2">Hostname where database connection lives</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">port</span></code></td>
+<td colspan="2">Port where database connection lives</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">dbname</span></code></td>
+<td colspan="2">Name of database for storage</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal"><span class="pre">collname</span></code></td>
+<td colspan="2">Name of the database collection</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal"><span class="pre">exp_id</span></code></td>
+<td colspan="2">Experiment id descriptor</td>
+</tr>
+</tbody>
+</table>
+<p>The variables host/port/dbname/coll/exp_id control the location of the saved
+data for the run, in order of increasing specificity.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>When choosing these, consider that:</p>
+<blockquote class="last">
+<div><ol class="arabic simple">
+<li>If a given host/port/dbname/coll/exp_id already has saved checkpoints,
+then any new call to start training with these same location variables
+will start to train from the most recent saved checkpoint.  If you mistakenly
+try to start training a new model with different variable names, or structure,
+from that existing checkpoint, an error will be raised, as the model will be
+incompatiable with the saved variables.</li>
+<li>When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb
+queries only operate over a single collection.  So if you want to analyze
+results from a bunch of experiments together using mongod queries, you should
+put them all in the same collection, but with different exp_ids.  If, on the
+other hand, you never expect to analyze data from two experiments together,
+you can put them in different collections or different databases.  Choosing
+between putting two experiments in two collections in the same database
+or in two totally different databases will depend on how you want to organize
+your results and is really a matter of preference.</li>
+</ol>
+</div></blockquote>
+</div>
+<p>With this in mind, let us specify our <code class="docutils literal"><span class="pre">save_params</span></code>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">tfutils</span> <span class="kn">import</span> <span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">utils</span>
+
+<span class="n">host</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+<span class="n">port</span> <span class="o">=</span> <span class="mi">27017</span>  <span class="c1"># default mongoDB port</span>
+<span class="n">dbname</span> <span class="o">=</span> <span class="s1">&#39;tfutils_database&#39;</span>
+<span class="n">collname</span> <span class="o">=</span> <span class="s1">&#39;into_collection&#39;</span>
+<span class="n">exp_id</span> <span class="o">=</span> <span class="s1">&#39;hello_world_training&#39;</span>
+
+<span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">params</span><span class="p">[</span><span class="s1">&#39;save_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="n">host</span><span class="p">,</span>
+                         <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="n">port</span><span class="p">,</span>
+                         <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="n">dbname</span><span class="p">,</span>
+                         <span class="s1">&#39;collname&#39;</span><span class="p">:</span> <span class="n">collname</span><span class="p">,</span>
+                         <span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">exp_id</span><span class="p">,</span>
+                         <span class="s1">&#39;save_valid_freq&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                         <span class="s1">&#39;save_filters_freq&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+                         <span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                         <span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="defining-a-model">
+<h2>Defining a Model<a class="headerlink" href="#defining-a-model" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">}</span>
+
+<span class="n">params</span><span class="p">[</span><span class="s1">&#39;loss_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;targets&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">],</span>
+                         <span class="s1">&#39;loss_per_case_func&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">sparse_softmax_cross_entropy_with_logits</span><span class="p">,</span>
+                         <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">})</span>
+
+<span class="n">params</span><span class="p">[</span><span class="s1">&#39;optimizer_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;optimizer_class&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">MomentumOptimizer</span><span class="p">,</span>
+                              <span class="s1">&#39;momentum&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">})</span>
+
+<span class="n">params</span><span class="p">[</span><span class="s1">&#39;train_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                                          <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                                          <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                                          <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                          <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                                           <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                          <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">500</span>
+                          <span class="p">}</span>
+<span class="n">params</span><span class="p">[</span><span class="s1">&#39;learning_rate_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+                                  <span class="s1">&#39;decay_steps&#39;</span><span class="p">:</span> <span class="n">num_batches_per_epoch</span><span class="p">,</span>
+                                  <span class="s1">&#39;decay_rate&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+                                  <span class="s1">&#39;staircase&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="including-validation">
+<h2>Including Validation<a class="headerlink" href="#including-validation" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;validation_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;valid0&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                                                          <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                                                          <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;test&#39;</span><span class="p">,</span>
+                                                          <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                                          <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                                                           <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                                          <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+                                          <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">utils</span><span class="o">.</span><span class="n">mean_dict</span><span class="p">}}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="train">
+<h2>Train!<a class="headerlink" href="#train" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">base</span><span class="o">.</span><span class="n">train_from_params</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../fundamentals/multigpu.html" class="btn btn-neutral float-right" title="Multi-GPU Training" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral" title="Installation" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

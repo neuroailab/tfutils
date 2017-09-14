@@ -1,0 +1,604 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.tests.test_dbinterface &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="TFUtils 0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">TFUtils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>tfutils.tests.test_dbinterface</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tfutils.tests.test_dbinterface</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Test DBInterface.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">errno</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">import</span> <span class="nn">unittest</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="kn">as</span> <span class="nn">tf</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">tfutils.base</span> <span class="kn">as</span> <span class="nn">base</span>
+<span class="kn">import</span> <span class="nn">tfutils.data</span> <span class="kn">as</span> <span class="nn">data</span>
+<span class="kn">import</span> <span class="nn">tfutils.model</span> <span class="kn">as</span> <span class="nn">model</span>
+<span class="kn">import</span> <span class="nn">tfutils.utils</span> <span class="kn">as</span> <span class="nn">utils</span>
+
+
+<span class="c1"># def logPoint(context):</span>
+<span class="c1">#     &quot;&quot;&quot;Utility function used for module functions and class methods.&quot;&quot;&quot;</span>
+<span class="c1">#     callingFunction = inspect.stack()[1][3]</span>
+<span class="c1">#     print &#39;in %s - %s()&#39; % (context, callingFunction)</span>
+
+
+<div class="viewcode-block" id="setUpModule"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.setUpModule">[docs]</a><span class="k">def</span> <span class="nf">setUpModule</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Set up module once, before any TestCases are run.&quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span></div>
+    <span class="c1"># logPoint(&#39;module %s&#39; % __name__)</span>
+
+
+<div class="viewcode-block" id="tearDownModule"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.tearDownModule">[docs]</a><span class="k">def</span> <span class="nf">tearDownModule</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Tear down module after all TestCases are run.&quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+    <span class="c1"># logPoint(&#39;module %s&#39; % __name__)</span>
+
+
+<div class="viewcode-block" id="TestDBInterface"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface">[docs]</a><span class="k">class</span> <span class="nc">TestDBInterface</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+
+    <span class="n">PORT</span> <span class="o">=</span> <span class="mi">29101</span>
+    <span class="n">HOST</span> <span class="o">=</span> <span class="s1">&#39;localhost&#39;</span>
+    <span class="n">EXP_ID</span> <span class="o">=</span> <span class="s1">&#39;TEST_EXP_ID&#39;</span>
+    <span class="n">DATABASE_NAME</span> <span class="o">=</span> <span class="s1">&#39;TFUTILS_TESTDB&#39;</span>
+    <span class="n">COLLECTION_NAME</span> <span class="o">=</span> <span class="s1">&#39;TFUTILS_TESTCOL&#39;</span>
+    <span class="n">CACHE_DIR</span> <span class="o">=</span> <span class="s1">&#39;TFUTILS_TEST_CACHE_DIR&#39;</span>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.setUpClass"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setUpClass">[docs]</a>    <span class="k">def</span> <span class="nf">setUpClass</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up class once before any test methods are run.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">setup_log</span><span class="p">()</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">setup_conn</span><span class="p">()</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">setup_cache</span><span class="p">()</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">setup_params</span><span class="p">()</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.tearDownClass"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.tearDownClass">[docs]</a>    <span class="k">def</span> <span class="nf">tearDownClass</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Tear down class after all test methods have run.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">remove_directory</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">CACHE_DIR</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">remove_database</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">DATABASE_NAME</span><span class="p">)</span>
+
+        <span class="c1"># Close primary MongoDB connection.</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.setUp"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setUp">[docs]</a>    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up class before _each_ test method is executed.</span>
+
+<span class="sd">        Creates a tensorflow session and instantiates a dbinterface.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_model</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Session</span><span class="p">(</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ConfigProto</span><span class="p">(</span>
+                <span class="n">allow_soft_placement</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                <span class="n">gpu_options</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">GPUOptions</span><span class="p">(</span><span class="n">allow_growth</span><span class="o">=</span><span class="bp">True</span><span class="p">),</span>
+                <span class="n">log_device_placement</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;log_device_placement&#39;</span><span class="p">],</span>
+                <span class="n">inter_op_parallelism_threads</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;inter_op_parallelism_threads&#39;</span><span class="p">]))</span>
+
+        <span class="c1"># TODO: Determine whether this should be called here or</span>
+        <span class="c1"># in dbinterface.initialize()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">global_variables_initializer</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">DBInterface</span><span class="p">(</span><span class="n">sess</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="p">,</span>
+                                            <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+                                            <span class="n">cache_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">CACHE_DIR</span><span class="p">,</span>
+                                            <span class="n">save_params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">save_params</span><span class="p">,</span>
+                                            <span class="n">load_params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">load_params</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.tearDown"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.tearDown">[docs]</a>    <span class="k">def</span> <span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Tear Down is called after _each_ test method is executed.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_init"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_init">[docs]</a>    <span class="k">def</span> <span class="nf">test_init</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># TODO: Test all permutations of __init__ params.</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_load_rec"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_load_rec">[docs]</a>    <span class="k">def</span> <span class="nf">test_load_rec</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_initialize"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_initialize">[docs]</a>    <span class="k">def</span> <span class="nf">test_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.test_get_restore_vars"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_get_restore_vars">[docs]</a>    <span class="k">def</span> <span class="nf">test_get_restore_vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c1"># First, train model and save a checkpoint</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_model</span><span class="p">()</span>  <span class="c1"># weights_name=&#39;Weights&#39;</span>
+        <span class="n">saved_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_test_checkpoint</span><span class="p">()</span>
+
+        <span class="c1"># Create a new model with different variable names.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_model</span><span class="p">(</span><span class="n">weights_name</span><span class="o">=</span><span class="s1">&#39;Filters&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Restore first checkpoint vars.</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Weights&#39;</span><span class="p">:</span> <span class="s1">&#39;Filters&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">load_param_dict</span> <span class="o">=</span> <span class="n">mapping</span>
+        <span class="n">restore_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">get_restore_vars</span><span class="p">(</span><span class="n">saved_path</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;restore_vars:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">restore_vars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;(name, var.name): ({}, {})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">name</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.test_filter_var_list"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_filter_var_list">[docs]</a>    <span class="k">def</span> <span class="nf">test_filter_var_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="n">var_list</span> <span class="o">=</span> <span class="p">{</span><span class="n">var</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">var</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()}</span>
+
+        <span class="c1"># Test None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">to_restore</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">filtered_var_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">filter_var_list</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">filtered_var_list</span><span class="p">,</span> <span class="n">var_list</span><span class="p">)</span>
+
+        <span class="c1"># Test list of strings</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">to_restore</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;model_0/Weights&#39;</span><span class="p">]</span>
+        <span class="n">filtered_var_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">filter_var_list</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">filtered_var_list</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;model_0/Weights&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertNotIn</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;model_0/Bias&#39;</span><span class="p">,</span> <span class="s1">&#39;model_0/global_step&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Test regex</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">to_restore</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">r&#39;model_0/Bias&#39;</span><span class="p">)</span>
+        <span class="n">filtered_var_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">filter_var_list</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">filtered_var_list</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;model_0/Bias&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertNotIn</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;model_0/Weights&#39;</span><span class="p">,</span> <span class="s1">&#39;model_0/global_step&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Test invalid type (should raise TypeError)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">to_restore</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;invalid_key&#39;</span><span class="p">:</span> <span class="s1">&#39;invalid_value&#39;</span><span class="p">}</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">filtered_var_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">filter_var_list</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.test_remap_var_list"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_remap_var_list">[docs]</a>    <span class="k">def</span> <span class="nf">test_remap_var_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c1"># Get a test `var_list` {var.name: var}</span>
+        <span class="n">var_list</span> <span class="o">=</span> <span class="p">{</span><span class="n">var</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">var</span> <span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">global_variables</span><span class="p">()}</span>
+
+        <span class="c1"># Specify mapping from old var names to new ones.</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;model_0/Weights&#39;</span><span class="p">:</span> <span class="s1">&#39;model_0/Filters&#39;</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">load_param_dict</span> <span class="o">=</span> <span class="n">mapping</span>
+
+        <span class="c1"># Perform the mapping.</span>
+        <span class="n">mapped_vars</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">remap_var_list</span><span class="p">(</span><span class="n">var_list</span><span class="p">)</span>
+
+        <span class="c1"># Confirm that the mapping has been done correctly.</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">mapped_vars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;{} mapped to {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;model_0/Filters&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">mapping</span><span class="p">[</span><span class="n">var</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">name</span><span class="p">])</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_tf_saver"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_tf_saver">[docs]</a>    <span class="k">def</span> <span class="nf">test_tf_saver</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_load_from_db"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_load_from_db">[docs]</a>    <span class="k">def</span> <span class="nf">test_load_from_db</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_save"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_save">[docs]</a>    <span class="k">def</span> <span class="nf">test_save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">start_time_step</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">train_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_model</span><span class="p">(</span><span class="n">num_steps</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">train_res</span><span class="o">=</span><span class="n">train_res</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">)</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_sync_with_host"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_sync_with_host">[docs]</a>    <span class="k">def</span> <span class="nf">test_sync_with_host</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_save_thread"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_save_thread">[docs]</a>    <span class="k">def</span> <span class="nf">test_save_thread</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@unittest.skip</span><span class="p">(</span><span class="s2">&quot;skipping&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="TestDBInterface.test_initialize_from_ckpt"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.test_initialize_from_ckpt">[docs]</a>    <span class="k">def</span> <span class="nf">test_initialize_from_ckpt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">save_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_test_checkpoint</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_test_checkpoint</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.train_model"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.train_model">[docs]</a>    <span class="k">def</span> <span class="nf">train_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_steps</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+        <span class="n">x_train</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+        <span class="n">y_train</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_graph</span><span class="p">()</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="s1">&#39;model_0/x:0&#39;</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_graph</span><span class="p">()</span><span class="o">.</span><span class="n">get_tensor_by_name</span><span class="p">(</span><span class="s1">&#39;model_0/y:0&#39;</span><span class="p">)</span>
+        <span class="n">feed_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">x_train</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">y_train</span><span class="p">}</span>
+
+        <span class="n">pre_global_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_steps</span><span class="p">):</span>
+            <span class="n">train_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_targets</span><span class="p">,</span> <span class="n">feed_dict</span><span class="o">=</span><span class="n">feed_dict</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Step: {}, loss: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">train_res</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]))</span>
+
+        <span class="n">post_global_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">pre_global_step</span> <span class="o">+</span> <span class="n">num_steps</span><span class="p">,</span> <span class="n">post_global_step</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">+=</span> <span class="n">num_steps</span>
+        <span class="k">return</span> <span class="n">train_res</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.save_test_checkpoint"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.save_test_checkpoint">[docs]</a>    <span class="k">def</span> <span class="nf">save_test_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Saving checkpoint to {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">))</span>
+        <span class="n">saved_checkpoint_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dbinterface</span><span class="o">.</span><span class="n">tf_saver</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sess</span><span class="p">,</span>
+                                                               <span class="n">save_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">,</span>
+                                                               <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">,</span>
+                                                               <span class="n">write_meta_graph</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Checkpoint saved to {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">saved_checkpoint_path</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">saved_checkpoint_path</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.load_test_checkpoint"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.load_test_checkpoint">[docs]</a>    <span class="k">def</span> <span class="nf">load_test_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_path</span><span class="p">):</span>
+        <span class="n">reader</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">NewCheckpointReader</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+        <span class="n">saved_shapes</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">get_variable_to_shape_map</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Saved Vars:</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">saved_shapes</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">saved_shapes</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s1">&#39;Name: {}, Tensor: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">reader</span><span class="o">.</span><span class="n">get_tensor</span><span class="p">(</span><span class="n">name</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="TestDBInterface.setup_model"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setup_model">[docs]</a>    <span class="k">def</span> <span class="nf">setup_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weights_name</span><span class="o">=</span><span class="s1">&#39;Weights&#39;</span><span class="p">,</span> <span class="n">bias_name</span><span class="o">=</span><span class="s1">&#39;Bias&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set up simple tensorflow model.&quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">reset_default_graph</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;model_params&#39;</span><span class="p">][</span><span class="s1">&#39;prefix&#39;</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">global_step</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="s1">&#39;global_step&#39;</span><span class="p">,</span> <span class="p">[],</span>
+                                               <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">trainable</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                                               <span class="n">initializer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant_initializer</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+
+            <span class="c1"># Model parameters and placeholders.</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">placeholder</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">)</span>
+            <span class="n">W</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">([</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">weights_name</span><span class="p">)</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">([</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">bias_name</span><span class="p">)</span>
+
+            <span class="c1"># Model output, loss and optimizer.</span>
+            <span class="n">linear_model</span> <span class="o">=</span> <span class="n">W</span> <span class="o">*</span> <span class="n">x</span> <span class="o">+</span> <span class="n">b</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">linear_model</span> <span class="o">-</span> <span class="n">y</span><span class="p">))</span>
+            <span class="n">optimizer_base</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">GradientDescentOptimizer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+            <span class="c1"># Model train op.</span>
+            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optimizer_base</span><span class="o">.</span><span class="n">minimize</span><span class="p">(</span>
+                <span class="n">loss</span><span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">global_step</span><span class="p">)</span>
+
+            <span class="c1"># Train targets.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;loss&#39;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span>
+                                  <span class="s1">&#39;optimizer&#39;</span><span class="p">:</span> <span class="n">optimizer</span><span class="p">}</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.setup_log"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setup_log">[docs]</a>    <span class="k">def</span> <span class="nf">setup_log</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">__name__</span><span class="p">,</span> <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">]))</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.setup_conn"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setup_conn">[docs]</a>    <span class="k">def</span> <span class="nf">setup_conn</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">cls</span><span class="o">.</span><span class="n">HOST</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">cls</span><span class="o">.</span><span class="n">PORT</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.setup_cache"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setup_cache">[docs]</a>    <span class="k">def</span> <span class="nf">setup_cache</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">CACHE_DIR</span><span class="p">,</span>
+                                     <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">:</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">HOST</span><span class="p">,</span> <span class="n">cls</span><span class="o">.</span><span class="n">PORT</span><span class="p">),</span>
+                                     <span class="n">cls</span><span class="o">.</span><span class="n">DATABASE_NAME</span><span class="p">,</span>
+                                     <span class="n">cls</span><span class="o">.</span><span class="n">COLLECTION_NAME</span><span class="p">,</span>
+                                     <span class="n">cls</span><span class="o">.</span><span class="n">EXP_ID</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">cache_dir</span><span class="p">,</span> <span class="s1">&#39;checkpoint&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.setup_params"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.setup_params">[docs]</a>    <span class="k">def</span> <span class="nf">setup_params</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">model_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">mnist_tfutils</span><span class="p">,</span>
+                            <span class="s1">&#39;devices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;/gpu:0&#39;</span><span class="p">,</span> <span class="s1">&#39;/gpu:1&#39;</span><span class="p">],</span>
+                            <span class="s1">&#39;prefix&#39;</span><span class="p">:</span> <span class="s1">&#39;model_0&#39;</span><span class="p">}</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">save_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">HOST</span><span class="p">,</span>
+            <span class="s1">&#39;port&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">PORT</span><span class="p">,</span>
+            <span class="s1">&#39;dbname&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">DATABASE_NAME</span><span class="p">,</span>
+            <span class="s1">&#39;collname&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">COLLECTION_NAME</span><span class="p">,</span>
+            <span class="s1">&#39;exp_id&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">EXP_ID</span><span class="p">,</span>
+            <span class="s1">&#39;save_valid_freq&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+            <span class="s1">&#39;save_filters_freq&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="s1">&#39;cache_filters_freq&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">train_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;data_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">data</span><span class="o">.</span><span class="n">MNIST</span><span class="p">,</span>
+                                            <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                                            <span class="s1">&#39;group&#39;</span><span class="p">:</span> <span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                                            <span class="s1">&#39;n_threads&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">},</span>
+                            <span class="s1">&#39;queue_params&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;queue_type&#39;</span><span class="p">:</span> <span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+                                             <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">},</span>
+                            <span class="s1">&#39;num_steps&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">}</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">loss_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;targets&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">],</span>
+                           <span class="s1">&#39;agg_func&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">,</span>
+                           <span class="s1">&#39;loss_per_case_func&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">sparse_softmax_cross_entropy_with_logits</span><span class="p">}</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">load_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;do_restore&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">optimizer_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;func&#39;</span><span class="p">:</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">ClipOptimizer</span><span class="p">,</span>
+                                <span class="s1">&#39;optimizer_class&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">MomentumOptimizer</span><span class="p">,</span>
+                                <span class="s1">&#39;clip&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+                                <span class="s1">&#39;momentum&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">}</span>
+
+        <span class="n">cls</span><span class="o">.</span><span class="n">learning_rate_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+                                    <span class="s1">&#39;decay_steps&#39;</span><span class="p">:</span> <span class="mi">10000</span> <span class="o">//</span> <span class="mi">256</span><span class="p">,</span>
+                                    <span class="s1">&#39;decay_rate&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
+                                    <span class="s1">&#39;staircase&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">}</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;dont_run&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+            <span class="s1">&#39;skip_check&#39;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+            <span class="s1">&#39;model_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">model_params</span><span class="p">,</span>
+            <span class="s1">&#39;train_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">train_params</span><span class="p">,</span>
+            <span class="s1">&#39;validation_params&#39;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s1">&#39;log_device_placement&#39;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+            <span class="s1">&#39;inter_op_parallelism_threads&#39;</span><span class="p">:</span> <span class="mi">40</span><span class="p">,</span>
+            <span class="s1">&#39;save_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">save_params</span><span class="p">,</span>
+            <span class="s1">&#39;load_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">load_params</span><span class="p">,</span>
+            <span class="s1">&#39;loss_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">loss_params</span><span class="p">,</span>
+            <span class="s1">&#39;optimizer_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">optimizer_params</span><span class="p">,</span>
+            <span class="s1">&#39;learning_rate_params&#39;</span><span class="p">:</span> <span class="n">cls</span><span class="o">.</span><span class="n">learning_rate_params</span><span class="p">}</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.remove_checkpoint"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.remove_checkpoint">[docs]</a>    <span class="k">def</span> <span class="nf">remove_checkpoint</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">checkpoint</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a tf.train.Saver checkpoint.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing checkpoint: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">))</span>
+        <span class="c1"># TODO: remove ckpt</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Checkpoint successfully removed.&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.remove_directory"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.remove_directory">[docs]</a>    <span class="k">def</span> <span class="nf">remove_directory</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a directory.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing directory: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">))</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Directory successfully removed.&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.remove_database"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.remove_database">[docs]</a>    <span class="k">def</span> <span class="nf">remove_database</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">database_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a MonogoDB database.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing database: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database_name</span><span class="p">))</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">drop_database</span><span class="p">(</span><span class="n">database_name</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Database successfully removed.&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.remove_collection"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.remove_collection">[docs]</a>    <span class="k">def</span> <span class="nf">remove_collection</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">collection_name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Remove a MonogoDB collection.&quot;&quot;&quot;</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Removing collection: {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">collection_name</span><span class="p">))</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">conn</span><span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">DATABASE_NAME</span><span class="p">][</span><span class="n">collection_name</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Collection successfully removed.&#39;</span><span class="p">)</span></div>
+
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="TestDBInterface.remove_document"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.remove_document">[docs]</a>    <span class="k">def</span> <span class="nf">remove_document</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">document</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="TestDBInterface.makedirs"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_dbinterface.TestDBInterface.makedirs">[docs]</a>    <span class="k">def</span> <span class="nf">makedirs</span><span class="p">(</span><span class="nb">dir</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="nb">dir</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">!=</span> <span class="n">errno</span><span class="o">.</span><span class="n">EEXIST</span><span class="p">:</span>
+                <span class="k">raise</span></div></div>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

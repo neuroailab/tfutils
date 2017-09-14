@@ -1,0 +1,379 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation guide &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="TFUtils 0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">Intro</span></p>
+<ul class="simple">
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">TFUtils</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>Installation guide</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/intro/install.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="installation-guide">
+<span id="intro-install"></span><h1>Installation guide<a class="headerlink" href="#installation-guide" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installing-scrapy">
+<h2>Installing Scrapy<a class="headerlink" href="#installing-scrapy" title="Permalink to this headline">¶</a></h2>
+<p>Scrapy runs on Python 2.7 and Python 3.3 or above.</p>
+<p>If you&#8217;re using <a class="reference external" href="http://docs.continuum.io/anaconda/index">Anaconda</a> or <a class="reference external" href="http://conda.pydata.org/docs/install/quick.html">Miniconda</a>, you can install the package from
+the <a class="reference external" href="https://conda-forge.github.io/">conda-forge</a> channel, which has up-to-date packages for Linux, Windows
+and OS X.</p>
+<p>To install Scrapy using <code class="docutils literal"><span class="pre">conda</span></code>, run:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">scrapy</span>
+</pre></div>
+</div>
+<p>Alternatively, if you’re already familiar with installation of Python packages,
+you can install Scrapy and its dependencies from PyPI with:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">Scrapy</span>
+</pre></div>
+</div>
+<p>Note that sometimes this may require solving compilation issues for some Scrapy
+dependencies depending on your operating system, so be sure to check the
+<a class="reference internal" href="#intro-install-platform-notes"><span class="std std-ref">Platform specific installation notes</span></a>.</p>
+<p>We strongly recommend that you install Scrapy in <a class="reference internal" href="#intro-using-virtualenv"><span class="std std-ref">a dedicated virtualenv</span></a>,
+to avoid conflicting with your system packages.</p>
+<p>For more detailed and platform specifics instructions, read on.</p>
+<div class="section" id="things-that-are-good-to-know">
+<h3>Things that are good to know<a class="headerlink" href="#things-that-are-good-to-know" title="Permalink to this headline">¶</a></h3>
+<p>Scrapy is written in pure Python and depends on a few key Python packages (among others):</p>
+<ul class="simple">
+<li><a class="reference external" href="http://lxml.de/">lxml</a>, an efficient XML and HTML parser</li>
+<li><a class="reference external" href="https://pypi.python.org/pypi/parsel">parsel</a>, an HTML/XML data extraction library written on top of lxml,</li>
+<li><a class="reference external" href="https://pypi.python.org/pypi/w3lib">w3lib</a>, a multi-purpose helper for dealing with URLs and web page encodings</li>
+<li><a class="reference external" href="https://twistedmatrix.com/">twisted</a>, an asynchronous networking framework</li>
+<li><a class="reference external" href="https://cryptography.io/">cryptography</a> and <a class="reference external" href="https://pypi.python.org/pypi/pyOpenSSL">pyOpenSSL</a>, to deal with various network-level security needs</li>
+</ul>
+<p>The minimal versions which Scrapy is tested against are:</p>
+<ul class="simple">
+<li>Twisted 14.0</li>
+<li>lxml 3.4</li>
+<li>pyOpenSSL 0.14</li>
+</ul>
+<p>Scrapy may work with older versions of these packages
+but it is not guaranteed it will continue working
+because it’s not being tested against them.</p>
+<p>Some of these packages themselves depends on non-Python packages
+that might require additional installation steps depending on your platform.
+Please check <a class="reference internal" href="#intro-install-platform-notes"><span class="std std-ref">platform-specific guides below</span></a>.</p>
+<p>In case of any trouble related to these dependencies,
+please refer to their respective installation instructions:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://lxml.de/installation.html">lxml installation</a></li>
+<li><a class="reference external" href="https://cryptography.io/en/latest/installation/">cryptography installation</a></li>
+</ul>
+</div>
+<div class="section" id="using-a-virtual-environment-recommended">
+<span id="intro-using-virtualenv"></span><h3>Using a virtual environment (recommended)<a class="headerlink" href="#using-a-virtual-environment-recommended" title="Permalink to this headline">¶</a></h3>
+<p>TL;DR: We recommend installing Scrapy inside a virtual environment
+on all platforms.</p>
+<p>Python packages can be installed either globally (a.k.a system wide),
+or in user-space. We do not recommend installing scrapy system wide.</p>
+<p>Instead, we recommend that you install scrapy within a so-called
+&#8220;virtual environment&#8221; (<a class="reference external" href="https://virtualenv.pypa.io">virtualenv</a>).
+Virtualenvs allow you to not conflict with already-installed Python
+system packages (which could break some of your system tools and scripts),
+and still install packages normally with <code class="docutils literal"><span class="pre">pip</span></code> (without <code class="docutils literal"><span class="pre">sudo</span></code> and the likes).</p>
+<p>To get started with virtual environments, see <a class="reference external" href="https://virtualenv.pypa.io/en/stable/installation/">virtualenv installation instructions</a>.
+To install it globally (having it globally installed actually helps here),
+it should be a matter of running:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ [sudo] pip install virtualenv
+</pre></div>
+</div>
+<p>Check this <a class="reference external" href="https://virtualenv.pypa.io/en/stable/userguide/">user guide</a> on how to create your virtualenv.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you use Linux or OS X, <a class="reference external" href="https://virtualenvwrapper.readthedocs.io/en/latest/install.html">virtualenvwrapper</a> is a handy tool to create virtualenvs.</p>
+</div>
+<p>Once you have created a virtualenv, you can install scrapy inside it with <code class="docutils literal"><span class="pre">pip</span></code>,
+just like any other Python package.
+(See <a class="reference internal" href="#intro-install-platform-notes"><span class="std std-ref">platform-specific guides</span></a>
+below for non-Python dependencies that you may need to install beforehand).</p>
+<p>Python virtualenvs can be created to use Python 2 by default, or Python 3 by default.</p>
+<ul class="simple">
+<li>If you want to install scrapy with Python 3, install scrapy within a Python 3 virtualenv.</li>
+<li>And if you want to install scrapy with Python 2, install scrapy within a Python 2 virtualenv.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="platform-specific-installation-notes">
+<span id="intro-install-platform-notes"></span><h2>Platform specific installation notes<a class="headerlink" href="#platform-specific-installation-notes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="windows">
+<span id="intro-install-windows"></span><h3>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h3>
+<p>Though it&#8217;s possible to install Scrapy on Windows using pip, we recommend you
+to install <a class="reference external" href="http://docs.continuum.io/anaconda/index">Anaconda</a> or <a class="reference external" href="http://conda.pydata.org/docs/install/quick.html">Miniconda</a> and use the package from the
+<a class="reference external" href="https://conda-forge.github.io/">conda-forge</a> channel, which will avoid most installation issues.</p>
+<p>Once you&#8217;ve installed <a class="reference external" href="http://docs.continuum.io/anaconda/index">Anaconda</a> or <a class="reference external" href="http://conda.pydata.org/docs/install/quick.html">Miniconda</a>, install Scrapy with:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">scrapy</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="ubuntu-12-04-or-above">
+<span id="intro-install-ubuntu"></span><h3>Ubuntu 12.04 or above<a class="headerlink" href="#ubuntu-12-04-or-above" title="Permalink to this headline">¶</a></h3>
+<p>Scrapy is currently tested with recent-enough versions of lxml,
+twisted and pyOpenSSL, and is compatible with recent Ubuntu distributions.
+But it should support older versions of Ubuntu too, like Ubuntu 12.04,
+albeit with potential issues with TLS connections.</p>
+<p><strong>Don&#8217;t</strong> use the <code class="docutils literal"><span class="pre">python-scrapy</span></code> package provided by Ubuntu, they are
+typically too old and slow to catch up with latest Scrapy.</p>
+<p>To install scrapy on Ubuntu (or Ubuntu-based) systems, you need to install
+these dependencies:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">python</span><span class="o">-</span><span class="n">dev</span> <span class="n">python</span><span class="o">-</span><span class="n">pip</span> <span class="n">libxml2</span><span class="o">-</span><span class="n">dev</span> <span class="n">libxslt1</span><span class="o">-</span><span class="n">dev</span> <span class="n">zlib1g</span><span class="o">-</span><span class="n">dev</span> <span class="n">libffi</span><span class="o">-</span><span class="n">dev</span> <span class="n">libssl</span><span class="o">-</span><span class="n">dev</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">python-dev</span></code>, <code class="docutils literal"><span class="pre">zlib1g-dev</span></code>, <code class="docutils literal"><span class="pre">libxml2-dev</span></code> and <code class="docutils literal"><span class="pre">libxslt1-dev</span></code>
+are required for <code class="docutils literal"><span class="pre">lxml</span></code></li>
+<li><code class="docutils literal"><span class="pre">libssl-dev</span></code> and <code class="docutils literal"><span class="pre">libffi-dev</span></code> are required for <code class="docutils literal"><span class="pre">cryptography</span></code></li>
+</ul>
+<p>If you want to install scrapy on Python 3, you’ll also need Python 3 development headers:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">python3</span> <span class="n">python3</span><span class="o">-</span><span class="n">dev</span>
+</pre></div>
+</div>
+<p>Inside a <a class="reference internal" href="#intro-using-virtualenv"><span class="std std-ref">virtualenv</span></a>,
+you can install Scrapy with <code class="docutils literal"><span class="pre">pip</span></code> after that:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">scrapy</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The same non-python dependencies can be used to install Scrapy in Debian
+Wheezy (7.0) and above.</p>
+</div>
+</div>
+<div class="section" id="mac-os-x">
+<span id="intro-install-macos"></span><h3>Mac OS X<a class="headerlink" href="#mac-os-x" title="Permalink to this headline">¶</a></h3>
+<p>Building Scrapy&#8217;s dependencies requires the presence of a C compiler and
+development headers. On OS X this is typically provided by Apple’s Xcode
+development tools. To install the Xcode command line tools open a terminal
+window and run:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">xcode</span><span class="o">-</span><span class="n">select</span> <span class="o">--</span><span class="n">install</span>
+</pre></div>
+</div>
+<p>There&#8217;s a <a class="reference external" href="https://github.com/pypa/pip/issues/2468">known issue</a> that
+prevents <code class="docutils literal"><span class="pre">pip</span></code> from updating system packages. This has to be addressed to
+successfully install Scrapy and its dependencies. Here are some proposed
+solutions:</p>
+<ul>
+<li><p class="first"><em>(Recommended)</em> <strong>Don&#8217;t</strong> use system python, install a new, updated version
+that doesn&#8217;t conflict with the rest of your system. Here&#8217;s how to do it using
+the <a class="reference external" href="http://brew.sh/">homebrew</a> package manager:</p>
+<ul>
+<li><p class="first">Install <a class="reference external" href="http://brew.sh/">homebrew</a> following the instructions in <a class="reference external" href="http://brew.sh/">http://brew.sh/</a></p>
+</li>
+<li><p class="first">Update your <code class="docutils literal"><span class="pre">PATH</span></code> variable to state that homebrew packages should be
+used before system packages (Change <code class="docutils literal"><span class="pre">.bashrc</span></code> to <code class="docutils literal"><span class="pre">.zshrc</span></code> accordantly
+if you&#8217;re using <a class="reference external" href="http://www.zsh.org/">zsh</a> as default shell):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">echo</span> <span class="s2">&quot;export PATH=/usr/local/bin:/usr/local/sbin:$PATH&quot;</span> <span class="o">&gt;&gt;</span> <span class="o">~/.</span><span class="n">bashrc</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Reload <code class="docutils literal"><span class="pre">.bashrc</span></code> to ensure the changes have taken place:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">~/.</span><span class="n">bashrc</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Install python:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">brew</span> <span class="n">install</span> <span class="n">python</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Latest versions of python have <code class="docutils literal"><span class="pre">pip</span></code> bundled with them so you won&#8217;t need
+to install it separately. If this is not the case, upgrade python:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">brew</span> <span class="n">update</span><span class="p">;</span> <span class="n">brew</span> <span class="n">upgrade</span> <span class="n">python</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p class="first"><em>(Optional)</em> Install Scrapy inside an isolated python environment.</p>
+<p>This method is a workaround for the above OS X issue, but it&#8217;s an overall
+good practice for managing dependencies and can complement the first method.</p>
+<p><a class="reference external" href="https://virtualenv.pypa.io">virtualenv</a> is a tool you can use to create virtual environments in python.
+We recommended reading a tutorial like
+<a class="reference external" href="http://docs.python-guide.org/en/latest/dev/virtualenvs/">http://docs.python-guide.org/en/latest/dev/virtualenvs/</a> to get started.</p>
+</li>
+</ul>
+<p>After any of these workarounds you should be able to install Scrapy:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">Scrapy</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
