@@ -1775,12 +1775,12 @@ def parse_params(mode,
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
                     param['num_minibatches'] = 1
-                    param['minibatch_size'] = param['data_params']['batch_size']
+                    param['minibatch_size'] = param['queue_params']['batch_size']
                     log.info('minibatch_size not specified for training data_params... ' +
                              'Defaulting minibatch_size to: {} (identical to the batch size).'
-                             .format(param['data_params']['batch_size']))
+                             .format(param['queue_params']['batch_size']))
                 else:
-                    batch_size = param['data_params']['batch_size']
+                    batch_size = param['queue_params']['batch_size']
                     minibatch_size = param['minibatch_size']
                     assert minibatch_size <= batch_size, (
                            'Minibatch size cannot be larger than batch size.')
