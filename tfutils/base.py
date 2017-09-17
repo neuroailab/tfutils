@@ -1572,8 +1572,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
 
         # Aggregate and accumulate gradients.
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        #grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
-        grads = minibatch_grads
+        mini_flag, grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        #grads = minibatch_grads
 
         # Apply accumulated gradients.
         optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
@@ -1582,7 +1582,7 @@ def get_model(inputs, model_params, param=None, trarg=None):
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
         if '__grads__' not in trarg['train_targets']:
-            #trarg['train_targets']['__grads__'] = grads
+            trarg['train_targets']['__grads__'] = mini_flag
             pass
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
