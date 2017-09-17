@@ -110,7 +110,8 @@ class ClipOptimizer(object):
         # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
         optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                    global_step=global_step)
-        return [optimize, self.zero_grad()]
+        #return [optimize, self.zero_grad()]
+        return optimize
 
     def zero_grad(self):
         if self.grads_and_vars is None:

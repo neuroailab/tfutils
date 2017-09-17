@@ -986,8 +986,8 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
         dict: A dictionary containing train targets evaluated by the session.
 
     """
-    assert all([required in targets for targets in train_targets
-                for required in ['__grads__', 'optimizer']])
+    #assert all([required in targets for targets in train_targets
+    #            for required in ['__grads__', 'optimizer']])
 
     # Perform minibatching
     range_len = (int)(num_minibatches)
@@ -996,6 +996,7 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
         sess.run([target['__grads__'] for target in train_targets])
 
     # Compute final targets (includes zeroing gradient accumulator variable)
+
     return sess.run(train_targets)
 
 
@@ -1571,7 +1572,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
 
         # Aggregate and accumulate gradients.
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        #grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        grads = minibatch_grads
 
         # Apply accumulated gradients.
         optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
@@ -1580,7 +1582,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
         if '__grads__' not in trarg['train_targets']:
-            trarg['train_targets']['__grads__'] = grads
+            #trarg['train_targets']['__grads__'] = grads
+            pass
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
         if 'learning_rate' not in trarg['train_targets']:
