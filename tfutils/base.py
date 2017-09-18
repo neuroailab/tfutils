@@ -986,8 +986,8 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
         dict: A dictionary containing train targets evaluated by the session.
 
     """
-    #assert all([required in targets for targets in train_targets
-    #            for required in ['__grads__', 'optimizer']])
+    assert all([required in targets for targets in train_targets
+                for required in ['__grads__', 'optimizer']])
 
     # Perform minibatching
     range_len = (int)(num_minibatches)
