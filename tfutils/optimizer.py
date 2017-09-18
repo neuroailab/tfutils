@@ -25,6 +25,8 @@ class ClipOptimizer(object):
         self.trainable_names = trainable_names
         self.grads_and_vars = None
 
+        self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
+
     def compute_gradients(self, loss, *args, **kwargs):
         train_vars = None
         if self.trainable_names is not None:
@@ -87,9 +89,20 @@ class ClipOptimizer(object):
                 var) for var in self.var_list]
 
         # Add 1/num_minibatches * minibatch_grads to current gradients.
-        grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
+        def _add_op(gv_tmp, mgv_tmp):
+            return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
+        def _set_op(gv_tmp, mgv_tmp):
+            return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
+        #grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
+        #         for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
+        #grads = tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _add_op(), fn2 = lambda: _set_op())
+        grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _set_op(gv[0], mgv[0]), fn2 = lambda: _add_op(gv[0], mgv[0]))
                  for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
-        return grads
+        with tf.control_dependencies(grads):
+            self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
+        grads = [(only_grad, gv[1])
+                 for (gv, only_grad) in zip(self.grads_and_vars, grads)]
+        return self.mini_flag, grads
 
     def apply_gradients(self, grads_and_vars, global_step=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
@@ -107,10 +120,13 @@ class ClipOptimizer(object):
                 internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
+        self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
         # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
-        optimize = self._optimizer.apply_gradients(grads_and_vars,
-                                                   global_step=global_step)
-        return [optimize, self.zero_grad()]
+        with tf.control_dependencies([self.mini_flag]):
+            optimize = self._optimizer.apply_gradients(grads_and_vars,
+                                                       global_step=global_step)
+        #return [optimize, self.zero_grad()]
+        return optimize
 
     def zero_grad(self):
         if self.grads_and_vars is None:

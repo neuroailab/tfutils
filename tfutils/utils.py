@@ -395,6 +395,8 @@ def get_loss(inputs,
              **loss_params):
     if loss_func_kwargs is None:
         loss_func_kwargs = {}
+    else:
+        loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
     if not isinstance(targets, (list, tuple, np.ndarray)):
         targets = [targets]
     targets = list(targets)

@@ -544,6 +544,7 @@ class DBInterface(object):
                 load_dest = open(cache_filename, 'rwb+')
                 fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
+                load_dest.close()
                 if ckpt_record['_saver_write_version'] == saver_pb2.SaverDef.V2:
                     assert cache_filename.endswith('.tar')
                     tar = tarfile.open(cache_filename)
@@ -994,6 +995,7 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
         sess.run([target['__grads__'] for target in train_targets])
 
     # Compute final targets (includes zeroing gradient accumulator variable)
+
     return sess.run(train_targets)
 
 
@@ -1575,7 +1577,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
 
         # Aggregate and accumulate gradients.
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        mini_flag, grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        #grads = minibatch_grads
 
         # Apply accumulated gradients.
         optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
@@ -1584,7 +1587,8 @@ def get_model(inputs, model_params, param=None, trarg=None):
         if 'loss' not in trarg['train_targets']:
             trarg['train_targets']['loss'] = loss
         if '__grads__' not in trarg['train_targets']:
-            trarg['train_targets']['__grads__'] = grads
+            trarg['train_targets']['__grads__'] = mini_flag
+            pass
         if 'optimizer' not in trarg['train_targets']:
             trarg['train_targets']['optimizer'] = optimizer
         if 'learning_rate' not in trarg['train_targets']:
@@ -1780,12 +1784,12 @@ def parse_params(mode,
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
                     param['num_minibatches'] = 1
-                    param['minibatch_size'] = param['data_params']['batch_size']
+                    param['minibatch_size'] = param['queue_params']['batch_size']
                     log.info('minibatch_size not specified for training data_params... ' +
                              'Defaulting minibatch_size to: {} (identical to the batch size).'
-                             .format(param['data_params']['batch_size']))
+                             .format(param['queue_params']['batch_size']))
                 else:
-                    batch_size = param['data_params']['batch_size']
+                    batch_size = param['queue_params']['batch_size']
                     minibatch_size = param['minibatch_size']
                     assert minibatch_size <= batch_size, (
                            'Minibatch size cannot be larger than batch size.')
