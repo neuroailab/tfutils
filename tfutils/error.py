@@ -12,3 +12,9 @@ class RepoIsDirtyError(Exception):
 
 class NoGlobalStepError(Exception):
     pass
+
+
+class ThreadError(Exception):
+    """Exception class to raise if a thread has an issue."""
+
+    pass

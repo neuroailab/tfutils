@@ -11,9 +11,9 @@ import numpy as np
 import pandas
 import tensorflow as tf
 
-from tfutils import base, data, model
-
-sys.path.insert(0, '..')
+import tfutils.base as base
+import tfutils.data as data
+import tfutils.model as model
 
 BATCH_SIZE = 256
 NSTEPS = 20
