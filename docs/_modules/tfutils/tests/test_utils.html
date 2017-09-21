@@ -1,0 +1,416 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.tests.test_utils &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="TFUtils 0.1 documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../fundamentals/minibatching.html">Minibatching</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFUtils</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>tfutils.tests.test_utils</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tfutils.tests.test_utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;tfutils utils tests.</span>
+
+<span class="sd">These tests demonstrate and verify the behaviour of various utilities in tfutils.utils.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">Queue</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;/home/aandonia/tfutils&quot;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">tfutils.error</span> <span class="k">as</span> <span class="nn">error</span>
+<span class="kn">import</span> <span class="nn">tfutils.utils</span> <span class="k">as</span> <span class="nn">utils</span>
+
+
+<div class="viewcode-block" id="save_from_queue"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_utils.save_from_queue">[docs]</a><span class="k">def</span> <span class="nf">save_from_queue</span><span class="p">(</span><span class="n">queue</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Mimic saving a checkpoint from a queue of checkpoints.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        queue (Queue.Queue): A queue of checkpoints.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        error.ThreadError: Queue is empty.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Getting checkpoint...&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">Queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Checkpoint queue is empty...&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">error</span><span class="o">.</span><span class="n">ThreadError</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Checkpoint </span><span class="si">{}</span><span class="s1"> saved successfully!&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="test_coordinated_thread"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_utils.test_coordinated_thread">[docs]</a><span class="k">def</span> <span class="nf">test_coordinated_thread</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Demonstate the use of CoordinatedThread with tf.train.Coordinator.</span>
+
+<span class="sd">    A queue is filled with a single &#39;checkpoint&#39; to be saved by two separate</span>
+<span class="sd">    threads called sequentially. The first thread will successfully save</span>
+<span class="sd">    the one and only checkpoint, but the second thread will raise an</span>
+<span class="sd">    error.ThreadError. This test only passes if that exception is</span>
+<span class="sd">    reported (can be caught) by the main thread.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Start coordinators</span>
+    <span class="n">coord</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Coordinator</span><span class="p">()</span>
+    <span class="n">error_coord</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">Coordinator</span><span class="p">()</span>
+
+    <span class="c1"># Create a queue with only one checkpoint</span>
+    <span class="n">queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+    <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s1">&#39;Checkpoint_1.ckpt&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Create threads</span>
+    <span class="n">coord_thread</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">CoordinatedThread</span><span class="p">(</span><span class="n">coord</span><span class="o">=</span><span class="n">coord</span><span class="p">,</span>
+                                           <span class="n">target</span><span class="o">=</span><span class="n">save_from_queue</span><span class="p">,</span>
+                                           <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">queue</span><span class="p">,))</span>
+    <span class="n">error_thread</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">CoordinatedThread</span><span class="p">(</span><span class="n">coord</span><span class="o">=</span><span class="n">error_coord</span><span class="p">,</span>
+                                           <span class="n">target</span><span class="o">=</span><span class="n">save_from_queue</span><span class="p">,</span>
+                                           <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">queue</span><span class="p">,))</span>
+    <span class="n">coord_thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">error_thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">coord_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">coord</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">coord_thread</span><span class="p">])</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">queue</span><span class="o">.</span><span class="n">empty</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">coord_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">error_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">error_coord</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">error_thread</span><span class="p">])</span>
+    <span class="k">except</span> <span class="n">error</span><span class="o">.</span><span class="n">ThreadError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;A ThreadError was successfully raised.&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span><span class="p">(</span><span class="s1">&#39;A ThreadError should have been raised.&#39;</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">error_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="test_aggregation"><a class="viewcode-back" href="../../../tfutils.tests.html#tfutils.tests.test_utils.test_aggregation">[docs]</a><span class="k">def</span> <span class="nf">test_aggregation</span><span class="p">():</span>
+    <span class="n">num_gpus</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">num_elements</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">minibatch_size</span> <span class="o">=</span> <span class="n">batch_size</span> <span class="o">/</span> <span class="n">num_gpus</span>
+
+    <span class="n">tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">minibatch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">list_</span> <span class="o">=</span> <span class="n">num_elements</span> <span class="o">*</span> <span class="p">[</span><span class="n">tensor</span><span class="p">]</span>
+    <span class="n">dict_</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;tensor&#39;</span><span class="p">:</span> <span class="n">tensor</span><span class="p">,</span>
+        <span class="s1">&#39;list&#39;</span><span class="p">:</span> <span class="n">list_</span><span class="p">,</span>
+        <span class="s1">&#39;dict&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;tensor&#39;</span><span class="p">:</span> <span class="n">tensor</span><span class="p">,</span>
+            <span class="s1">&#39;list&#39;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s1">&#39;tensor&#39;</span><span class="p">:</span> <span class="n">tensor</span><span class="p">},</span>
+                <span class="p">[</span><span class="n">tensor</span><span class="p">,</span> <span class="n">tensor</span><span class="p">],</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+
+    <span class="n">tensors</span> <span class="o">=</span> <span class="n">num_gpus</span> <span class="o">*</span> <span class="p">[</span><span class="n">tensor</span><span class="p">]</span>
+    <span class="n">dicts</span> <span class="o">=</span> <span class="n">num_gpus</span> <span class="o">*</span> <span class="p">[</span><span class="n">dict_</span><span class="p">]</span>
+    <span class="n">lists</span> <span class="o">=</span> <span class="n">num_gpus</span> <span class="o">*</span> <span class="p">[</span><span class="n">list_</span><span class="p">]</span>
+
+    <span class="n">tensor_output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">aggregate_outputs</span><span class="p">(</span><span class="n">tensors</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor_output</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">tensor_output</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">dict_output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">aggregate_outputs</span><span class="p">(</span><span class="n">dicts</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;tensor&#39;</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;tensor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;list&#39;</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;list&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="n">num_elements</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">],</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;tensor&#39;</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;tensor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;tensor&#39;</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;tensor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dict_output</span><span class="p">[</span><span class="s1">&#39;dict&#39;</span><span class="p">][</span><span class="s1">&#39;list&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;tensor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">list_output</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">aggregate_outputs</span><span class="p">(</span><span class="n">lists</span><span class="p">)</span>
+    <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">list_output</span><span class="p">,</span> <span class="nb">list</span><span class="p">))</span>
+    <span class="k">assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_output</span><span class="p">)</span> <span class="o">==</span> <span class="n">num_elements</span><span class="p">)</span>
+    <span class="k">assert</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">list_output</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">))</span>
+    <span class="k">assert</span><span class="p">(</span><span class="n">list_output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+
+    <span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+
+    <span class="n">myobj</span> <span class="o">=</span> <span class="n">TestClass</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span>
+    <span class="n">objs</span> <span class="o">=</span> <span class="n">num_gpus</span> <span class="o">*</span> <span class="p">[</span><span class="n">myobj</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">utils</span><span class="o">.</span><span class="n">aggregate_outputs</span><span class="p">(</span><span class="n">objs</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;A TypeError was successfully raised.&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span><span class="p">(</span><span class="s1">&#39;A TypeError should have been raised.&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="n">test_coordinated_thread</span><span class="p">()</span>
+    <span class="n">test_aggregation</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

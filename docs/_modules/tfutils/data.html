@@ -1,0 +1,1184 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.data &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="TFUtils 0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/minibatching.html">Minibatching</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TFUtils</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>tfutils.data</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tfutils.data</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">cPickle</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow.contrib.learn.python.learn.datasets.mnist</span> <span class="k">import</span> <span class="n">read_data_sets</span>
+
+<span class="kn">from</span> <span class="nn">tfutils.utils</span> <span class="k">import</span> <span class="n">isstring</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;tfutils&#39;</span><span class="p">)</span>
+<span class="n">log</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DataProviderBase"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.DataProviderBase">[docs]</a><span class="k">class</span> <span class="nc">DataProviderBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Base class for all data provider objects.   This class must be subclassed to have a</span>
+<span class="sd">       functional data provider.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="DataProviderBase.init_ops"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.DataProviderBase.init_ops">[docs]</a>    <span class="k">def</span> <span class="nf">init_ops</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method is required of all data providers.   It returns a list of tensorflow</span>
+<span class="sd">        operations that provide data, and which will be enqueued by the functions in base.py</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="ParallelByFileProviderBase"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ParallelByFileProviderBase">[docs]</a><span class="k">class</span> <span class="nc">ParallelByFileProviderBase</span><span class="p">(</span><span class="n">DataProviderBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">source_paths</span><span class="p">,</span>
+                 <span class="n">n_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">shuffle_seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">postprocess</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">read_args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">read_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">trans_dicts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This is a base class for parallelizing data reading across large groups of (small-ish)</span>
+<span class="sd">        files.  Different threads read data in different files, which can then be combined into</span>
+<span class="sd">        a single reading queue (the enqueing of tensorflow ops for each thread is handled</span>
+<span class="sd">        outside of this class).</span>
+
+<span class="sd">        This provider supports the concept of &quot;attribute groups&quot;, e.g. different sets of</span>
+<span class="sd">        data can be put in different files.  For example, &quot;images&quot; could be put in one set</span>
+<span class="sd">        of files, while &quot;category_labels&quot; could be put in a different set of files.</span>
+
+<span class="sd">        To use this class, subclass it and define the get_input_ops method, which will define</span>
+<span class="sd">        the data-reading method specific to your application.  See docstring of the method below</span>
+<span class="sd">        for more details.</span>
+
+<span class="sd">        Once instantiated, to get operations to enqueue, call the method init_threads (see below).</span>
+
+<span class="sd">        Arguments are:</span>
+<span class="sd">        - source_paths (list of lists of strs): paths of files to be read.  Each element</span>
+<span class="sd">          of source_paths is a list of files containing batches of data for a group of</span>
+<span class="sd">          data attributes.  Specifically, source_paths is of the form</span>
+<span class="sd">             [[path_11, path_12, path_13, ..., path_1n],</span>
+<span class="sd">              [path_21, path_22, path_23, ..., path_2n],</span>
+<span class="sd">              ...,</span>
+<span class="sd">              [path_m1, path_m2, path_m3, ..., path_mn]]</span>
+
+<span class="sd">          where m is the number of attribute groups, n is the number of data files, and</span>
+<span class="sd">          path_ij is the path of the j-th group of batches for the i-th group of data</span>
+<span class="sd">          attributes.   Parallelization occurs across the data batches, with data from</span>
+<span class="sd">          corresponding batches in path_1j , path2j, etc... combined together to produce</span>
+<span class="sd">          a single overall data dictionary for the batch.   It is required that the number of</span>
+<span class="sd">          paths in each list be the same, and within corresponding paths, that the number of</span>
+<span class="sd">          batches of data be the same; that is:</span>
+<span class="sd">                 for all j:</span>
+<span class="sd">                    num_batches in path_1j = num_batches in path_ij  for all 1 &lt;= i &lt;= m</span>
+<span class="sd">          Note that for different j, the number of batches can be different.</span>
+
+<span class="sd">        - n_threads (int, default=1): number of threads to be used</span>
+
+<span class="sd">        - shuffle (bool, default=False): whether to shuffle the order of the paths</span>
+<span class="sd">          anew on each epoch.</span>
+
+<span class="sd">        - shuffle_seed (int, default=0): if shuffle=True, seed to use to initialize the</span>
+<span class="sd">          random number generator used to generate the random shuffle order</span>
+
+<span class="sd">        - read_args (list of tuples or None):  if not None, list of positional arguments to</span>
+<span class="sd">          pass to data readers, with one such list of arguments for each attribute group</span>
+
+<span class="sd">        - read_kwargs (list of dicts or None): if not None, list of keyword arguments to</span>
+<span class="sd">          pass to data readers, with one such list of arguments for each attribute group</span>
+
+<span class="sd">        - postprocess (dict of callables): postprocessing operations to be applied on</span>
+<span class="sd">          a per-attribute basis.  This is of the form:</span>
+<span class="sd">             {attr: [(func1, args1, kwargs1), (func2, args2, kwargs2) ...],</span>
+<span class="sd">              ... }</span>
+<span class="sd">          The operations func1, func2, etc are applied in the indicated order to the data</span>
+<span class="sd">          with attribute name attr, with the args and kwargs added:</span>
+<span class="sd">                  data[attr] = func1(data[attr], *args1, **kwargs1)</span>
+<span class="sd">                  data[attr] = func2(data[attr], *args2, **kwargs2)</span>
+<span class="sd">                . ... and so on</span>
+<span class="sd">          If a given attribute does not appear in this dictionary, no postprocessing is done.</span>
+
+<span class="sd">        - trans_dicts (list of dict or None): attribute renaming mappings. If not None,</span>
+<span class="sd">          this is of the form</span>
+<span class="sd">               [d_1, d_2, ..., d_m]</span>
+<span class="sd">          where each d  is either None or a dictionary of the form:</span>
+<span class="sd">               d_j = {attr_name1: new_attr_name1, attr_name2: new_attr_name2, ... }</span>
+<span class="sd">          In this case, the keys of d_j must be attribute names in the jth attribute group</span>
+<span class="sd">          and when produced, data from attr_name1 will be renamed to new_attr_name1 (and so on)</span>
+<span class="sd">          before being merged into the consolidated data dictionary for each batch.  If a</span>
+<span class="sd">          given attribute produced by the j-th group does not appear in d_j, the original</span>
+<span class="sd">          attribute name is retained.</span>
+
+<span class="sd">        - **kwargs: any other keyword arguments are simple attached to the object for use</span>
+<span class="sd">          by subclasses.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">lens</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">source_paths</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">lens</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lens</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]),</span> <span class="n">lens</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_paths</span> <span class="o">=</span> <span class="n">source_paths</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source_paths</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span> <span class="o">=</span> <span class="n">n_threads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">postprocess</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">postprocess</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">postprocess</span>
+        <span class="k">if</span> <span class="n">read_args</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">read_args</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">read_args</span> <span class="o">=</span> <span class="p">[()]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_atturs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_args</span> <span class="o">=</span> <span class="n">read_args</span>
+        <span class="k">if</span> <span class="n">read_kwargs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">read_kwargs</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">read_kwargs</span> <span class="o">=</span> <span class="p">[{}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read_kwargs</span> <span class="o">=</span> <span class="n">read_kwargs</span>
+        <span class="k">if</span> <span class="n">trans_dicts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">trans_dicts</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_paths</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trans_dicts</span> <span class="o">=</span> <span class="n">trans_dicts</span>
+        <span class="k">for</span> <span class="n">_k</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_k</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">_k</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">fq</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">string_input_producer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source_paths</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                                <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span><span class="p">,</span>
+                                                <span class="n">seed</span><span class="o">=</span><span class="n">shuffle_seed</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_queues</span> <span class="o">=</span> <span class="p">[[</span><span class="n">fq</span><span class="p">]]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">file_queues</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">tuples</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">source_paths</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">shuffle</span><span class="p">:</span>
+                <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="n">shuffle_seed</span><span class="p">)</span>
+                <span class="n">tuples</span> <span class="o">=</span> <span class="n">random_cycle</span><span class="p">(</span><span class="n">tuples</span><span class="p">,</span> <span class="n">rng</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tuples</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">(</span><span class="n">tuples</span><span class="p">)</span>
+            <span class="n">tuples</span> <span class="o">=</span> <span class="n">threadsafe_iter</span><span class="p">(</span><span class="n">tuples</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span><span class="p">):</span>
+                <span class="n">coord</span> <span class="o">=</span> <span class="n">Coordinator</span><span class="p">(</span><span class="n">tuples</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+                <span class="n">fqs</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span><span class="p">):</span>
+                    <span class="n">item</span> <span class="o">=</span> <span class="n">Item</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span>
+                    <span class="n">func</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">py_func</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">string</span><span class="p">])</span>
+                    <span class="n">fq</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">string_input_producer</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                    <span class="n">fqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fq</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">file_queues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fqs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ParallelByFileProviderBase.init_ops"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ParallelByFileProviderBase.init_ops">[docs]</a>    <span class="k">def</span> <span class="nf">init_ops</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_ops</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">thread_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span><span class="p">):</span>
+            <span class="n">op</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">attr_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_attrs</span><span class="p">):</span>
+                <span class="n">fq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_queues</span><span class="p">[</span><span class="n">thread_num</span><span class="p">][</span><span class="n">attr_num</span><span class="p">]</span>
+                <span class="n">args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_args</span><span class="p">[</span><span class="n">attr_num</span><span class="p">]</span>
+                <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_kwargs</span><span class="p">[</span><span class="n">attr_num</span><span class="p">]</span>
+                <span class="n">_op</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_input_op</span><span class="p">(</span><span class="n">fq</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_dicts</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_dicts</span><span class="p">[</span><span class="n">attr_num</span><span class="p">]:</span>
+                    <span class="n">td</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trans_dicts</span><span class="p">[</span><span class="n">attr_num</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">td</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_op</span><span class="p">:</span>
+                            <span class="n">_op</span><span class="p">[</span><span class="n">td</span><span class="p">[</span><span class="n">k</span><span class="p">]]</span> <span class="o">=</span> <span class="n">_op</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                <span class="n">op</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_op</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_ops</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">apply_postprocessing</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_ops</span></div>
+
+<div class="viewcode-block" id="ParallelByFileProviderBase.get_input_op"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ParallelByFileProviderBase.get_input_op">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fq</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This is the main method that returns a tensorflow data reading operation.</span>
+
+<span class="sd">        This method will get called n_threads * n_attrs times in the method init_ops (see above).</span>
+<span class="sd">        Specifically, it is called once for each thread id and each attribute group.</span>
+
+<span class="sd">        The arguments are:</span>
+<span class="sd">             fq:  filename queue object.  When run in a tf session, this object will act</span>
+<span class="sd">                  as a queue of filenames.  When fq.dequeue() is called in a tf.Session, it</span>
+<span class="sd">                  will produce the next filename to begin reading from.   Note: it only makes</span>
+<span class="sd">                  sense to dequeue from fq if the current file being read has been completed.</span>
+<span class="sd">             *args: any position arguments to the reader.  these are specified on a</span>
+<span class="sd">                  per-attribute-group basis (eg. across thread ids, calls for the same attribute</span>
+<span class="sd">                  group will get the same args).</span>
+<span class="sd">             *kwargs: any keyward arguments to the reader.  like for *args, these are specified</span>
+<span class="sd">                  on a per-attribute-group basis.</span>
+
+<span class="sd">        As an example of this method, see the TFRecordParallelByFileProvider.get_input_ops.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="ParallelByFileProviderBase.apply_postprocessing"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ParallelByFileProviderBase.apply_postprocessing">[docs]</a>    <span class="k">def</span> <span class="nf">apply_postprocessing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ops</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_ops</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ops</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">postprocess</span><span class="p">:</span>
+                <span class="n">op</span> <span class="o">=</span> <span class="n">ops</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">source</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">func</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">postprocess</span><span class="p">[</span><span class="n">source</span><span class="p">]:</span>
+                    <span class="n">op</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">ops</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="n">op</span></div></div>
+
+
+<span class="n">DEFAULT_TFRECORDS_GLOB_PATTERN</span> <span class="o">=</span> <span class="s1">&#39;*.tfrecords&#39;</span>
+
+
+<div class="viewcode-block" id="get_data_paths"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.get_data_paths">[docs]</a><span class="k">def</span> <span class="nf">get_data_paths</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">file_pattern</span><span class="o">=</span><span class="n">DEFAULT_TFRECORDS_GLOB_PATTERN</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">isstring</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file_pattern</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">isstring</span><span class="p">(</span><span class="n">file_pattern</span><span class="p">)</span>
+        <span class="n">file_patterns</span> <span class="o">=</span> <span class="p">[</span><span class="n">file_pattern</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">file_patterns</span> <span class="o">=</span> <span class="n">file_pattern</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_patterns</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">),</span> <span class="p">(</span><span class="n">file_patterns</span><span class="p">,</span> <span class="n">paths</span><span class="p">)</span>
+    <span class="n">datasources</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">file_pattern</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">file_patterns</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="n">tfrecord_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">file_pattern</span><span class="p">)</span>
+            <span class="n">datasource</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gfile</span><span class="o">.</span><span class="n">Glob</span><span class="p">(</span><span class="n">tfrecord_pattern</span><span class="p">)</span>
+            <span class="n">datasource</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+            <span class="n">datasources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">datasource</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">datasources</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">path</span><span class="p">])</span>
+    <span class="n">dl</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">datasources</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">all</span><span class="p">([</span><span class="n">dl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dl</span><span class="p">[</span><span class="mi">1</span><span class="p">:]]),</span> <span class="n">dl</span>
+    <span class="k">return</span> <span class="n">datasources</span></div>
+
+
+<div class="viewcode-block" id="get_parser"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.get_parser">[docs]</a><span class="k">def</span> <span class="nf">get_parser</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+    <span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span> <span class="k">if</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">]</span> <span class="k">else</span> <span class="n">tf</span><span class="o">.</span><span class="n">string</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">shape</span> <span class="k">if</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">]</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">FixedLenFeature</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="parse_standard_tfmeta"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.parse_standard_tfmeta">[docs]</a><span class="k">def</span> <span class="nf">parse_standard_tfmeta</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+    <span class="n">meta_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">isstring</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;meta&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pkl&#39;</span><span class="p">):</span>
+                <span class="n">mpaths</span> <span class="o">=</span> <span class="p">[</span><span class="n">path</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="n">mpaths</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;meta&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pkl&#39;</span><span class="p">),</span>
+                                <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+                <span class="n">mpaths</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mp</span><span class="p">)</span> <span class="k">for</span> <span class="n">mp</span> <span class="ow">in</span> <span class="n">mpaths</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># in this case, it&#39;s a list</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+            <span class="n">mpaths</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">mpath</span> <span class="ow">in</span> <span class="n">mpaths</span><span class="p">:</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">cPickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">mpath</span><span class="p">)))</span>
+        <span class="n">meta_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">meta_list</span></div>
+
+
+<div class="viewcode-block" id="complete_metadata"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.complete_metadata">[docs]</a><span class="k">def</span> <span class="nf">complete_metadata</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">,</span> <span class="n">parsed_meta_dicts</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">meta_dicts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># if no meta_dicts is passed, just use the saved one for all source_paths</span>
+        <span class="n">meta_dicts</span> <span class="o">=</span> <span class="n">parsed_meta_dicts</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Using all metadata from saved source&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">parsed_meta_dicts</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">md</span><span class="p">,</span> <span class="n">pmd</span><span class="p">))</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">,</span> <span class="n">parsed_meta_dicts</span><span class="p">)):</span>
+            <span class="c1"># if no meta is passed for this particular source_path, used the saved one</span>
+            <span class="k">if</span> <span class="n">md</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">meta_dicts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">pmd</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Using saved meta </span><span class="si">%s</span><span class="s1"> for attribute group </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">pmd</span><span class="p">),</span> <span class="n">i</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">isstring</span><span class="p">(</span><span class="n">md</span><span class="p">):</span>
+                    <span class="n">md</span> <span class="o">=</span> <span class="p">{</span><span class="n">md</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+                    <span class="n">meta_dicts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">md</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">md</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">md</span> <span class="o">=</span> <span class="p">{</span><span class="n">_m</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">_m</span> <span class="ow">in</span> <span class="n">md</span><span class="p">}</span>
+                    <span class="n">meta_dicts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">md</span>
+                <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">md</span><span class="p">,</span> <span class="s1">&#39;keys&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">md</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">md</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">md</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="c1"># for all saved metadata keys, if that key is not present in the provide metadata,</span>
+                    <span class="c1"># add the key from the saved metadata</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">pmd</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">_k</span> <span class="ow">in</span> <span class="n">pmd</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span>
+                            <span class="k">if</span> <span class="n">_k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">md</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span>
+                                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Using saved meta for key </span><span class="si">%s</span><span class="s1"> attribute </span><span class="si">%s</span><span class="s1"> for attribute group </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                                    <span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">_k</span><span class="p">),</span> <span class="n">i</span><span class="p">))</span>
+                                <span class="n">md</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">_k</span><span class="p">]</span> <span class="o">=</span> <span class="n">pmd</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">_k</span><span class="p">]</span>
+
+    <span class="n">bad_mds</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_md</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_md</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">bad_mds</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;No metadata specifed for attribute groups: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">bad_mds</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">meta_dicts</span></div>
+
+
+<div class="viewcode-block" id="merge_meta"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.merge_meta">[docs]</a><span class="k">def</span> <span class="nf">merge_meta</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">,</span> <span class="n">trans_dicts</span><span class="p">):</span>
+    <span class="n">meta_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">parser_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">md</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">):</span>
+        <span class="n">parsers</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">get_parser</span><span class="p">(</span><span class="n">md</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;shape&#39;</span><span class="p">],</span> <span class="n">md</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">md</span><span class="p">}</span>
+        <span class="n">parser_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">parsers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trans_dicts</span> <span class="ow">and</span> <span class="n">trans_dicts</span><span class="p">[</span><span class="n">ind</span><span class="p">]:</span>
+            <span class="n">td</span> <span class="o">=</span> <span class="n">trans_dicts</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">md</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">td</span><span class="p">:</span>
+                    <span class="n">md</span><span class="p">[</span><span class="n">td</span><span class="p">[</span><span class="n">k</span><span class="p">]]</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="n">meta_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">meta_dict</span><span class="p">,</span> <span class="n">parser_list</span></div>
+
+
+<div class="viewcode-block" id="add_standard_postprocessing"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.add_standard_postprocessing">[docs]</a><span class="k">def</span> <span class="nf">add_standard_postprocessing</span><span class="p">(</span><span class="n">postprocess</span><span class="p">,</span> <span class="n">meta_dict</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">postprocess</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">postprocess</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">meta_dict</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">postprocess</span><span class="p">:</span>
+            <span class="n">postprocess</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">meta_dict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">string</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">]:</span>
+            <span class="n">postprocess</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">decode_raw</span><span class="p">,</span> <span class="p">(</span><span class="n">meta_dict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">],</span> <span class="p">),</span> <span class="p">{}))</span>
+            <span class="n">postprocess</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">,</span> <span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">meta_dict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;shape&#39;</span><span class="p">],</span> <span class="p">),</span> <span class="p">{}))</span>
+    <span class="k">return</span> <span class="n">postprocess</span></div>
+
+
+<div class="viewcode-block" id="TFRecordsParallelByFileProvider"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.TFRecordsParallelByFileProvider">[docs]</a><span class="k">class</span> <span class="nc">TFRecordsParallelByFileProvider</span><span class="p">(</span><span class="n">ParallelByFileProviderBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">source_dirs</span><span class="p">,</span>
+                 <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                 <span class="n">meta_dicts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">postprocess</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">trans_dicts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">file_pattern</span><span class="o">=</span><span class="n">DEFAULT_TFRECORDS_GLOB_PATTERN</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subclass of ParallelByFileProviderBase specific to TFRecords files.</span>
+
+<span class="sd">        The argument source_dirs is a list of directories where files for each attribute</span>
+<span class="sd">        group reside (one element of source_dir for each attribute group).  The tfrecords files</span>
+<span class="sd">        in each directory will be detected and passed on to the ParallelByFileProviderBase.</span>
+
+<span class="sd">        For each attribute in a tfrecords file, metadata about datatype and shape is needed.</span>
+<span class="sd">        This class will automatically add postprocessing operations that convert type from raw</span>
+<span class="sd">        tfrecords strings to the indicated dataypes, and reshape arrays to the indicated shapes.</span>
+
+<span class="sd">        This metadata can be supplied two ways.  First, this class supports a &quot;standard form&quot;</span>
+<span class="sd">        for reading metadata from on-disk pickle files.  Specifically, for each source_dir,</span>
+<span class="sd">        any files of the form</span>
+<span class="sd">              source_dir/meta[*].pkl</span>
+<span class="sd">        will be loaded as python pickle objects and assumed to be dictionaries of metadata</span>
+<span class="sd">        for the attributes in the files in source_dir. For example, your directory structure</span>
+<span class="sd">        could look like:</span>
+<span class="sd">            images_and_labels/</span>
+<span class="sd">               meta.pkl</span>
+<span class="sd">                   containing {&quot;images&quot;: {&quot;dtype&quot;: tf.uint8, &quot;shape&quot;: (256, 256, 3)}.</span>
+<span class="sd">                               &quot;labels&quot;: {&quot;dtype&quot;: tf.int64, &quot;shape&quot;: ()}}</span>
+<span class="sd">               file1.tfrecords  (containing records with &quot;images&quot; and &quot;labels&quot; keys)</span>
+<span class="sd">               file2.tfrecords</span>
+<span class="sd">                ....</span>
+<span class="sd">            normals/</span>
+<span class="sd">               meta.pkl</span>
+<span class="sd">                    containing {&quot;normals&quot;: {&quot;dtype&quot;: tf.uint8, &quot;shape&quot;: (256, 256, 3)}}</span>
+<span class="sd">               file1.tfrecords (containing records with &quot;normals&quot; key)</span>
+<span class="sd">               file2.tfrecords</span>
+<span class="sd">                ....</span>
+
+<span class="sd">        If no such metadata pickle files exist, metadata can be supplied by passing the meta_dicts</span>
+<span class="sd">        argument.</span>
+
+<span class="sd">        Arguments:</span>
+<span class="sd">            - source_dirs (string or list of strings): List of directory names in which</span>
+<span class="sd">              files reside.  All files inside each directory of the form &#39;*.tfrecords&#39;</span>
+<span class="sd">              will be read, and the lists of files are sorted before passing to the</span>
+<span class="sd">              ParallelByFileProviderBase class constructor.   For example:</span>
+<span class="sd">                  source_dirs = [&#39;/path/to/my/images_and_labels/&#39;</span>
+<span class="sd">                                 &#39;/path/to/my/normals&#39;]</span>
+<span class="sd">            - batch_size (int, default=256): max size of batches to read (note that read_up_to</span>
+<span class="sd">              operation might produce fewer than batch_size records).</span>
+<span class="sd">            - meta_dicts (list of dictionaries, lists strings or None):</span>
+<span class="sd">              If not None, a list of the same length as source_dirs.  Elements of meta_dicts</span>
+<span class="sd">              can be dictionaries, lists of strings, or strings.  If dictionaries, then this</span>
+<span class="sd">              containing metadata for the attributes in the datafiles in the corresponding</span>
+<span class="sd">              source_dir.  Example:</span>
+<span class="sd">                  meta_dicts = [{&#39;images&#39;: {&#39;dtype&#39; ..., },</span>
+<span class="sd">                                 &#39;labels&#39;: {&#39;dtype&#39; ... },}</span>
+<span class="sd">                                {&#39;normals&#39;: {&#39;dtype&#39;: ....}}]</span>
+<span class="sd">              If an element of meta_dicts is a list of strings, those are treated as the attributes</span>
+<span class="sd">              to be read from that attribute group (and others ignored).   If the element is a string</span>
+<span class="sd">              just that attribute is loaded.   For example:</span>
+<span class="sd">                  meta_dicts = [&#39;images&#39;, [&#39;ids&#39;, &#39;means&#39;], [&quot;segmentations&quot;]]</span>
+<span class="sd">              indicates that the attribute &quot;images&quot; is loaded from the files in the first source_path,</span>
+<span class="sd">              the attributes &quot;ids&quot; and &quot;means&quot; are loaded for the second source_path, and the attribute</span>
+<span class="sd">              &quot;segmentations&quot; for the third.</span>
+<span class="sd">            - file_pattern (str, optional): pattern for selecting files in glob format.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_dirs</span> <span class="o">=</span> <span class="n">source_dirs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+        <span class="n">parsed_meta_dicts</span> <span class="o">=</span> <span class="n">parse_standard_tfmeta</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">source_dirs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta_dicts</span> <span class="o">=</span> <span class="n">complete_metadata</span><span class="p">(</span><span class="n">meta_dicts</span><span class="p">,</span> <span class="n">parsed_meta_dicts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta_dict</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parser_list</span> <span class="o">=</span> <span class="n">merge_meta</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meta_dicts</span><span class="p">,</span>
+                                                      <span class="n">trans_dicts</span><span class="p">)</span>
+        <span class="n">postprocess</span> <span class="o">=</span> <span class="n">add_standard_postprocessing</span><span class="p">(</span><span class="n">postprocess</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta_dict</span><span class="p">)</span>
+        <span class="n">source_paths</span> <span class="o">=</span> <span class="n">get_data_paths</span><span class="p">(</span><span class="n">source_dirs</span><span class="p">,</span> <span class="n">file_pattern</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TFRecordsParallelByFileProvider</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">source_paths</span><span class="p">,</span>
+                                                              <span class="n">read_args</span><span class="o">=</span><span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parser_list</span><span class="p">],</span>
+                                                              <span class="n">postprocess</span><span class="o">=</span><span class="n">postprocess</span><span class="p">,</span>
+                                                              <span class="n">trans_dicts</span><span class="o">=</span><span class="n">trans_dicts</span><span class="p">,</span>
+                                                              <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TFRecordsParallelByFileProvider.get_input_op"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.TFRecordsParallelByFileProvider.get_input_op">[docs]</a>    <span class="k">def</span> <span class="nf">get_input_op</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fq</span><span class="p">,</span> <span class="n">parsers</span><span class="p">):</span>
+        <span class="n">reader</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">TFRecordReader</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">serialized_data</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read_up_to</span><span class="p">(</span><span class="n">fq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">parse_example</span><span class="p">(</span><span class="n">serialized_data</span><span class="p">,</span> <span class="n">parsers</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ParallelBySliceProvider"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ParallelBySliceProvider">[docs]</a><span class="k">class</span> <span class="nc">ParallelBySliceProvider</span><span class="p">(</span><span class="n">DataProviderBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Data provider for handling parallelization by records within one large randomly-accessible file.</span>
+<span class="sd">    See an example of usage in tfutils/tests/test_data_hdf5.py.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">basefunc</span><span class="p">,</span>
+                 <span class="n">kwargs</span><span class="p">,</span>
+                 <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;block&#39;</span><span class="p">,</span>
+                 <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+                 <span class="n">n_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">basefunc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span> <span class="o">=</span> <span class="n">n_threads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+
+<div class="viewcode-block" id="ParallelBySliceProvider.init_ops"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ParallelBySliceProvider.init_ops">[docs]</a>    <span class="k">def</span> <span class="nf">init_ops</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span>
+        <span class="n">ops</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">tester</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">data_length</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">labels</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;block&#39;</span><span class="p">:</span>
+            <span class="n">blocksize</span> <span class="o">=</span> <span class="n">N</span> <span class="o">/</span> <span class="n">n</span>
+            <span class="n">ends</span> <span class="o">=</span> <span class="p">[[</span><span class="n">i</span> <span class="o">*</span> <span class="n">blocksize</span><span class="p">,</span> <span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">blocksize</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+            <span class="n">ends</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">ends</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="n">N</span><span class="p">)</span>
+            <span class="n">subslices</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">e0</span><span class="p">,</span> <span class="n">e1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">e0</span><span class="p">,</span> <span class="n">e1</span> <span class="ow">in</span> <span class="n">ends</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;alternate&#39;</span><span class="p">:</span>
+            <span class="n">subslices</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)[</span><span class="n">i</span><span class="p">::]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+
+        <span class="n">testbatch</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span><span class="p">):</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;subslice&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;subslice&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">subslices</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">good_inds</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">subsliceinds</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;subslice&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">good_inds</span><span class="p">[</span><span class="n">subslices</span><span class="p">[</span><span class="n">n</span><span class="p">]]</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+            <span class="n">dp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">op</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">py_func</span><span class="p">(</span><span class="n">dp</span><span class="o">.</span><span class="n">next</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">dtype</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">testbatch</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">_op</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">testbatch</span><span class="p">):</span>
+                <span class="n">_op</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">op</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">op</span><span class="p">))</span>
+            <span class="n">ops</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">op</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ops</span></div></div>
+
+
+<div class="viewcode-block" id="HDF5DataReader"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader">[docs]</a><span class="k">class</span> <span class="nc">HDF5DataReader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">hdf5source</span><span class="p">,</span>
+                 <span class="n">sourcelist</span><span class="p">,</span>
+                 <span class="n">batch_size</span><span class="p">,</span>
+                 <span class="n">subslice</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">mini_batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">preprocess</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">postprocess</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">pad</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        - hdf5source (str): path where hdf5 file resides</span>
+<span class="sd">        - sourcelist (list of strs): list of keys in the hdf5file to use as source dataarrays</span>
+<span class="sd">        - batch_size (int): size of batches to be returned</span>
+<span class="sd">        - subslice (string, array of ints, callable):</span>
+<span class="sd">             if str: name of key in hdf5file refering to array of indexes into the source dataarrays</span>
+<span class="sd">             if array of ints: indexes into the source dataarrays</span>
+<span class="sd">             if callable: function producing array of indexes into the source datarrays</span>
+<span class="sd">           Regardless of how it&#39;s constructed, the provider subsets its returns to the only the indices</span>
+<span class="sd">           specified in the subslice.</span>
+<span class="sd">        - mini_batch_size (int):  Used only if subslice is specifiied, this sets the size of minibatches used</span>
+<span class="sd">          when constructing one full batch within the subslice to return</span>
+<span class="sd">        - preprocess (dict of callables): functions for preprocessing data in the datasources.  keys of this are subset</span>
+<span class="sd">        - postprocess (dict of callables): functions for postprocess data.  Keys of this are subset of sourcelist.</span>
+<span class="sd">        - pad (bool): whether to pad data returned if amount of data left to return is less then full batch size</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hdf5source</span> <span class="o">=</span> <span class="n">hdf5source</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hdf5source</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sourcelist</span> <span class="o">=</span> <span class="n">sourcelist</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">subslice</span> <span class="o">=</span> <span class="n">subslice</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">preprocess</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">preprocess</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">postprocess</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">postprocess</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">postprocess</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sizes</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourcelist</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="n">source</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Preprocessing </span><span class="si">%s</span><span class="s1">...&#39;</span> <span class="o">%</span> <span class="n">source</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preprocess</span><span class="p">[</span><span class="n">source</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">sourcelist</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subslice</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">][:]</span>
+                    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">,</span> <span class="s1">&#39;__call__&#39;</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourcelist</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">[:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">subslice</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+                <span class="n">sz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],)</span> <span class="o">+</span> <span class="n">sz</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;data_length&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data_length</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">source</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">source</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_length</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="n">source</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_length</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+        <span class="k">if</span> <span class="n">mini_batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mini_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mini_batch_size</span> <span class="o">=</span> <span class="n">mini_batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_batches</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curr_batch_num</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curr_epoch</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pad</span> <span class="o">=</span> <span class="n">pad</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">labels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourcelist</span>
+
+<div class="viewcode-block" id="HDF5DataReader.set_epoch_batch"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader.set_epoch_batch">[docs]</a>    <span class="k">def</span> <span class="nf">set_epoch_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">batch_num</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curr_epoch</span> <span class="o">=</span> <span class="n">epoch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curr_batch_num</span> <span class="o">=</span> <span class="n">batch_num</span></div>
+
+<div class="viewcode-block" id="HDF5DataReader.get_next_batch"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader.get_next_batch">[docs]</a>    <span class="k">def</span> <span class="nf">get_next_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_batch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">curr_batch_num</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">increment_batch_num</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="HDF5DataReader.next"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_batch</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">b</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourcelist</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="HDF5DataReader.increment_batch_num"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader.increment_batch_num">[docs]</a>    <span class="k">def</span> <span class="nf">increment_batch_num</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_batches</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">curr_batch_num</span> <span class="o">&gt;=</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">curr_epoch</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curr_batch_num</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">curr_batch_num</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">m</span></div>
+
+<div class="viewcode-block" id="HDF5DataReader.get_batch"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader.get_batch">[docs]</a>    <span class="k">def</span> <span class="nf">get_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cbn</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">startv</span> <span class="o">=</span> <span class="n">cbn</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+        <span class="n">endv</span> <span class="o">=</span> <span class="p">(</span><span class="n">cbn</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pad</span> <span class="ow">and</span> <span class="n">endv</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_length</span><span class="p">:</span>
+            <span class="n">startv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_length</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+            <span class="n">endv</span> <span class="o">=</span> <span class="n">startv</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+        <span class="n">sourcelist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sourcelist</span>
+        <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">sourcelist</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">],</span> <span class="nb">slice</span><span class="p">(</span><span class="n">startv</span><span class="p">,</span> <span class="n">endv</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">source</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">postprocess</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">postprocess</span><span class="p">[</span><span class="n">source</span><span class="p">](</span><span class="n">data</span><span class="p">[</span><span class="n">source</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="HDF5DataReader.get_data"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.HDF5DataReader.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dsource</span><span class="p">,</span> <span class="n">sliceval</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subslice</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dsource</span><span class="p">[</span><span class="n">sliceval</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">subslice_inds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subsliceinds</span><span class="p">[</span><span class="n">sliceval</span><span class="p">]</span>
+            <span class="n">mbs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mini_batch_size</span>
+            <span class="n">bn0</span> <span class="o">=</span> <span class="n">subslice_inds</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">//</span> <span class="n">mbs</span>
+            <span class="n">bn1</span> <span class="o">=</span> <span class="n">subslice_inds</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">//</span> <span class="n">mbs</span>
+            <span class="n">stims</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">_bn</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">bn0</span><span class="p">,</span> <span class="n">bn1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="n">_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dsource</span><span class="p">[</span><span class="n">_bn</span> <span class="o">*</span> <span class="n">mbs</span><span class="p">:</span> <span class="p">(</span><span class="n">_bn</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">mbs</span><span class="p">])</span>
+                <span class="n">new_inds</span> <span class="o">=</span> <span class="n">isin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">_bn</span> <span class="o">*</span> <span class="n">mbs</span><span class="p">,</span> <span class="p">(</span><span class="n">_bn</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">mbs</span><span class="p">),</span> <span class="n">subslice_inds</span><span class="p">)</span>
+                <span class="n">new_array</span> <span class="o">=</span> <span class="n">_s</span><span class="p">[</span><span class="n">new_inds</span><span class="p">]</span>
+                <span class="n">stims</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_array</span><span class="p">)</span>
+            <span class="n">stims</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">stims</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">stims</span></div></div>
+
+
+<div class="viewcode-block" id="get_unique_labels"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.get_unique_labels">[docs]</a><span class="k">def</span> <span class="nf">get_unique_labels</span><span class="p">(</span><span class="n">larray</span><span class="p">):</span>
+    <span class="n">larray</span> <span class="o">=</span> <span class="n">larray</span><span class="p">[:]</span>
+    <span class="n">labels_unique</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">larray</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">larray</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+    <span class="n">cat_s</span> <span class="o">=</span> <span class="n">larray</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">((</span><span class="n">cat_s</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">!=</span> <span class="n">cat_s</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">cat_s</span><span class="p">)])</span>
+    <span class="n">ssd</span> <span class="o">=</span> <span class="n">ss</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">ss</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels_unique</span><span class="p">)),</span> <span class="n">ssd</span><span class="p">)</span>
+    <span class="n">larray</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">perminverse</span><span class="p">(</span><span class="n">s</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">larray</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="perminverse"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.perminverse">[docs]</a><span class="k">def</span> <span class="nf">perminverse</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fast inverse of a (numpy) permutation.</span>
+
+<span class="sd">    From yamutils</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)))</span>
+    <span class="n">X</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">X</span></div>
+
+
+<div class="viewcode-block" id="isin"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.isin">[docs]</a><span class="k">def</span> <span class="nf">isin</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Indices of elements in a numpy array that appear in another.</span>
+<span class="sd">    Fast routine for determining indices of elements in numpy array `X` that</span>
+<span class="sd">    appear in numpy array `Y`, returning a boolean array `Z` such that::</span>
+<span class="sd">            Z[i] = X[i] in Y</span>
+<span class="sd">    **Parameters**</span>
+<span class="sd">            **X** :  numpy array</span>
+<span class="sd">                    Numpy array to comapare to numpy array `Y`.  For each</span>
+<span class="sd">                    element of `X`, ask if it is in `Y`.</span>
+<span class="sd">            **Y** :  numpy array</span>
+<span class="sd">                    Numpy array to which numpy array `X` is compared.  For each</span>
+<span class="sd">                    element of `X`, ask if it is in `Y`.</span>
+<span class="sd">    **Returns**</span>
+<span class="sd">            **b** :  numpy array (bool)</span>
+<span class="sd">                    Boolean numpy array, `len(b) = len(X)`.</span>
+<span class="sd">    **See Also:**</span>
+<span class="sd">            :func:`tabular.fast.recarrayisin`,</span>
+<span class="sd">            :func:`tabular.fast.arraydifference`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">Y</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">T</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">D</span><span class="p">]</span> <span class="o">==</span> <span class="n">X</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="p">),</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">D</span><span class="p">]</span> <span class="o">==</span> <span class="n">X</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> <span class="p">),</span> <span class="nb">bool</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_queue"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.get_queue">[docs]</a><span class="k">def</span> <span class="nf">get_queue</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span>
+              <span class="n">queue_type</span><span class="o">=</span><span class="s1">&#39;fifo&#39;</span><span class="p">,</span>
+              <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+              <span class="n">capacity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">min_after_dequeue</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">shape_flag</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+              <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; A generic queue for reading data</span>
+<span class="sd">        Built on top of https://indico.io/blog/tensorflow-data-input-part2-extensions/</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">capacity</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">capacity</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">batch_size</span>
+    <span class="k">if</span> <span class="n">min_after_dequeue</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">min_after_dequeue</span> <span class="o">=</span> <span class="n">capacity</span> <span class="o">//</span> <span class="mi">2</span>
+
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">dtypes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">shapes</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">dtypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">shape_flag</span><span class="p">:</span>
+            <span class="n">shapes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()[</span><span class="mi">1</span><span class="p">:])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shapes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">get_shape</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">batch_size</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">shapes</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">queue_type</span> <span class="o">==</span> <span class="s1">&#39;random&#39;</span><span class="p">:</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">RandomShuffleQueue</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">capacity</span><span class="p">,</span>
+                                      <span class="n">min_after_dequeue</span><span class="o">=</span><span class="n">min_after_dequeue</span><span class="p">,</span>
+                                      <span class="n">dtypes</span><span class="o">=</span><span class="n">dtypes</span><span class="p">,</span>
+                                      <span class="n">shapes</span><span class="o">=</span><span class="n">shapes</span><span class="p">,</span>
+                                      <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span>
+                                      <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">queue_type</span> <span class="o">==</span> <span class="s1">&#39;fifo&#39;</span><span class="p">:</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">FIFOQueue</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">capacity</span><span class="p">,</span>
+                             <span class="n">dtypes</span><span class="o">=</span><span class="n">dtypes</span><span class="p">,</span>
+                             <span class="n">shapes</span><span class="o">=</span><span class="n">shapes</span><span class="p">,</span>
+                             <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">queue_type</span> <span class="o">==</span> <span class="s1">&#39;padding_fifo&#39;</span><span class="p">:</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">PaddingFIFOQueue</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">capacity</span><span class="p">,</span>
+                                    <span class="n">dtypes</span><span class="o">=</span><span class="n">dtypes</span><span class="p">,</span>
+                                    <span class="n">shapes</span><span class="o">=</span><span class="n">shapes</span><span class="p">,</span>
+                                    <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">queue_type</span> <span class="o">==</span> <span class="s1">&#39;priority&#39;</span><span class="p">:</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">PriorityQueue</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">capacity</span><span class="p">,</span>
+                                 <span class="n">types</span><span class="o">=</span><span class="n">dtypes</span><span class="p">,</span>
+                                 <span class="n">shapes</span><span class="o">=</span><span class="n">shapes</span><span class="p">,</span>
+                                 <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Queue type </span><span class="si">%s</span><span class="s1"> not recognized&#39;</span> <span class="o">%</span> <span class="n">queue_type</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">queue</span></div>
+
+
+<div class="viewcode-block" id="MNIST"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.MNIST">[docs]</a><span class="k">class</span> <span class="nc">MNIST</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">data_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                 <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                 <span class="n">n_threads</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            - data_path: path to imagenet data</span>
+<span class="sd">            - group: train, validation, test</span>
+<span class="sd">            - batch_size</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span> <span class="o">=</span> <span class="n">n_threads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+
+        <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data_path</span> <span class="o">=</span> <span class="s1">&#39;/tmp&#39;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_data_sets</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">group</span> <span class="o">==</span> <span class="s1">&#39;train&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">train</span>
+        <span class="k">elif</span> <span class="n">group</span> <span class="o">==</span> <span class="s1">&#39;test&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">test</span>
+        <span class="k">elif</span> <span class="n">group</span> <span class="o">==</span> <span class="s1">&#39;validation&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">validation</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;MNIST data input &quot;</span><span class="si">{}</span><span class="s1">&quot; not known&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">group</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="MNIST.next"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.MNIST.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">next_batch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span>
+        <span class="n">feed_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;images&#39;</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;labels&#39;</span><span class="p">:</span> <span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)}</span>
+        <span class="k">return</span> <span class="n">feed_dict</span></div>
+
+<div class="viewcode-block" id="MNIST.init_ops"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.MNIST.init_ops">[docs]</a>    <span class="k">def</span> <span class="nf">init_ops</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">next_batch</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span>
+        <span class="n">batches</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">py_func</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">uint8</span><span class="p">])</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_threads</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">:</span>
+            <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_shape</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">784</span><span class="p">])</span>
+            <span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_shape</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">])</span>
+        <span class="n">ops</span> <span class="o">=</span> <span class="p">[{</span><span class="s1">&#39;images&#39;</span><span class="p">:</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;labels&#39;</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)}</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">ops</span></div></div>
+
+
+<div class="viewcode-block" id="ImageNet"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ImageNet">[docs]</a><span class="k">class</span> <span class="nc">ImageNet</span><span class="p">(</span><span class="n">HDF5DataReader</span><span class="p">):</span>
+
+    <span class="n">N_TRAIN</span> <span class="o">=</span> <span class="mi">1281167</span>
+    <span class="n">N_VAL</span> <span class="o">=</span> <span class="mi">50000</span>
+    <span class="n">N_TRAIN_VAL</span> <span class="o">=</span> <span class="mi">50000</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">data_path</span><span class="p">,</span>
+                 <span class="n">group</span><span class="o">=</span><span class="s1">&#39;train&#39;</span><span class="p">,</span>
+                 <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                 <span class="n">crop_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A specific reader for ImageNet stored as a HDF5 file</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            - data_path</span>
+<span class="sd">                path to imagenet data</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            - group (str, default: &#39;train&#39;)</span>
+<span class="sd">                Which subset of the ImageNet set you want: train, val, train_val.</span>
+<span class="sd">                The latter contains 50k images from the train set (50 per category),</span>
+<span class="sd">                so that you can directly compare performance on the validation set</span>
+<span class="sd">                to the performance on the train set to track overfitting.</span>
+<span class="sd">            - batch_size (int, default: 1)</span>
+<span class="sd">                Number of images to return when `next` is called. By default set</span>
+<span class="sd">                to 1 since it is expected to be used with queues where reading one</span>
+<span class="sd">                image at a time is ok.</span>
+<span class="sd">            - crop_size (int or None, default: None)</span>
+<span class="sd">                For center crop (crop_size x crop_size). If None, no cropping will occur.</span>
+<span class="sd">            - *args, **kwargs</span>
+<span class="sd">                Extra arguments for HDF5DataProvider</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group</span> <span class="o">=</span> <span class="n">group</span>
+        <span class="n">images_key</span> <span class="o">=</span> <span class="n">group</span> <span class="o">+</span> <span class="s1">&#39;/images&#39;</span>
+        <span class="n">labels_key</span> <span class="o">=</span> <span class="n">group</span> <span class="o">+</span> <span class="s1">&#39;/labels&#39;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ImageNet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">data_path</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">images_key</span><span class="p">,</span> <span class="n">labels_key</span><span class="p">],</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+            <span class="n">postprocess</span><span class="o">=</span><span class="p">{</span><span class="n">images_key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc_img</span><span class="p">,</span> <span class="n">labels_key</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">postproc_labels</span><span class="p">},</span>
+            <span class="n">pad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">crop_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span> <span class="o">=</span> <span class="mi">256</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span> <span class="o">=</span> <span class="n">crop_size</span>
+
+<div class="viewcode-block" id="ImageNet.postproc_img"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ImageNet.postproc_img">[docs]</a>    <span class="k">def</span> <span class="nf">postproc_img</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ims</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="n">ims</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="mf">255.0</span>
+
+        <span class="n">off</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">256</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">group</span> <span class="o">==</span> <span class="s1">&#39;train&#39;</span><span class="p">:</span>
+            <span class="n">off</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">256</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">off</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="mi">256</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">off</span> <span class="o">=</span> <span class="p">[</span><span class="n">off</span><span class="p">,</span> <span class="n">off</span><span class="p">]</span>
+        <span class="n">images_batch</span> <span class="o">=</span> <span class="n">norm</span><span class="p">[:,</span>
+                            <span class="n">off</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">off</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">,</span>
+                            <span class="n">off</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="n">off</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">images_batch</span></div>
+
+<div class="viewcode-block" id="ImageNet.postproc_labels"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ImageNet.postproc_labels">[docs]</a>    <span class="k">def</span> <span class="nf">postproc_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span></div></div>
+
+    <span class="c1"># def next(self):</span>
+    <span class="c1">#     batch = super(ImageNet, self).next()</span>
+    <span class="c1">#     feed_dict = {&#39;images&#39;: np.squeeze(batch[self.group + &#39;/images&#39;]),</span>
+    <span class="c1">#                  &#39;labels&#39;: np.squeeze(batch[self.group + &#39;/labels&#39;])}</span>
+    <span class="c1">#     return feed_dict</span>
+
+
+<div class="viewcode-block" id="ImageNetTF"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ImageNetTF">[docs]</a><span class="k">class</span> <span class="nc">ImageNetTF</span><span class="p">(</span><span class="n">TFRecordsParallelByFileProvider</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_dirs</span><span class="p">,</span> <span class="n">crop_size</span><span class="o">=</span><span class="mi">224</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ImageNet data provider for TFRecords</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span> <span class="o">=</span> <span class="n">crop_size</span>
+        <span class="n">postprocess</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;images&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">postprocess_images</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{})]}</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ImageNetTF</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">source_dirs</span><span class="p">,</span> <span class="n">postprocess</span><span class="o">=</span><span class="n">postprocess</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ImageNetTF.postprocess_images"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.ImageNetTF.postprocess_images">[docs]</a>    <span class="k">def</span> <span class="nf">postprocess_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ims</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">_postprocess_images</span><span class="p">(</span><span class="n">im</span><span class="p">):</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">decode_raw</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">convert_image_dtype</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="p">[</span><span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random_crop</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crop_size</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">im</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span><span class="k">lambda</span> <span class="n">im</span><span class="p">:</span> <span class="n">_postprocess_images</span><span class="p">(</span><span class="n">im</span><span class="p">),</span> <span class="n">ims</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="Coordinator"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.Coordinator">[docs]</a><span class="k">class</span> <span class="nc">Coordinator</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">itr</span><span class="p">,</span> <span class="n">tid</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">curval</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">itr</span> <span class="o">=</span> <span class="n">itr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tid</span> <span class="o">=</span> <span class="n">tid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Coordinator.next"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.Coordinator.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">curval</span><span class="p">:</span>
+                <span class="n">curval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">itr</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">curval</span><span class="p">,</span> <span class="s1">&#39;keys&#39;</span><span class="p">):</span>
+                    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">curval</span><span class="p">)</span>
+                    <span class="n">curval</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">curval</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">curval</span> <span class="o">=</span> <span class="n">curval</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">curval</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">val</span></div></div>
+
+
+<div class="viewcode-block" id="Item"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.Item">[docs]</a><span class="k">class</span> <span class="nc">Item</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">j</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">j</span> <span class="o">=</span> <span class="n">j</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+
+<div class="viewcode-block" id="Item.next"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.Item.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">j</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">val</span></div></div>
+
+
+<div class="viewcode-block" id="random_cycle"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.random_cycle">[docs]</a><span class="k">def</span> <span class="nf">random_cycle</span><span class="p">(</span><span class="n">ls</span><span class="p">,</span> <span class="n">rng</span><span class="p">):</span>
+    <span class="n">local_ls</span> <span class="o">=</span> <span class="n">ls</span><span class="p">[:]</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">rng</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">local_ls</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">local_ls</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">e</span></div>
+
+
+<div class="viewcode-block" id="threadsafe_iter"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.threadsafe_iter">[docs]</a><span class="k">class</span> <span class="nc">threadsafe_iter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Takes an iterator/generator and makes it thread-safe by</span>
+<span class="sd">    serializing call to the `next` method of given iterator/generator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">it</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">it</span> <span class="o">=</span> <span class="n">it</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="threadsafe_iter.next"><a class="viewcode-back" href="../../tfutils.html#tfutils.data.threadsafe_iter.next">[docs]</a>    <span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">it</span><span class="o">.</span><span class="n">next</span><span class="p">()</span></div></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

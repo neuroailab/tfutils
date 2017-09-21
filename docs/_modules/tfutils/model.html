@@ -1,0 +1,762 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.model &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="TFUtils 0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/multimodel.html">Multi-Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fundamentals/minibatching.html">Minibatching</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">TFUtils</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>tfutils.model</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for tfutils.model</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">absolute_import</span><span class="p">,</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<div class="viewcode-block" id="initializer"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.initializer">[docs]</a><span class="k">def</span> <span class="nf">initializer</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;xavier&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;xavier&#39;</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">xavier_initializer</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">kind</span> <span class="o">+</span> <span class="s1">&#39;_initializer&#39;</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">init</span></div>
+
+
+<div class="viewcode-block" id="conv"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.conv">[docs]</a><span class="k">def</span> <span class="nf">conv</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span>
+         <span class="n">out_depth</span><span class="p">,</span>
+         <span class="n">ksize</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span>
+         <span class="n">strides</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+         <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+         <span class="n">kernel_init</span><span class="o">=</span><span class="s1">&#39;xavier&#39;</span><span class="p">,</span>
+         <span class="n">kernel_init_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">bias</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+         <span class="n">weight_decay</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span>
+         <span class="n">batch_norm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv&#39;</span>
+         <span class="p">):</span>
+
+    <span class="c1"># assert out_shape is not None</span>
+    <span class="k">if</span> <span class="n">weight_decay</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">weight_decay</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ksize</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">ksize</span> <span class="o">=</span> <span class="p">[</span><span class="n">ksize</span><span class="p">,</span> <span class="n">ksize</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">kernel_init_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kernel_init_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">in_depth</span> <span class="o">=</span> <span class="n">inp</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># weights</span>
+    <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kernel_init</span><span class="p">,</span> <span class="o">**</span><span class="n">kernel_init_kwargs</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">ksize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ksize</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">in_depth</span><span class="p">,</span> <span class="n">out_depth</span><span class="p">],</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;weights&#39;</span><span class="p">)</span>
+    <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">bias</span><span class="p">)</span>
+    <span class="n">biases</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">out_depth</span><span class="p">],</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;bias&#39;</span><span class="p">)</span>
+    <span class="c1"># ops</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">conv2d</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span>
+                        <span class="n">strides</span><span class="o">=</span><span class="n">strides</span><span class="p">,</span>
+                        <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">bias_add</span><span class="p">(</span><span class="n">conv</span><span class="p">,</span> <span class="n">biases</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">activation</span><span class="p">)(</span><span class="n">output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">activation</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">batch_norm</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">batch_normalization</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variance_epsilon</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;batch_norm&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+<div class="viewcode-block" id="conv_bnf"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.conv_bnf">[docs]</a><span class="k">def</span> <span class="nf">conv_bnf</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span>
+         <span class="n">out_depth</span><span class="p">,</span>
+         <span class="n">ksize</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span>
+         <span class="n">strides</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+         <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+         <span class="n">kernel_init</span><span class="o">=</span><span class="s1">&#39;xavier&#39;</span><span class="p">,</span>
+         <span class="n">kernel_init_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">bias</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+         <span class="n">weight_decay</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu6&#39;</span><span class="p">,</span>
+         <span class="n">batch_norm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+         <span class="n">train_bn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;conv_bnf&#39;</span>
+         <span class="p">):</span>
+
+    <span class="c1"># assert out_shape is not None</span>
+    <span class="k">if</span> <span class="n">weight_decay</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">weight_decay</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ksize</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">ksize</span> <span class="o">=</span> <span class="p">[</span><span class="n">ksize</span><span class="p">,</span> <span class="n">ksize</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">strides</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">strides</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">strides</span><span class="p">,</span> <span class="n">strides</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        
+    <span class="k">if</span> <span class="n">kernel_init_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kernel_init_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">in_depth</span> <span class="o">=</span> <span class="n">inp</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># weights</span>
+    <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kernel_init</span><span class="p">,</span> <span class="o">**</span><span class="n">kernel_init_kwargs</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">ksize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ksize</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">in_depth</span><span class="p">,</span> <span class="n">out_depth</span><span class="p">],</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;weights&#39;</span><span class="p">)</span>
+
+    <span class="c1"># ops</span>
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">conv2d</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span>
+                        <span class="n">strides</span><span class="o">=</span><span class="n">strides</span><span class="p">,</span>
+                        <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">batch_norm</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">batch_norm</span><span class="p">(</span><span class="n">conv</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">decay</span><span class="o">=</span><span class="mf">0.9997</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">is_training</span><span class="o">=</span><span class="n">train_bn</span><span class="p">,</span> <span class="n">trainable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">bias</span><span class="p">)</span>
+        <span class="n">biases</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                                <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">out_depth</span><span class="p">],</span>
+                                <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                                <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;bias&#39;</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">bias_add</span><span class="p">(</span><span class="n">conv</span><span class="p">,</span> <span class="n">biases</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">activation</span><span class="p">)(</span><span class="n">output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">activation</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output</span></div>
+
+<div class="viewcode-block" id="depthsep_conv"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.depthsep_conv">[docs]</a><span class="k">def</span> <span class="nf">depthsep_conv</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span>
+             <span class="n">out_depth</span><span class="p">,</span>
+             <span class="n">multiplier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">ksize</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+             <span class="n">strides</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">dep_padding</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+             <span class="n">sep_padding</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+             <span class="n">batch_norm</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+             <span class="n">train_bn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;depthsep_conv&#39;</span><span class="p">,</span>
+             <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+             <span class="o">**</span><span class="n">kwargs</span>
+             <span class="p">):</span>
+
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s1">&#39;depthwise_conv&#39;</span><span class="p">):</span>
+        <span class="n">d_out</span> <span class="o">=</span> <span class="n">depth_conv</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">multiplier</span> <span class="o">=</span> <span class="n">multiplier</span><span class="p">,</span>
+                <span class="n">ksize</span> <span class="o">=</span> <span class="n">ksize</span><span class="p">,</span>
+                <span class="n">strides</span> <span class="o">=</span> <span class="n">strides</span><span class="p">,</span>
+                <span class="n">padding</span> <span class="o">=</span> <span class="n">dep_padding</span><span class="p">,</span>
+                <span class="n">batch_norm</span> <span class="o">=</span> <span class="n">batch_norm</span><span class="p">,</span>
+                <span class="n">train_bn</span> <span class="o">=</span> <span class="n">train_bn</span><span class="p">,</span>
+                <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="s1">&#39;pointwise_conv&#39;</span><span class="p">):</span>
+        <span class="c1"># we batch norm first according to mobilenet paper</span>
+        <span class="n">p_out</span> <span class="o">=</span> <span class="n">conv_bnf</span><span class="p">(</span><span class="n">d_out</span><span class="p">,</span> <span class="n">out_depth</span> <span class="o">=</span> <span class="n">out_depth</span><span class="p">,</span>
+                <span class="n">ksize</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">strides</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">padding</span> <span class="o">=</span> <span class="n">sep_padding</span><span class="p">,</span>
+                <span class="n">batch_norm</span> <span class="o">=</span> <span class="n">batch_norm</span><span class="p">,</span>
+                <span class="n">train_bn</span> <span class="o">=</span> <span class="n">train_bn</span><span class="p">,</span>
+                <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">p_out</span></div>
+
+<div class="viewcode-block" id="depth_conv"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.depth_conv">[docs]</a><span class="k">def</span> <span class="nf">depth_conv</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span>
+             <span class="n">multiplier</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">ksize</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+             <span class="n">strides</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;SAME&#39;</span><span class="p">,</span>
+             <span class="n">kernel_init</span><span class="o">=</span><span class="s1">&#39;xavier&#39;</span><span class="p">,</span>
+             <span class="n">kernel_init_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">bias</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu6&#39;</span><span class="p">,</span>
+             <span class="n">weight_decay</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">batch_norm</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+             <span class="n">train_bn</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;depth_conv&#39;</span>
+             <span class="p">):</span>
+
+    <span class="c1"># assert out_shape is not None</span>
+    <span class="k">if</span> <span class="n">weight_decay</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">weight_decay</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ksize</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">ksize</span> <span class="o">=</span> <span class="p">[</span><span class="n">ksize</span><span class="p">,</span> <span class="n">ksize</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">strides</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">strides</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">strides</span><span class="p">,</span> <span class="n">strides</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">kernel_init_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kernel_init_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="n">in_depth</span> <span class="o">=</span> <span class="n">inp</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">out_depth</span> <span class="o">=</span> <span class="n">multiplier</span> <span class="o">*</span> <span class="n">in_depth</span>
+
+    <span class="c1"># weights</span>
+    <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kernel_init</span><span class="p">,</span> <span class="o">**</span><span class="n">kernel_init_kwargs</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">ksize</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ksize</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">in_depth</span><span class="p">,</span> <span class="n">multiplier</span><span class="p">],</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;weights&#39;</span><span class="p">)</span>
+
+    <span class="n">conv</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">depthwise_conv2d</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span>
+                            <span class="n">strides</span><span class="o">=</span><span class="n">strides</span><span class="p">,</span>
+                            <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">batch_norm</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">batch_norm</span><span class="p">(</span><span class="n">conv</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">decay</span><span class="o">=</span><span class="mf">0.9997</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">is_training</span><span class="o">=</span><span class="n">train_bn</span><span class="p">,</span> <span class="n">trainable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">bias</span><span class="p">)</span>
+        <span class="n">biases</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                                <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">out_depth</span><span class="p">],</span>
+                                <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                                <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;bias&#39;</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">bias_add</span><span class="p">(</span><span class="n">conv</span><span class="p">,</span> <span class="n">biases</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>   
+
+    <span class="k">if</span> <span class="n">activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">activation</span><span class="p">)(</span><span class="n">output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">activation</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output</span></div>
+
+<div class="viewcode-block" id="fc"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.fc">[docs]</a><span class="k">def</span> <span class="nf">fc</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span>
+       <span class="n">out_depth</span><span class="p">,</span>
+       <span class="n">kernel_init</span><span class="o">=</span><span class="s1">&#39;xavier&#39;</span><span class="p">,</span>
+       <span class="n">kernel_init_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+       <span class="n">bias</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+       <span class="n">weight_decay</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+       <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">,</span>
+       <span class="n">batch_norm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+       <span class="n">dropout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+       <span class="n">dropout_seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+       <span class="n">name</span><span class="o">=</span><span class="s1">&#39;fc&#39;</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">weight_decay</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">weight_decay</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="c1"># assert out_shape is not None</span>
+    <span class="k">if</span> <span class="n">kernel_init_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kernel_init_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">resh</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="p">[</span><span class="n">inp</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;reshape&#39;</span><span class="p">)</span>
+    <span class="n">in_depth</span> <span class="o">=</span> <span class="n">resh</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># weights</span>
+    <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kernel_init</span><span class="p">,</span> <span class="o">**</span><span class="n">kernel_init_kwargs</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">in_depth</span><span class="p">,</span> <span class="n">out_depth</span><span class="p">],</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;weights&#39;</span><span class="p">)</span>
+    <span class="n">init</span> <span class="o">=</span> <span class="n">initializer</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">bias</span><span class="p">)</span>
+    <span class="n">biases</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_variable</span><span class="p">(</span><span class="n">initializer</span><span class="o">=</span><span class="n">init</span><span class="p">,</span>
+                            <span class="n">shape</span><span class="o">=</span><span class="p">[</span><span class="n">out_depth</span><span class="p">],</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+                            <span class="n">regularizer</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">l2_regularizer</span><span class="p">(</span><span class="n">weight_decay</span><span class="p">),</span>
+                            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;bias&#39;</span><span class="p">)</span>
+
+    <span class="c1"># ops</span>
+    <span class="n">fcm</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">resh</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">bias_add</span><span class="p">(</span><span class="n">fcm</span><span class="p">,</span> <span class="n">biases</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">activation</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">activation</span><span class="p">)(</span><span class="n">output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">activation</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">batch_norm</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">batch_normalization</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">variance</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                            <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">variance_epsilon</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;batch_norm&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dropout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">dropout</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dropout</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">dropout_seed</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;dropout&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+
+<div class="viewcode-block" id="global_pool"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.global_pool">[docs]</a><span class="k">def</span> <span class="nf">global_pool</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;avg&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;avg&#39;</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Only global avg or max pool is allowed, but&#39;</span>
+                            <span class="s1">&#39;you requested </span><span class="si">{}</span><span class="s1">.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kind</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;global_</span><span class="si">{}</span><span class="s1">_pool&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">kind</span><span class="p">)</span>
+    <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">inp</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">kind</span> <span class="o">+</span> <span class="s1">&#39;_pool&#39;</span><span class="p">)(</span><span class="n">inp</span><span class="p">,</span>
+                                    <span class="n">ksize</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">h</span><span class="p">,</span><span class="n">w</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+                                    <span class="n">strides</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+                                    <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">[</span><span class="n">out</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span><span class="o">.</span><span class="n">as_list</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+<div class="viewcode-block" id="avg_pool2d"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.avg_pool2d">[docs]</a><span class="k">def</span> <span class="nf">avg_pool2d</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;avg_pool2d&#39;</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">contrib</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">avg_pool2d</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+
+<div class="viewcode-block" id="ConvNet"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.ConvNet">[docs]</a><span class="k">class</span> <span class="nc">ConvNet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">INTERNAL_FUNC</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;arg_scope&#39;</span><span class="p">,</span> <span class="s1">&#39;_func_wrapper&#39;</span><span class="p">,</span> <span class="s1">&#39;_val2list&#39;</span><span class="p">,</span> <span class="s1">&#39;layer&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;_reuse_scope_name&#39;</span><span class="p">,</span> <span class="s1">&#39;__call__&#39;</span><span class="p">,</span> <span class="s1">&#39;_get_func&#39;</span><span class="p">]</span>
+    <span class="n">CUSTOM_FUNC</span> <span class="o">=</span> <span class="p">[</span><span class="n">conv</span><span class="p">,</span> <span class="n">fc</span><span class="p">,</span> <span class="n">global_pool</span><span class="p">,</span> <span class="n">conv_bnf</span><span class="p">,</span> <span class="n">depthsep_conv</span><span class="p">,</span> <span class="n">depth_conv</span><span class="p">,</span> <span class="n">avg_pool2d</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defaults</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A quick convolutional neural network constructor</span>
+
+<span class="sd">        This is wrapper over many tf.nn functions for a quick construction of</span>
+<span class="sd">        a standard convolutional neural network that uses 2d convolutions, pooling</span>
+<span class="sd">        and fully-connected layers, and most other tf.nn methods.</span>
+
+<span class="sd">        It also stores layers and their parameters easily accessible per</span>
+<span class="sd">        tfutils&#39; approach of saving everything.</span>
+
+<span class="sd">        Kwargs:</span>
+<span class="sd">            - defaults</span>
+<span class="sd">                Default kwargs values for functions. Complimentary to `arg_scope</span>
+<span class="sd">            - name (default: &#39;&#39;)</span>
+<span class="sd">                If &#39;&#39;, then the existing scope is used.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span> <span class="o">=</span> <span class="n">defaults</span> <span class="k">if</span> <span class="n">defaults</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scope_initialized</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;__dict__&#39;</span><span class="p">)</span>
+        <span class="n">internal_func</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;INTERNAL_FUNC&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>  <span class="c1"># is it an attribute?</span>
+            <span class="k">return</span> <span class="n">attrs</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">internal_func</span><span class="p">:</span>  <span class="c1"># is it one of the internal functions?</span>
+            <span class="k">return</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_func</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_wrapper</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="n">custom_func</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;CUSTOM_FUNC&#39;</span><span class="p">)</span>
+        <span class="n">custom_func_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="vm">__name__</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">custom_func</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">custom_func_names</span><span class="p">:</span>  <span class="c1"># is it one of the custom functions?</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">custom_func</span><span class="p">[</span><span class="n">custom_func_names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">attr</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>  <span class="c1"># ok, so it is a tf.nn function</span>
+        <span class="k">return</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">_func_wrapper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A wrapper on top of *any* function that is called.</span>
+
+<span class="sd">        - Pops `inp` and `layer` from kwargs,</span>
+<span class="sd">        - All args are turned into kwargs</span>
+<span class="sd">        - Default values from arg_scope are set</span>
+<span class="sd">        - Sets the name in kwargs to func.__name__ if not specified</span>
+<span class="sd">        - Expands `strides` from an int or list inputs for</span>
+<span class="sd">          all functions and expands `ksize` for pool functions.</span>
+
+<span class="sd">        If `layer` is not None, a new scope is created, else the existing scope</span>
+<span class="sd">        is reused.</span>
+
+<span class="sd">        Finally, all params are stored.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;func_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+
+            <span class="c1"># convert args to kwargs</span>
+            <span class="n">varnames</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getargspec</span><span class="p">(</span><span class="n">func</span><span class="p">)</span><span class="o">.</span><span class="n">args</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">arg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">varnames</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">arg</span>  <span class="c1"># skip the first (inputs)</span>
+
+            <span class="n">layer</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;layer&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">layer</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+            <span class="c1"># update kwargs with default values defined by user</span>
+            <span class="k">if</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span><span class="p">[</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="s1">&#39;name&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">fname</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span>
+                <span class="k">if</span> <span class="n">fname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">layer</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">fname</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">layer</span><span class="p">]:</span>
+                        <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="k">while</span> <span class="n">fname</span> <span class="o">+</span> <span class="s1">&#39;_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">layer</span><span class="p">]:</span>
+                            <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">fname</span> <span class="o">+=</span> <span class="s1">&#39;_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fname</span>
+
+            <span class="n">spec</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;avg_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;max_pool&#39;</span><span class="p">,</span> <span class="s1">&#39;max_pool_with_argmax&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s1">&#39;ksize&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">func</span><span class="o">.</span><span class="vm">__name__</span> <span class="ow">in</span> <span class="n">spec</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;ksize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val2list</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;ksize&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="s1">&#39;strides&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+                <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;strides&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val2list</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;strides&#39;</span><span class="p">])</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">layer</span><span class="p">][</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">kwargs</span>
+
+        <span class="k">return</span> <span class="n">wrapper</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inp</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">inp</span>
+        <span class="k">for</span> <span class="n">layer</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">layer</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">func_name</span><span class="p">,</span> <span class="n">kwargs</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">variable_scope</span><span class="p">(</span><span class="n">func_name</span><span class="p">):</span>
+                        <span class="n">output</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;inp&#39;</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Layer </span><span class="si">{}</span><span class="s1"> function </span><span class="si">{}</span><span class="s1"> got None as input&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">func_name</span><span class="p">))</span>
+                        <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;func_name&#39;</span><span class="p">,</span> <span class="s1">&#39;inp&#39;</span><span class="p">]}</span>
+                        <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_func</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;func_name&#39;</span><span class="p">])</span>
+                        <span class="n">output</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;output&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;output&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="n">output</span>
+        <span class="k">return</span> <span class="n">output</span>
+
+
+    <span class="k">def</span> <span class="nf">_val2list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="ConvNet.arg_scope"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.ConvNet.arg_scope">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">arg_scope</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the arg_scope.</span>
+
+<span class="sd">        Pass a dict of {&lt;func_name&gt;: {&lt;arg_name&gt;: &lt;arg_value&gt;, ...}, ...}. These</span>
+<span class="sd">        values will then override the default values for the specified functions</span>
+<span class="sd">        whenever that function is called.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span> <span class="o">=</span> <span class="n">defaults</span>
+        <span class="k">yield</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_defaults</span> <span class="o">=</span> <span class="p">{}</span></div>
+
+<div class="viewcode-block" id="ConvNet.layer"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.ConvNet.layer">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets the scope. Can be used with `with`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Layer name cannot be None or an empty string&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layer</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">yield</span></div>
+
+    <span class="k">def</span> <span class="nf">_reuse_scope_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">get_default_graph</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">graph</span><span class="o">.</span><span class="n">_name_stack</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">graph</span><span class="o">.</span><span class="n">_name_stack</span> <span class="o">!=</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">_name_stack</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span>  <span class="c1"># this will reuse the already-created scope</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">+=</span> <span class="s1">&#39;/&#39;</span>
+        <span class="k">return</span> <span class="n">name</span></div>
+
+
+<div class="viewcode-block" id="mnist"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.mnist">[docs]</a><span class="k">def</span> <span class="nf">mnist</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">ConvNet</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">m</span><span class="o">.</span><span class="n">arg_scope</span><span class="p">({</span><span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;kernel_init&#39;</span><span class="p">:</span> <span class="s1">&#39;truncated_normal&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;kernel_init_kwargs&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;stddev&#39;</span><span class="p">:</span> <span class="o">.</span><span class="mi">01</span><span class="p">,</span> <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="n">seed</span><span class="p">},</span>
+                             <span class="s1">&#39;dropout&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;batch_norm&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}}):</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;hidden1&#39;</span><span class="p">)</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;hidden2&#39;</span><span class="p">)</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;softmax_linear&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">m</span></div>
+
+
+<div class="viewcode-block" id="alexnet"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.alexnet">[docs]</a><span class="k">def</span> <span class="nf">alexnet</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">defaults</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;conv&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;batch_norm&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                         <span class="s1">&#39;kernel_init&#39;</span><span class="p">:</span> <span class="s1">&#39;xavier&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;kernel_init_kwargs&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="n">seed</span><span class="p">}},</span>
+                         <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="o">.</span><span class="mi">0005</span><span class="p">,</span>
+                <span class="s1">&#39;max_pool&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;padding&#39;</span><span class="p">:</span> <span class="s1">&#39;SAME&#39;</span><span class="p">},</span>
+                <span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;batch_norm&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                       <span class="s1">&#39;kernel_init&#39;</span><span class="p">:</span> <span class="s1">&#39;truncated_normal&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;kernel_init_kwargs&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;stddev&#39;</span><span class="p">:</span> <span class="o">.</span><span class="mi">01</span><span class="p">,</span> <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="n">seed</span><span class="p">},</span>
+                       <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="o">.</span><span class="mi">0005</span><span class="p">,</span>
+                       <span class="s1">&#39;dropout_seed&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}}</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">ConvNet</span><span class="p">(</span><span class="n">defaults</span><span class="o">=</span><span class="n">defaults</span><span class="p">)</span>
+    <span class="n">dropout</span> <span class="o">=</span> <span class="o">.</span><span class="mi">5</span> <span class="k">if</span> <span class="n">train</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="n">m</span><span class="o">.</span><span class="n">conv</span><span class="p">(</span><span class="mi">96</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="s1">&#39;VALID&#39;</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv1&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">norm</span><span class="p">:</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">lrn</span><span class="p">(</span><span class="n">depth_radius</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=.</span><span class="mi">0001</span><span class="p">,</span> <span class="n">beta</span><span class="o">=.</span><span class="mi">75</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv1&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">max_pool</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv1&#39;</span><span class="p">)</span>
+
+    <span class="n">m</span><span class="o">.</span><span class="n">conv</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv2&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">norm</span><span class="p">:</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">lrn</span><span class="p">(</span><span class="n">depth_radius</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=.</span><span class="mi">0001</span><span class="p">,</span> <span class="n">beta</span><span class="o">=.</span><span class="mi">75</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv2&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">max_pool</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv2&#39;</span><span class="p">)</span>
+
+    <span class="n">m</span><span class="o">.</span><span class="n">conv</span><span class="p">(</span><span class="mi">384</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv3&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">conv</span><span class="p">(</span><span class="mi">384</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv4&#39;</span><span class="p">)</span>
+
+    <span class="n">m</span><span class="o">.</span><span class="n">conv</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv5&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">max_pool</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;conv5&#39;</span><span class="p">)</span>
+
+    <span class="n">m</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="mi">4096</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span><span class="p">,</span> <span class="n">bias</span><span class="o">=.</span><span class="mi">1</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;fc6&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="mi">4096</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span><span class="p">,</span> <span class="n">bias</span><span class="o">=.</span><span class="mi">1</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;fc7&#39;</span><span class="p">)</span>
+    <span class="n">m</span><span class="o">.</span><span class="n">fc</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">layer</span><span class="o">=</span><span class="s1">&#39;fc8&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">m</span></div>
+
+
+<div class="viewcode-block" id="mnist_tfutils"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.mnist_tfutils">[docs]</a><span class="k">def</span> <span class="nf">mnist_tfutils</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">mnist</span><span class="p">(</span><span class="n">train</span><span class="o">=</span><span class="n">train</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">m</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">]),</span> <span class="n">m</span><span class="o">.</span><span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="alexnet_tfutils"><a class="viewcode-back" href="../../tfutils.html#tfutils.model.alexnet_tfutils">[docs]</a><span class="k">def</span> <span class="nf">alexnet_tfutils</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">alexnet</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">m</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="s1">&#39;images&#39;</span><span class="p">]),</span> <span class="n">m</span><span class="o">.</span><span class="n">params</span></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

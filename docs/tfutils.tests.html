@@ -1,0 +1,1190 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>tfutils.tests package &mdash; TFUtils 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="TFUtils 0.1 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> TFUtils
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction/overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/overview.html#base-train-from-params"><code class="docutils literal"><span class="pre">base.train_from_params</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/overview.html#base-test-from-params"><code class="docutils literal"><span class="pre">base.test_from_params</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#id1">Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/getting_started.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#configuring-mongodb">Configuring MongoDB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#specifying-an-experiment">Specifying an Experiment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#defining-a-model">Defining a Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#including-validation">Including Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/getting_started.html#train">Train!</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Fundamentals</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="fundamentals/multigpu.html">Multi-GPU Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fundamentals/multimodel.html">Multi-Model Training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fundamentals/minibatching.html">Minibatching</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Package Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">tfutils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tfutils.html">tfutils.base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tfutils.html#module-tfutils.data">tfutils.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tfutils.html#module-tfutils.error">tfutils.error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tfutils.html#module-tfutils.model">tfutils.model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tfutils.html#module-tfutils.optimizer">tfutils.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tfutils.html#module-tfutils.utils">tfutils.utils</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TFUtils</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>tfutils.tests package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/tfutils.tests.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="tfutils-tests-package">
+<h1>tfutils.tests package<a class="headerlink" href="#tfutils-tests-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-tfutils.tests.test">
+<span id="tfutils-tests-test-module"></span><h2>tfutils.tests.test module<a class="headerlink" href="#module-tfutils.tests.test" title="Permalink to this headline">¶</a></h2>
+<p>tfutils tests.</p>
+<p>These tests show basic procedures for training, validating, and extracting features from
+models.</p>
+<p>Note about MongoDB:
+The tests require a MongoDB instance to be available on the port defined by “testport” in
+the code below.   This db can either be local to where you run these tests (and therefore
+on ‘localhost’ by default) or it can be running somewhere else and then by ssh-tunneled on
+the relevant port to the host where you run these tests.  [That is, before testing, you’d run</p>
+<blockquote>
+<div>ssh -f -N -L  [testport]:localhost:[testport] [username]&#64;mongohost.xx.xx</div></blockquote>
+<p>on the machine where you’re running these tests.   [mongohost] is the where the mongodb
+instance is running.</p>
+<dl class="function">
+<dt id="tfutils.tests.test.asserts_for_record">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">asserts_for_record</code><span class="sig-paren">(</span><em>r</em>, <em>params</em>, <em>train=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#asserts_for_record"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.asserts_for_record" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.custom_train_loop">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">custom_train_loop</code><span class="sig-paren">(</span><em>sess</em>, <em>train_targets</em>, <em>**loop_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#custom_train_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.custom_train_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define Custom training loop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sess</strong> (<em>tf.Session</em>) – Current tensorflow session.</li>
+<li><strong>train_targets</strong> (<em>list</em>) – Description.</li>
+<li><strong>**loop_params</strong> – Optional kwargs needed to perform custom train loop.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A dictionary containing train targets evaluated by the session.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.get_extraction_target">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">get_extraction_target</code><span class="sig-paren">(</span><em>inputs</em>, <em>outputs</em>, <em>to_extract</em>, <em>**loss_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#get_extraction_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.get_extraction_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produce validation target function.</p>
+<p>Example validation target function to use to provide targets for extracting features.
+This function also adds a standard “loss” target which you may or not may not want</p>
+<dl class="docutils">
+<dt>The to_extract argument must be a dictionary of the form</dt>
+<dd>{name_for_saving: name_of_actual_tensor, …}</dd>
+</dl>
+<p>where the “name_for_saving” is a human-friendly name you want to save extracted
+features under, and name_of_actual_tensor is a name of the tensor in the tensorflow
+graph outputing the features desired to be extracted.  To figure out what the names
+of the tensors you want to extract are “to_extract” argument,  uncomment the
+commented-out lines, which will print a list of all available tensor names.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.get_first_image_target">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">get_first_image_target</code><span class="sig-paren">(</span><em>inputs</em>, <em>outputs</em>, <em>**ttarg_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#get_first_image_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.get_first_image_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>A target for saving the first image of every batch.</p>
+<p>Used in test_training test below to test save_to_gfs option.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.remove_dbs">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">remove_dbs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#remove_dbs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.remove_dbs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete old test related databases if they exist.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.run_all_tests">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">run_all_tests</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#run_all_tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.run_all_tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run all tests.</p>
+<p>This function drops all databases associated/created by the tests in the
+module before running them.</p>
+<p>TODO: The order in which these tests are run matters. For example, you must
+run a training test before its corresponding test/validation test can be
+run successfully.</p>
+<p>TODO: The number of times a certain test is run will also affect its
+outcome (e.g. some of the validation tests, which expect a certain number
+of entries in the database).</p>
+<p>TODO: Use unittests module and testCases to perform setUp and tearDown.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.run_custom_training_tests">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">run_custom_training_tests</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#run_custom_training_tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.run_custom_training_tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run custom training tests.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.run_feature_extraction_tests">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">run_feature_extraction_tests</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#run_feature_extraction_tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.run_feature_extraction_tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run feature extraction tests.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.run_training_save_tests">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">run_training_save_tests</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#run_training_save_tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.run_training_save_tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run training save tests.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.run_training_tests">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">run_training_tests</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#run_training_tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.run_training_tests" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.run_validation_tests">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">run_validation_tests</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#run_validation_tests"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.run_validation_tests" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run validation tests.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_custom_distributed_multimodel_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_custom_distributed_multimodel_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_custom_distributed_multimodel_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_custom_distributed_multimodel_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate custom distributed training with multiple models.</p>
+<p>This test illustrates how distributed, multi-model training is performed
+with custom training loops using the tfutils.base.train_from_params
+function. This runs identically to the test above, although multiple
+models on different GPUs share the same dataprovider during training.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_custom_distributed_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_custom_distributed_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_custom_distributed_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_custom_distributed_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed training with custom training loop.</p>
+<p>This test illustrates how distributed training is performed with a custom
+training loop using the tfutils.base.train_from_params function.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_custom_multimodel_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_custom_multimodel_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_custom_multimodel_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_custom_multimodel_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate multimodel training with custom training loops.</p>
+<p>This test illustrates how multimodel training is performed with custom
+training loops using the tfutils.base.train_from_params function.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_custom_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_custom_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_custom_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_custom_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate training with custom training loop.</p>
+<p>This test illustrates how basic training is performed using the
+tfutils.base.train_from_params function.  This is the first in a sequence of
+interconnected tests. It creates a pretrained model that is used by
+the next few tests (test_validation and test_feature_extraction).</p>
+<p>As can be seen by looking at how the test checks for correctness, after the
+training is run, results of training, including (intermittently) the full variables
+needed to re-initialize the tensorflow model, are stored in a MongoDB.</p>
+<p>Also see docstring of the tfutils.base.train_from_params function for more detailed
+information about usage.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_feature_extraction">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_feature_extraction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_feature_extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_feature_extraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed feature extraction.</p>
+<p>This is a test illustrating how to perform feature extraction with a
+distributed model using tfutils.base.test_from_params.</p>
+<p>The basic idea is to specify a validation target that is simply the actual output of
+the model at some layer. (See the “get_extraction_target” function above as well.)
+This test assumes that test_train has run first.</p>
+<p>After the test is run, the results of the feature extraction are saved in the Grid
+File System associated with the mongo database, with one file per batch of feature
+results.  See how the features are accessed by reading the test code below.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_multimodel_feature_extraction">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_multimodel_feature_extraction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_multimodel_feature_extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_multimodel_feature_extraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed multimodel feature extraction.</p>
+<p>This is a test illustrating how to perform feature extraction with a
+distributed model using tfutils.base.test_from_params.</p>
+<p>The basic idea is to specify a validation target that is simply the actual output of
+the model at some layer. (See the “get_extraction_target” function above as well.)
+This test assumes that test_train has run first.</p>
+<p>After the test is run, the results of the feature extraction are saved in the Grid
+File System associated with the mongo database, with one file per batch of feature
+results.  See how the features are accessed by reading the test code below.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_multimodel_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_multimodel_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_multimodel_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_multimodel_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed training with multiple models.</p>
+<p>This test illustrates how distributed, multi-model training is performed
+using the tfutils.base.train_from_params function. This runs identically
+to the test above, although multiple models on different GPUs share the
+same dataprovider during training.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_multimodel_training_save">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_multimodel_training_save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_multimodel_training_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_multimodel_training_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate saving to gridFS during distributed multimodel training.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_multimodel_validation">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_multimodel_validation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_multimodel_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_multimodel_validation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed multimodel validation.</p>
+<p>This is a test illustrating how to compute performance on a trained model on a new dataset,
+using the tfutils.base.test_from_params function.  This test assumes that test_training function
+has run first (to provide a pre-trained model to validate).</p>
+<p>After the test is run, results from the validation are stored in the MongoDB.
+(The test shows how the record can be loaded for inspection.)</p>
+<p>See the docstring of tfutils.base.test_from_params for more detailed information on usage.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed training.</p>
+<p>This test illustrates how basic distributed training is performed using the
+tfutils.base.train_from_params function.  This runs identically to the test
+above, although a single model is distributed across the batch dimension
+over multiple GPUs.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_training_save">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_training_save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_training_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_training_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate saving to the grid file system during distributed training.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_distributed_validation">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_distributed_validation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_distributed_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_distributed_validation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate distributed validation.</p>
+<p>This is a test illustrating how to compute performance on a trained model on a new dataset,
+using the tfutils.base.test_from_params function.  This test assumes that test_training function
+has run first (to provide a pre-trained model to validate).</p>
+<p>After the test is run, results from the validation are stored in the MongoDB.
+(The test shows how the record can be loaded for inspection.)</p>
+<p>See the docstring of tfutils.base.test_from_params for more detailed information on usage.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_feature_extraction">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_feature_extraction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_feature_extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_feature_extraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate feature extraction.</p>
+<p>This is a test illustrating how to perform feature extraction using
+tfutils.base.test_from_params.
+The basic idea is to specify a validation target that is simply the actual output of
+the model at some layer. (See the “get_extraction_target” function above as well.)
+This test assumes that test_train has run first.</p>
+<p>After the test is run, the results of the feature extraction are saved in the Grid
+File System associated with the mongo database, with one file per batch of feature
+results.  See how the features are accessed by reading the test code below.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_multimodel_feature_extraction">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_multimodel_feature_extraction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_multimodel_feature_extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_multimodel_feature_extraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate multimodel feature extraction.</p>
+<p>This is a test illustrating how to perform feature extraction with a
+distributed model using tfutils.base.test_from_params.</p>
+<p>The basic idea is to specify a validation target that is simply the actual output of
+the model at some layer. (See the “get_extraction_target” function above as well.)
+This test assumes that test_train has run first.</p>
+<p>After the test is run, the results of the feature extraction are saved in the Grid
+File System associated with the mongo database, with one file per batch of feature
+results.  See how the features are accessed by reading the test code below.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_multimodel_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_multimodel_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_multimodel_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_multimodel_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate training with multiple models.</p>
+<p>This test illustrates how basic multi-model training is performed using the
+tfutils.base.train_from_params function. This runs identically to the test
+above, although multiple models on different GPUs share the same dataprovider
+during training.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_multimodel_training_save">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_multimodel_training_save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_multimodel_training_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_multimodel_training_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate saving to the grid file system during multimodel training.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_multimodel_validation">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_multimodel_validation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_multimodel_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_multimodel_validation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate multimodel validation.</p>
+<p>This is a test illustrating how to compute performance on a trained model on a new dataset,
+using the tfutils.base.test_from_params function.  This test assumes that test_training function
+has run first (to provide a pre-trained model to validate).</p>
+<p>After the test is run, results from the validation are stored in the MongoDB.
+(The test shows how the record can be loaded for inspection.)</p>
+<p>See the docstring of tfutils.base.test_from_params for more detailed information on usage.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_training">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate training.</p>
+<p>This test illustrates how basic training is performed using the
+tfutils.base.train_from_params function.  This is the first in a sequence of
+interconnected tests. It creates a pretrained model that is used by
+the next few tests (test_validation and test_feature_extraction).</p>
+<p>As can be seen by looking at how the test checks for correctness, after the
+training is run, results of training, including (intermittently) the full
+variables needed to re-initialize the tensorflow model, are stored in a
+MongoDB.</p>
+<p>Also see docstring of the tfutils.base.train_from_params function for more detailed
+information about usage.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_training_save">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_training_save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_training_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_training_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate saving to the grid file system during training time.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test.test_validation">
+<code class="descclassname">tfutils.tests.test.</code><code class="descname">test_validation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test.html#test_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test.test_validation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate validation.</p>
+<p>This is a test illustrating how to compute performance on a trained model on a new dataset,
+using the tfutils.base.test_from_params function.  This test assumes that test_training function
+has run first (to provide a pre-trained model to validate).</p>
+<p>After the test is run, results from the validation are stored in the MongoDB.
+(The test shows how the record can be loaded for inspection.)</p>
+<p>See the docstring of tfutils.base.test_from_params for more detailed information on usage.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.tests.test_base">
+<span id="tfutils-tests-test-base-module"></span><h2>tfutils.tests.test_base module<a class="headerlink" href="#module-tfutils.tests.test_base" title="Permalink to this headline">¶</a></h2>
+<p>Test base module.</p>
+<dl class="class">
+<dt id="tfutils.tests.test_base.TestBase">
+<em class="property">class </em><code class="descclassname">tfutils.tests.test_base.</code><code class="descname">TestBase</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">unittest.case.TestCase</span></code></p>
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.assert_as_expected">
+<code class="descname">assert_as_expected</code><span class="sig-paren">(</span><em>exp_id</em>, <em>count=None</em>, <em>step=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.assert_as_expected"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.assert_as_expected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.assert_count">
+<code class="descname">assert_count</code><span class="sig-paren">(</span><em>exp_id</em>, <em>count</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.assert_count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.assert_count" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.assert_step">
+<code class="descname">assert_step</code><span class="sig-paren">(</span><em>exp_id</em>, <em>step</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.assert_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.assert_step" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="tfutils.tests.test_base.TestBase.asserts_for_record">
+<em class="property">static </em><code class="descname">asserts_for_record</code><span class="sig-paren">(</span><em>r</em>, <em>params</em>, <em>train=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.asserts_for_record"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.asserts_for_record" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="tfutils.tests.test_base.TestBase.custom_train_loop">
+<em class="property">static </em><code class="descname">custom_train_loop</code><span class="sig-paren">(</span><em>sess</em>, <em>train_targets</em>, <em>**loop_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.custom_train_loop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.custom_train_loop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define Custom training loop.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sess</strong> (<em>tf.Session</em>) – Current tensorflow session.</li>
+<li><strong>train_targets</strong> (<em>list</em>) – Description.</li>
+<li><strong>**loop_params</strong> – Optional kwargs needed to perform custom train loop.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A dictionary containing train targets evaluated by the session.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_base.TestBase.database_name">
+<code class="descname">database_name</code><em class="property"> = '_tfutils'</em><a class="headerlink" href="#tfutils.tests.test_base.TestBase.database_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="tfutils.tests.test_base.TestBase.get_extraction_target">
+<em class="property">static </em><code class="descname">get_extraction_target</code><span class="sig-paren">(</span><em>inputs</em>, <em>outputs</em>, <em>to_extract</em>, <em>**loss_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.get_extraction_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.get_extraction_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produce validation target function.</p>
+<p>Example validation target function to use to provide targets for extracting features.
+This function also adds a standard “loss” target which you may or not may not want</p>
+<dl class="docutils">
+<dt>The to_extract argument must be a dictionary of the form</dt>
+<dd>{name_for_saving: name_of_actual_tensor, …}</dd>
+</dl>
+<p>where the “name_for_saving” is a human-friendly name you want to save extracted
+features under, and name_of_actual_tensor is a name of the tensor in the tensorflow
+graph outputing the features desired to be extracted.  To figure out what the names
+of the tensors you want to extract are “to_extract” argument,  uncomment the
+commented-out lines, which will print a list of all available tensor names.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="tfutils.tests.test_base.TestBase.get_first_image_target">
+<em class="property">static </em><code class="descname">get_first_image_target</code><span class="sig-paren">(</span><em>inputs</em>, <em>outputs</em>, <em>**ttarg_params</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.get_first_image_target"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.get_first_image_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return target for saving the first image of every batch.</p>
+<p>Used in test_training_save test to test save_to_gfs option.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_base.TestBase.host">
+<code class="descname">host</code><em class="property"> = 'localhost'</em><a class="headerlink" href="#tfutils.tests.test_base.TestBase.host" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="tfutils.tests.test_base.TestBase.makedirs">
+<em class="property">static </em><code class="descname">makedirs</code><span class="sig-paren">(</span><em>dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.makedirs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.makedirs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_base.TestBase.port">
+<code class="descname">port</code><em class="property"> = 29101</em><a class="headerlink" href="#tfutils.tests.test_base.TestBase.port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_base.TestBase.remove_collection">
+<em class="property">classmethod </em><code class="descname">remove_collection</code><span class="sig-paren">(</span><em>collection_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.remove_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.remove_collection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a MonogoDB collection.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_base.TestBase.remove_database">
+<em class="property">classmethod </em><code class="descname">remove_database</code><span class="sig-paren">(</span><em>database_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.remove_database"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.remove_database" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a MonogoDB database.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_base.TestBase.remove_directory">
+<em class="property">classmethod </em><code class="descname">remove_directory</code><span class="sig-paren">(</span><em>directory</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.remove_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.remove_directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a directory.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_base.TestBase.remove_document">
+<em class="property">classmethod </em><code class="descname">remove_document</code><span class="sig-paren">(</span><em>document</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.remove_document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.remove_document" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.setUp">
+<code class="descname">setUp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.setUp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.setUp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up class before each test method is executed.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_base.TestBase.setUpClass">
+<em class="property">classmethod </em><code class="descname">setUpClass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.setUpClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.setUpClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up class once before any test methods are run.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.setup_params">
+<code class="descname">setup_params</code><span class="sig-paren">(</span><em>exp_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.setup_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.setup_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify training params with a specific exp_id.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.tearDown">
+<code class="descname">tearDown</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.tearDown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.tearDown" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tear Down is called after each test method is executed.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_base.TestBase.tearDownClass">
+<em class="property">classmethod </em><code class="descname">tearDownClass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.tearDownClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.tearDownClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tear down class after all test methods have run.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.test_custom_training">
+<code class="descname">test_custom_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.test_custom_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.test_custom_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate training with custom training loop.</p>
+<p>This test illustrates how basic training is performed with a custom
+training loop using the tfutils.base.train_from_params function.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.test_feature_extraction">
+<code class="descname">test_feature_extraction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.test_feature_extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.test_feature_extraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate feature extraction.</p>
+<p>This is a test illustrating how to perform feature extraction using
+tfutils.base.test_from_params.
+The basic idea is to specify a validation target that is simply the actual output of
+the model at some layer. (See the “get_extraction_target” function above as well.)
+This test assumes that test_train has run first.</p>
+<p>After the test is run, the results of the feature extraction are saved in the Grid
+File System associated with the mongo database, with one file per batch of feature
+results.  See how the features are accessed by reading the test code below.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.test_training">
+<code class="descname">test_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.test_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.test_training" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate training.</p>
+<p>This test illustrates how basic training is performed using the
+tfutils.base.train_from_params function.  This is the first in a sequence of
+interconnected tests. It creates a pretrained model that is used by
+the next few tests (test_validation and test_feature_extraction).</p>
+<p>As can be seen by looking at how the test checks for correctness, after the
+training is run, results of training, including (intermittently) the full
+variables needed to re-initialize the tensorflow model, are stored in a
+MongoDB.</p>
+<p>Also see docstring of the tfutils.base.train_from_params function for more detailed
+information about usage.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.test_training_save">
+<code class="descname">test_training_save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.test_training_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.test_training_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate saving to the grid file system during training time.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestBase.test_validation">
+<code class="descname">test_validation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestBase.test_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestBase.test_validation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate validation.</p>
+<p>This is a test illustrating how to compute performance on a trained model on a new dataset,
+using the tfutils.base.test_from_params function.  This test assumes that test_training function
+has run first (to provide a pre-trained model to validate).</p>
+<p>After the test is run, results from the validation are stored in the MongoDB.
+(The test shows how the record can be loaded for inspection.)</p>
+<p>See the docstring of tfutils.base.test_from_params for more detailed information on usage.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.tests.test_base.TestDistributedModel">
+<em class="property">class </em><code class="descclassname">tfutils.tests.test_base.</code><code class="descname">TestDistributedModel</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestDistributedModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestDistributedModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.tests.test_base.TestBase" title="tfutils.tests.test_base.TestBase"><code class="xref py py-class docutils literal"><span class="pre">tfutils.tests.test_base.TestBase</span></code></a></p>
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestDistributedModel.setup_params">
+<code class="descname">setup_params</code><span class="sig-paren">(</span><em>exp_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestDistributedModel.setup_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestDistributedModel.setup_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.tests.test_base.TestDistributedMulti">
+<em class="property">class </em><code class="descclassname">tfutils.tests.test_base.</code><code class="descname">TestDistributedMulti</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestDistributedMulti"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestDistributedMulti" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.tests.test_base.TestMultiModel" title="tfutils.tests.test_base.TestMultiModel"><code class="xref py py-class docutils literal"><span class="pre">tfutils.tests.test_base.TestMultiModel</span></code></a></p>
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestDistributedMulti.setup_params">
+<code class="descname">setup_params</code><span class="sig-paren">(</span><em>exp_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestDistributedMulti.setup_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestDistributedMulti.setup_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="tfutils.tests.test_base.TestMultiModel">
+<em class="property">class </em><code class="descclassname">tfutils.tests.test_base.</code><code class="descname">TestMultiModel</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestMultiModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestMultiModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#tfutils.tests.test_base.TestBase" title="tfutils.tests.test_base.TestBase"><code class="xref py py-class docutils literal"><span class="pre">tfutils.tests.test_base.TestBase</span></code></a></p>
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestMultiModel.setup_params">
+<code class="descname">setup_params</code><span class="sig-paren">(</span><em>exp_id</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestMultiModel.setup_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestMultiModel.setup_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestMultiModel.test_training">
+<code class="descname">test_training</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestMultiModel.test_training"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestMultiModel.test_training" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestMultiModel.test_training_save">
+<code class="descname">test_training_save</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestMultiModel.test_training_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestMultiModel.test_training_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Illustrate saving to the grid file system during training time.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_base.TestMultiModel.test_validation">
+<code class="descname">test_validation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#TestMultiModel.test_validation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.TestMultiModel.test_validation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_base.setUpModule">
+<code class="descclassname">tfutils.tests.test_base.</code><code class="descname">setUpModule</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#setUpModule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.setUpModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up module once, before any TestCases are run.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_base.tearDownModule">
+<code class="descclassname">tfutils.tests.test_base.</code><code class="descname">tearDownModule</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_base.html#tearDownModule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_base.tearDownModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tear down module after all TestCases are run.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.tests.test_data_hdf5">
+<span id="tfutils-tests-test-data-hdf5-module"></span><h2>tfutils.tests.test_data_hdf5 module<a class="headerlink" href="#module-tfutils.tests.test_data_hdf5" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="tfutils.tests.test_data_hdf5.create_hdf5">
+<code class="descclassname">tfutils.tests.test_data_hdf5.</code><code class="descname">create_hdf5</code><span class="sig-paren">(</span><em>total_size</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_hdf5.html#create_hdf5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_hdf5.create_hdf5" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_hdf5.random_four_threads">
+<code class="descclassname">tfutils.tests.test_data_hdf5.</code><code class="descname">random_four_threads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_hdf5.html#random_four_threads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_hdf5.random_four_threads" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_hdf5.test_fifo_four_threads">
+<code class="descclassname">tfutils.tests.test_data_hdf5.</code><code class="descname">test_fifo_four_threads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_hdf5.html#test_fifo_four_threads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_hdf5.test_fifo_four_threads" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_hdf5.test_fifo_one_thread">
+<code class="descclassname">tfutils.tests.test_data_hdf5.</code><code class="descname">test_fifo_one_thread</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_hdf5.html#test_fifo_one_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_hdf5.test_fifo_one_thread" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_hdf5.test_fifo_two_threads_ops">
+<code class="descclassname">tfutils.tests.test_data_hdf5.</code><code class="descname">test_fifo_two_threads_ops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_hdf5.html#test_fifo_two_threads_ops"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_hdf5.test_fifo_two_threads_ops" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_hdf5.test_random_four_threads">
+<code class="descclassname">tfutils.tests.test_data_hdf5.</code><code class="descname">test_random_four_threads</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_hdf5.html#test_random_four_threads"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_hdf5.test_random_four_threads" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.tests.test_data_tfrecords">
+<span id="tfutils-tests-test-data-tfrecords-module"></span><h2>tfutils.tests.test_data_tfrecords module<a class="headerlink" href="#module-tfutils.tests.test_data_tfrecords" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="tfutils.tests.test_data_tfrecords.test_fifo_one_thread_no_shuffle">
+<code class="descclassname">tfutils.tests.test_data_tfrecords.</code><code class="descname">test_fifo_one_thread_no_shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_tfrecords.html#test_fifo_one_thread_no_shuffle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_tfrecords.test_fifo_one_thread_no_shuffle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests that when one thread with FIFO queue is used,
+the data comes out in exactly the expected order.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_tfrecords.test_four_threads_random_and_shuffle">
+<code class="descclassname">tfutils.tests.test_data_tfrecords.</code><code class="descname">test_four_threads_random_and_shuffle</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_tfrecords.html#test_four_threads_random_and_shuffle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_tfrecords.test_four_threads_random_and_shuffle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests that the provider works when all the “things” are happening,
+e.g. multiple threads, random queue and shuffle file queue.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_tfrecords.test_item_selection">
+<code class="descclassname">tfutils.tests.test_data_tfrecords.</code><code class="descname">test_item_selection</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_tfrecords.html#test_item_selection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_tfrecords.test_item_selection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests that the option of subselecting keys by passing meta_dicts
+works.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_tfrecords.test_ops">
+<code class="descclassname">tfutils.tests.test_data_tfrecords.</code><code class="descname">test_ops</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_tfrecords.html#test_ops"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_tfrecords.test_ops" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tests the basic init_ops funcions.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_data_tfrecords.test_postprocess">
+<code class="descclassname">tfutils.tests.test_data_tfrecords.</code><code class="descname">test_postprocess</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_data_tfrecords.html#test_postprocess"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_data_tfrecords.test_postprocess" title="Permalink to this definition">¶</a></dt>
+<dd><p>This test uses the data in tftestdata2/ to illustrate how to read out
+something that has been written as a string but is “really” an integer.
+The data in tftestdata2/ids is just a single attribute, namely “ids”,
+written out as a string but actually it really represents integers.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.tests.test_dbinterface">
+<span id="tfutils-tests-test-dbinterface-module"></span><h2>tfutils.tests.test_dbinterface module<a class="headerlink" href="#module-tfutils.tests.test_dbinterface" title="Permalink to this headline">¶</a></h2>
+<p>Test DBInterface.</p>
+<dl class="class">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface">
+<em class="property">class </em><code class="descclassname">tfutils.tests.test_dbinterface.</code><code class="descname">TestDBInterface</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">unittest.case.TestCase</span></code></p>
+<dl class="attribute">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.CACHE_DIR">
+<code class="descname">CACHE_DIR</code><em class="property"> = 'TFUTILS_TEST_CACHE_DIR'</em><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.CACHE_DIR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.COLLECTION_NAME">
+<code class="descname">COLLECTION_NAME</code><em class="property"> = 'TFUTILS_TESTCOL'</em><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.COLLECTION_NAME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.DATABASE_NAME">
+<code class="descname">DATABASE_NAME</code><em class="property"> = 'TFUTILS_TESTDB'</em><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.DATABASE_NAME" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.EXP_ID">
+<code class="descname">EXP_ID</code><em class="property"> = 'TEST_EXP_ID'</em><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.EXP_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.HOST">
+<code class="descname">HOST</code><em class="property"> = 'localhost'</em><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.HOST" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.PORT">
+<code class="descname">PORT</code><em class="property"> = 29101</em><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.PORT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.load_test_checkpoint">
+<code class="descname">load_test_checkpoint</code><span class="sig-paren">(</span><em>save_path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.load_test_checkpoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.load_test_checkpoint" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.makedirs">
+<em class="property">static </em><code class="descname">makedirs</code><span class="sig-paren">(</span><em>dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.makedirs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.makedirs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.remove_checkpoint">
+<em class="property">classmethod </em><code class="descname">remove_checkpoint</code><span class="sig-paren">(</span><em>checkpoint</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.remove_checkpoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.remove_checkpoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a tf.train.Saver checkpoint.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.remove_collection">
+<em class="property">classmethod </em><code class="descname">remove_collection</code><span class="sig-paren">(</span><em>collection_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.remove_collection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.remove_collection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a MonogoDB collection.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.remove_database">
+<em class="property">classmethod </em><code class="descname">remove_database</code><span class="sig-paren">(</span><em>database_name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.remove_database"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.remove_database" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a MonogoDB database.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.remove_directory">
+<em class="property">classmethod </em><code class="descname">remove_directory</code><span class="sig-paren">(</span><em>directory</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.remove_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.remove_directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a directory.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.remove_document">
+<em class="property">classmethod </em><code class="descname">remove_document</code><span class="sig-paren">(</span><em>document</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.remove_document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.remove_document" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.save_test_checkpoint">
+<code class="descname">save_test_checkpoint</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.save_test_checkpoint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.save_test_checkpoint" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setUp">
+<code class="descname">setUp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setUp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setUp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up class before _each_ test method is executed.</p>
+<p>Creates a tensorflow session and instantiates a dbinterface.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setUpClass">
+<em class="property">classmethod </em><code class="descname">setUpClass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setUpClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setUpClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up class once before any test methods are run.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setup_cache">
+<em class="property">classmethod </em><code class="descname">setup_cache</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setup_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setup_cache" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setup_conn">
+<em class="property">classmethod </em><code class="descname">setup_conn</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setup_conn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setup_conn" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setup_log">
+<em class="property">classmethod </em><code class="descname">setup_log</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setup_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setup_log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setup_model">
+<code class="descname">setup_model</code><span class="sig-paren">(</span><em>weights_name='Weights'</em>, <em>bias_name='Bias'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setup_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setup_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up simple tensorflow model.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.setup_params">
+<em class="property">classmethod </em><code class="descname">setup_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.setup_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.setup_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.tearDown">
+<code class="descname">tearDown</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.tearDown"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.tearDown" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tear Down is called after _each_ test method is executed.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.tearDownClass">
+<em class="property">classmethod </em><code class="descname">tearDownClass</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.tearDownClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.tearDownClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tear down class after all test methods have run.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_filter_var_list">
+<code class="descname">test_filter_var_list</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_filter_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_filter_var_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_get_restore_vars">
+<code class="descname">test_get_restore_vars</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_get_restore_vars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_get_restore_vars" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_init">
+<code class="descname">test_init</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_init"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_initialize">
+<code class="descname">test_initialize</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_initialize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_initialize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_initialize_from_ckpt">
+<code class="descname">test_initialize_from_ckpt</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_initialize_from_ckpt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_initialize_from_ckpt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_load_from_db">
+<code class="descname">test_load_from_db</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_load_from_db"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_load_from_db" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_load_rec">
+<code class="descname">test_load_rec</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_load_rec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_load_rec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_remap_var_list">
+<code class="descname">test_remap_var_list</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_remap_var_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_remap_var_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_save">
+<code class="descname">test_save</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_save" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_save_thread">
+<code class="descname">test_save_thread</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_save_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_save_thread" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_sync_with_host">
+<code class="descname">test_sync_with_host</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_sync_with_host"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_sync_with_host" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.test_tf_saver">
+<code class="descname">test_tf_saver</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.test_tf_saver"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.test_tf_saver" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="tfutils.tests.test_dbinterface.TestDBInterface.train_model">
+<code class="descname">train_model</code><span class="sig-paren">(</span><em>num_steps=100</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#TestDBInterface.train_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.TestDBInterface.train_model" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_dbinterface.setUpModule">
+<code class="descclassname">tfutils.tests.test_dbinterface.</code><code class="descname">setUpModule</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#setUpModule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.setUpModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set up module once, before any TestCases are run.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_dbinterface.tearDownModule">
+<code class="descclassname">tfutils.tests.test_dbinterface.</code><code class="descname">tearDownModule</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_dbinterface.html#tearDownModule"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_dbinterface.tearDownModule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tear down module after all TestCases are run.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.tests.test_utils">
+<span id="tfutils-tests-test-utils-module"></span><h2>tfutils.tests.test_utils module<a class="headerlink" href="#module-tfutils.tests.test_utils" title="Permalink to this headline">¶</a></h2>
+<p>tfutils utils tests.</p>
+<p>These tests demonstrate and verify the behaviour of various utilities in tfutils.utils.</p>
+<dl class="function">
+<dt id="tfutils.tests.test_utils.save_from_queue">
+<code class="descclassname">tfutils.tests.test_utils.</code><code class="descname">save_from_queue</code><span class="sig-paren">(</span><em>queue</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_utils.html#save_from_queue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_utils.save_from_queue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mimic saving a checkpoint from a queue of checkpoints.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>queue</strong> (<em>Queue.Queue</em>) – A queue of checkpoints.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">error.ThreadError</span></code> – Queue is empty.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_utils.test_aggregation">
+<code class="descclassname">tfutils.tests.test_utils.</code><code class="descname">test_aggregation</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_utils.html#test_aggregation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_utils.test_aggregation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="tfutils.tests.test_utils.test_coordinated_thread">
+<code class="descclassname">tfutils.tests.test_utils.</code><code class="descname">test_coordinated_thread</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/tfutils/tests/test_utils.html#test_coordinated_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#tfutils.tests.test_utils.test_coordinated_thread" title="Permalink to this definition">¶</a></dt>
+<dd><p>Demonstate the use of CoordinatedThread with tf.train.Coordinator.</p>
+<p>A queue is filled with a single ‘checkpoint’ to be saved by two separate
+threads called sequentially. The first thread will successfully save
+the one and only checkpoint, but the second thread will raise an
+error.ThreadError. This test only passes if that exception is
+reported (can be caught) by the main thread.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-tfutils.tests">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-tfutils.tests" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, NeuroAILab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
