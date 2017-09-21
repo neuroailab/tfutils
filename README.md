@@ -2,15 +2,15 @@
 
 Utilities for working with TensorFlow
 
-# Installation
+## Installation
 
 `pip install git+https://github.com/neuroailab/tfutils.git`
 
 
-# Documentation
+## Documentation
 
 http://neuroailab.stanford.edu/tfutils/index.html
 
-# License
+## License
 
 MIT
