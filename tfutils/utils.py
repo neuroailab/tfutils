@@ -56,16 +56,12 @@ def version_check_and_info(module):
     """
     srcpath = inspect.getsourcefile(module)
     try:
-        print('pt1')
         repo = git.Repo(srcpath, search_parent_directories=True)
     except git.InvalidGitRepositoryError:
         log.info('module %s not in a git repo, checking package version' % module.__name__)
-        print('pt2')
         info = version_info(module)
     else:
-        print('pt3')
         info = git_info(repo)
-        print('pt4')
     info['source_path'] = srcpath
     return info
 
@@ -160,13 +156,10 @@ def sonify(arg, memo=None):
     elif arg in (True, False):
         rval = int(arg)
     elif callable(arg):
-        print('pt5')
         mod = inspect.getmodule(arg)
         modname = mod.__name__
         objname = arg.__name__
-        print('pt6')
         rval = version_check_and_info(mod)
-        print('pt7')
         rval.update({'objname': objname,
                      'modname': modname})
         rval = sonify(rval)
