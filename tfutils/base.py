@@ -204,6 +204,7 @@ class DBInterface(object):
         for _k in ['do_restore']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
+
         self.rec_to_save = None
         self.checkpoint_thread = None
         self.outrecs = []
@@ -213,6 +214,7 @@ class DBInterface(object):
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
         recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
+
 
         self.load_data = None
         load_query = load_params.get('query')
@@ -460,7 +462,7 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
-            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if 'optimizer' not in k and k != 'msg' and k not in self.save_to_gfs]
+            msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items() if 'optimizer' not in k and k != 'msg' and k not in self.save_to_gfs and 'noprint' not in k]
             message += ', '.join(msg2)
             log.info(message)
 
@@ -478,8 +480,7 @@ class DBInterface(object):
             message += ', '.join('{}: {}'.format(k,
                                                  {_k: _v for _k, _v in v.items() if _k not in self.save_to_gfs and _k in ['loss']}
                                                  ) for k, v in valid_res.items())
-            log.info(message)
-
+            #log.info(message)
         if validation_only:
             rec['validates'] = self.load_data[0]['_id']
             save_filters_permanent = save_filters_tmp = False
@@ -496,6 +497,7 @@ class DBInterface(object):
         need_to_save = self.do_save and need_to_save
 
         if need_to_save:
+            print('gonna save')
             self.rec_to_save = None
             self.sync_with_host()
             save_to_gfs = {}
