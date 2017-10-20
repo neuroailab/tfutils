@@ -286,7 +286,9 @@ class DBInterface(object):
         self.load_collfs_recent = gridfs.GridFS(
             self.load_conn[load_recent_name])
 
-        if 'cache_dir' in save_params:
+        if (save_params == {}) and ('cache_dir' in load_params): # use cache_dir from load params if save_params not given
+            cache_dir = load_params['cache_dir']
+        elif 'cache_dir' in save_params:
             cache_dir = save_params['cache_dir']
         else:
             cache_dir = None
