@@ -918,6 +918,11 @@ def test_from_params(load_params,
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
 
+            if not 'cache_dir' in load_params:
+                temp_cache_dir = save_params.get('cache_dir', None)
+                load_params['cache_dir'] = temp_cache_dir
+                log.info('cache_dir not found in load_params, using cache_dir ({}) from save_params'.format(temp_cache_dir))
+
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
             ld = ttarg['dbinterface'].load_data
