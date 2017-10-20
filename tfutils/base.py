@@ -113,6 +113,7 @@ class DBInterface(object):
                  sess=None,
                  global_step=None,
                  cache_dir=None,
+                 ignore_same_loc = False,
                  *tfsaver_args,
                  **tfsaver_kwargs):
         """
@@ -261,7 +262,7 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
-            if self.sameloc and (not save_params == {}):
+            if self.sameloc and (not save_params == {}) and (not ignore_same_loc):
                 raise Exception('Loading pointlessly')
             else:
                 self.sameloc = False
@@ -952,6 +953,7 @@ def test_from_params(load_params,
             ttarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
                                                var_list=var_list,
+                                               ignore_same_loc = True,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize(no_scratch=True)
