@@ -286,7 +286,9 @@ class DBInterface(object):
         self.load_collfs_recent = gridfs.GridFS(
             self.load_conn[load_recent_name])
 
-        if 'cache_dir' in save_params:
+        if (save_params == {}) and ('cache_dir' in load_params): # use cache_dir from load params if save_params not given
+            cache_dir = load_params['cache_dir']
+        elif 'cache_dir' in save_params:
             cache_dir = save_params['cache_dir']
         else:
             cache_dir = None
@@ -915,6 +917,11 @@ def test_from_params(load_params,
 
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
+
+            if not 'cache_dir' in load_params:
+                temp_cache_dir = save_params.get('cache_dir', None)
+                load_params['cache_dir'] = temp_cache_dir
+                log.info('cache_dir not found in load_params, using cache_dir ({}) from save_params'.format(temp_cache_dir))
 
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
