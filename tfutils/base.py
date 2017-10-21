@@ -113,7 +113,7 @@ class DBInterface(object):
                  sess=None,
                  global_step=None,
                  cache_dir=None,
-                 ignore_same_loc = False,
+                 ignore_same_loc=False,
                  *tfsaver_args,
                  **tfsaver_kwargs):
         """
@@ -953,7 +953,7 @@ def test_from_params(load_params,
             ttarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
                                                var_list=var_list,
-                                               ignore_same_loc = True,
+                                               ignore_same_loc=True,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize(no_scratch=True)
