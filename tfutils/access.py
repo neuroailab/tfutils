@@ -1,6 +1,5 @@
 '''
 Tools to easily and efficiently load data from the tfutils mongo database,
-and tools to visualize the loaded data in jupyter notebooks.
 '''
 import pymongo as pm
 import numpy as np
