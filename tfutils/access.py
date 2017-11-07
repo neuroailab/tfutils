@@ -124,11 +124,16 @@ class GfsData(object):
     
     def load_from_gfs(self):
         if not hasattr(self, '_vals'):
-            fn = self._collection_client.find({'item_for' : self._id})[0]['filename']
-            fs = gridfs.GridFS(self._collection_client.database, self._collection_client.collection.name[:-17])
-            fh = fs.get_last_version(fn)
-            self._vals = cPickle.loads(fh.read())
-            fh.close()
+            records = self._collection_client.find({'item_for' : self._id})
+            if records.count() > 0:
+                fn = records[0]['filename']
+                fs = gridfs.GridFS(self._collection_client.database, 
+                        self._collection_client.collection.name[:-17])
+                fh = fs.get_last_version(fn)
+                self._vals = cPickle.loads(fh.read())
+                fh.close()
+            else:
+                self._vals = {}
         return self._vals
      
         
@@ -155,9 +160,12 @@ class GfsDictWrapper(object):
         return data[key]
 
     def _subselect_data(self):
-        data = self._gfs_data.load_from_gfs()[self._results_key]
-        if self._subresults_key is not None:
-            data = data[self._subresults_key]
+        data = self._gfs_data.load_from_gfs()
+        if len(data.keys()) > 0:
+            data = data[self._results_key]
+            if self._subresults_key is not None:
+                data = data[self._subresults_key]
+                self._gfs_keys = data.keys()
         return data
         
     def keys(self):
