@@ -260,7 +260,7 @@ def fc(inp,
     return output
 
 
-def global_pool(inp, kind='avg', name=None):
+def global_pool(inp, kind='avg', keep_dims=False, name=None):
     if kind not in ['max', 'avg']:
         raise ValueError('Only global avg or max pool is allowed, but'
                             'you requested {}.'.format(kind))
@@ -271,7 +271,11 @@ def global_pool(inp, kind='avg', name=None):
                                     ksize=[1,h,w,1],
                                     strides=[1,1,1,1],
                                     padding='VALID')
-    output = tf.reshape(out, [out.get_shape().as_list()[0], -1], name=name)
+    if keep_dims:
+        output = tf.identity(out, name=name)
+    else:
+        output = tf.reshape(out, [out.get_shape().as_list()[0], -1], name=name)
+        
     return output
 
 def avg_pool2d(inp, kernel_size, stride=2, padding='VALID', name=None):
