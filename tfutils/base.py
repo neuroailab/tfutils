@@ -508,8 +508,13 @@ class DBInterface(object):
                         save_to_gfs['train_results'] = {}
                     if _k in all_train_keys:
                         save_to_gfs['train_results'][_k] = [r.pop(_k) for r in rec['train_results'] if _k in r]
-                        if len(save_to_gfs['train_results'][_k]) == 1:
-                            save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
+                        #if len(save_to_gfs['train_results'][_k]) == 1:
+                        #    print('in base')
+                        #    print(_k)
+                        #    print(save_to_gfs['train_results'][_k])
+                        #    print(save_to_gfs['train_results'][_k][0])
+                        #TODO: resolve. appears to be a bug and i don't like this behavior regardless.
+                        #    save_to_gfs['train_results'][_k] == save_to_gfs['train_results'][_k][0]
                 if valid_res:
                     if 'validation_results' not in save_to_gfs:
                         save_to_gfs['validation_results'] = {}
