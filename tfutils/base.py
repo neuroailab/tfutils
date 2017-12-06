@@ -963,6 +963,7 @@ def test_from_params(load_params,
         test_args = {key: [ttarg[key] for ttarg in _ttargs]
                      for key in _ttargs[0].keys()}
 
+        test_args['session'] = sess
         if dont_run:
             return test_args
 
@@ -1411,7 +1412,7 @@ def get_valid_targets_dict(validation_params,
         scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
             _mp, voutputs = get_model(vinputs, model_params)
-            check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
+            #check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
                                                                                     **validation_params[vtarg])
@@ -1812,6 +1813,9 @@ def parse_params(mode,
                     param['minibatch_size'] = minibatch_size
                     param['num_minibatches'] = num_minibatches
                     param['queue_params']['batch_size'] = minibatch_size
+                    log.info('Using {} minibatches to compute batch of size {}'
+                            .format(int(num_minibatches), 
+                                int(num_minibatches * minibatch_size)))
 
         params[name] = param_list
 

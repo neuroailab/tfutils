@@ -48,7 +48,9 @@ class ClipOptimizer(object):
             # gradient clipping. Some gradients returned are 'None' because
             # no relation between the variable and loss; so we skip those.
             gvs = [(tf.clip_by_value(grad, -1., 1.), var)
-                   for grad, var in gvs if grad is not None]
+                   if grad is not None else (grad, var) for grad, var in gvs]
+        for grad, var in gvs:
+            assert grad is not None, (grad, var)
         return gvs
 
     @classmethod
@@ -96,6 +98,7 @@ class ClipOptimizer(object):
         #grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
         #         for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
         #grads = tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _add_op(), fn2 = lambda: _set_op())
+
         grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _set_op(gv[0], mgv[0]), fn2 = lambda: _add_op(gv[0], mgv[0]))
                  for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
         with tf.control_dependencies(grads):
