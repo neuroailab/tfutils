@@ -1470,7 +1470,8 @@ def get_data(func, queue_params=None, **data_params):
     for input_op in input_ops:
         # enqueue_ops.append(queue.enqueue_many(input_op))
         if batch_size == 1:
-            enqueue_ops.append(queue.enqueue(input_op))
+#            enqueue_ops.append(queue.enqueue(input_op))
+            enqueue_ops.append(queue.enqueue_many(input_op))
         else:
             enqueue_ops.append(queue.enqueue_many(input_op))
     tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue,

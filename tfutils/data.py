@@ -693,7 +693,8 @@ def get_queue(nodes,
         if shape_flag:
             shapes.append(nodes[name].get_shape()[1:])
         else:
-            shapes.append(nodes[name].get_shape())
+#            shapes.append(nodes[name].get_shape())
+            shapes.append(nodes[name].get_shape()[1:])
 
     if batch_size==1:
         shapes = None
