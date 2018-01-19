@@ -247,6 +247,8 @@ def fc(inp,
                             name='bias')
 
     # ops
+    if dropout is not None:
+        resh = tf.nn.dropout(resh, dropout, seed=dropout_seed, name='dropout')
     fcm = tf.matmul(resh, kernel)
     output = tf.nn.bias_add(fcm, biases, name=name)
 
@@ -255,8 +257,6 @@ def fc(inp,
     if batch_norm:
         output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
                             scale=None, variance_epsilon=1e-8, name='batch_norm')
-    if dropout is not None:
-        output = tf.nn.dropout(output, dropout, seed=dropout_seed, name='dropout')
     return output
 
 
