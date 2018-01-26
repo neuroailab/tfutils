@@ -25,6 +25,8 @@ def conv(inp,
          weight_decay=None,
          activation='relu',
          batch_norm=True,
+         dropout=None,
+         dropout_seed=0,
          name='conv'
          ):
 
@@ -51,6 +53,9 @@ def conv(inp,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='bias')
     # ops
+    if dropout is not None:
+        inp = tf.nn.dropout(inp, dropout, seed=dropout_seed, name='dropout')
+
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
                         padding=padding)
@@ -221,7 +226,7 @@ def fc(inp,
        activation='relu',
        batch_norm=True,
        dropout=None,
-       dropout_seed=None,
+       dropout_seed=0,
        name='fc'):
 
     if weight_decay is None:
@@ -247,6 +252,8 @@ def fc(inp,
                             name='bias')
 
     # ops
+    if dropout is not None:
+        resh = tf.nn.dropout(resh, dropout, seed=dropout_seed, name='dropout')
     fcm = tf.matmul(resh, kernel)
     output = tf.nn.bias_add(fcm, biases, name=name)
 
@@ -255,8 +262,6 @@ def fc(inp,
     if batch_norm:
         output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
                             scale=None, variance_epsilon=1e-8, name='batch_norm')
-    if dropout is not None:
-        output = tf.nn.dropout(output, dropout, seed=dropout_seed, name='dropout')
     return output
 
 
