@@ -256,7 +256,7 @@ def parse_standard_tfmeta(paths):
             if path.startswith('meta') and path.endswith('.pkl'):
                 mpaths = [path]
             else:
-                assert os.path.isdir(path)
+                assert os.path.isdir(path), path
                 mpaths = filter(lambda x: x.startswith('meta') and x.endswith('.pkl'),
                                 os.listdir(path))
                 mpaths = [os.path.join(path, mp) for mp in mpaths]

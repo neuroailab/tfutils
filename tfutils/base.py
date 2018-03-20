@@ -1342,10 +1342,14 @@ def train_from_params(save_params,
 
         # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
         gpu_options = tf.GPUOptions(allow_growth=True)
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                gpu_options=gpu_options,
-                                                log_device_placement=log_device_placement,
-                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
+        sess = tf.Session(config=tf.ConfigProto(
+            allow_soft_placement=True,
+            gpu_options=gpu_options,
+            log_device_placement=log_device_placement,
+            inter_op_parallelism_threads=inter_op_parallelism_threads,
+            #operation_timeout_in_ms=2000, 
+            #intra_op_parallelism_threads=8
+            ))
 
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
