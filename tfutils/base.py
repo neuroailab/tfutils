@@ -913,11 +913,13 @@ def test_from_params(load_params,
                                      inter_op_parallelism_threads=inter_op_parallelism_threads)
 
     with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
-
         # create session
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                log_device_placement=log_device_placement,
-                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
+        gpu_options = tf.GPUOptions(allow_growth=True)
+        sess = tf.Session(config=tf.ConfigProto(
+            allow_soft_placement=True,
+            gpu_options=gpu_options,
+            log_device_placement=log_device_placement,
+            inter_op_parallelism_threads=inter_op_parallelism_threads))
 
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
