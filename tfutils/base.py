@@ -1613,7 +1613,7 @@ def get_model(inputs, model_params, param=None, trarg=None):
                     trarg['train_targets']['grad_stats'][var_name] = {}
                     trarg['train_targets']['grad_stats'][var_name]['mean'] = tf.reduce_mean(tf.abs(var_grad))
                     for c in [50, 75, 95]:
-                        trarg['train_targets']['grad_stats'][var_name]['prec' + str(c)] = percentile(var_grad, q=c)
+                        trarg['train_targets']['grad_stats'][var_name]['prec' + str(c)] = percentile(tf.abs(var_grad), q=c)
 
         param['model_params'] = model_params
         return param['model_params'], output, param, trarg
