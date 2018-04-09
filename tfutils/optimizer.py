@@ -8,6 +8,7 @@ gradients for multiple batches before applying a gradient update).
 """
 import copy
 import tensorflow as tf
+from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 import logging
 
 logging.basicConfig()
@@ -16,9 +17,14 @@ log.setLevel('DEBUG')
 
 class ClipOptimizer(object):
 
-    def __init__(self, optimizer_class, clip=True, trainable_names=None, *optimizer_args, **optimizer_kwargs):
-        self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
+    def __init__(self, optimizer_class, use_tpu=False, clip=True, clip_min=-1.0, clip_max=1.0, trainable_names=None, *optimizer_args, **optimizer_kwargs):
+        if use_tpu:
+            self._optimizer = tpu_optimizer.CrossShardOptimizer(optimizer_class(*optimizer_args, **optimizer_kwargs))
+        else:
+            self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         self.clip = clip
+        self.clip_min = clip_min
+        self.clip_max = clip_max
         self.var_list = None
         if not isinstance(trainable_names, list) and trainable_names is not None:
             trainable_names = [trainable_names]
@@ -47,7 +53,7 @@ class ClipOptimizer(object):
         if self.clip:
             # gradient clipping. Some gradients returned are 'None' because
             # no relation between the variable and loss; so we skip those.
-            gvs = [(tf.clip_by_value(grad, -1., 1.), var)
+            gvs = [(tf.clip_by_value(grad, self.clip_min, self.clip_max), var)
                    for grad, var in gvs if grad is not None]
         return gvs
 

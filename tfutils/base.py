@@ -39,6 +39,15 @@ from tfutils.utils import (sonify,
                    get_saver_pb2_v2_files,
                    strip_prefix_from_name)
 
+
+# tpu and estimator imports
+from tensorflow.contrib.tpu.python.tpu import tpu_config
+from tensorflow.contrib.tpu.python.tpu import tpu_estimator
+from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
+from tensorflow.contrib.training.python.training import evaluation
+from tensorflow.python.estimator import estimator
+
+
 logging.basicConfig()
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
@@ -1136,6 +1145,103 @@ def train(sess,
     return res
 
 
+def create_estimator_fn(use_tpu, 
+                        model_params,
+                        lr_params,
+                        opt_params,
+                        loss_params,
+                        validation_params):
+
+    """
+    Creates a model_fn for use with tf.Estimator.
+    """
+    model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
+    if 'agg_func' not in loss_params:
+        agg_func = DEFAULT_LOSS_PARAMS['agg_func']
+    else:
+        agg_func = loss_params['agg_func']
+
+    if 'loss_per_case_func' not in loss_params:
+        loss_per_case_func = DEFAULT_LOSS_PARAMS['loss_per_case_func']
+    else:
+        loss_per_case_func = loss_params['loss_per_case_func']
+
+    if 'loss_func_kwargs' not in loss_params:
+        loss_func_kwargs = {}
+    else:
+        loss_func_kwargs = loss_params['loss_func_kwargs']
+
+    if 'agg_func_kwargs' not in loss_params:
+        agg_func_kwargs = {}
+    else:
+        agg_func_kwargs = loss_params['agg_func_kwargs']
+
+    def model_fn(features, labels, mode, params):
+        model_params, output = get_model_base(input=features, **model_params)
+        loss_args = (features, labels)
+        loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
+        loss = agg_func(loss, **agg_func_kwargs)
+
+        global_step = tf.train.get_global_step()
+
+        _, learning_rate = get_learning_rate(global_step, **lr_params)
+
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            _, optimizer_base = get_optimizer_base(learning_rate, opt_params)
+
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(update_ops):
+                train_op = optimizer.minimize(loss, global_step)
+        else:
+            train_op = None
+
+
+        eval_metrics = None
+        if mode == tf.estimator.ModeKeys.EVAL:
+           num_valid_targets = len(validation_params.keys())
+           metric_fn_kwargs = {'labels': labels, 'logits': logits}
+           if use_tpu:
+               assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
+               first_valid = validation_params.keys()[0]
+               valid_target = first_valid['targets']
+               metric_fn = valid_target['func']
+               for kw in valid_target.keys():
+                   if kw != 'func':
+                       # add any additional kwargs
+                       kw_val = valid_target[kw]
+                       # metric_fn_kwargs.update(kw_val)
+                       metric_fn_kwargs[kw] = kw_val
+               eval_metrics = (metric_fn, metric_fn_kwargs)
+            else:
+                # normal estimators expect dicts
+                eval_dict = {}
+                for k in validation_params.keys():
+                    k_metric_fn_kwargs = metric_fn_kwargs
+                    k_target = k['targets']
+                    for kw in k_target.keys():
+                       if kw != 'func':
+                           # add any additional kwargs
+                           kw_val = k_target[kw]
+                           k_metric_fn_kwargs[kw] = kw_val 
+                           # k_metric_fn_kwargs.update(kw_val)                         
+                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
+                eval_metrics = eval_dict
+
+        if use_tpu:
+            return tpu_estimator.TPUEstimatorSpec(
+              mode=mode,
+              loss=loss,
+              train_op=train_op,
+              eval_metrics=eval_metrics)
+        else:
+            return tf.Estimator.EstimatorSpec(
+                mode=mode,
+                loss=loss,
+                train_op=train_op,
+                eval_metrics_ops=eval_metrics)
+
+    return model_fn
+
 def train_from_params(save_params,
                       model_params,
                       train_params,
@@ -1148,11 +1254,19 @@ def train_from_params(save_params,
                       dont_run=False,
                       skip_check=False,
                       inter_op_parallelism_threads=40,
+                      use_estimator=False,
+                      use_tpu=False
                       ):
     """
     Main training interface function.
 
     Args:
+        use_estimator (bool): Whether to use tf.Estimator interface to train and evaluate models (default False).
+            In this case, the session is created internally. Must use when using tpus.
+
+
+        use_tpu (bool): Whether to use TPUs for training. In this case, the TPUEstimator will be used.
+
         save_params (dict): Dictionary of arguments for creating saver object (see Saver class).
 
         model_params (dict): Containing function that produces model and arguments to that function.
@@ -1318,83 +1432,111 @@ def train_from_params(save_params,
                                       log_device_placement=log_device_placement,
                                       inter_op_parallelism_threads=inter_op_parallelism_threads)
 
-    with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
+    # do not need to create sess with estimator interface
+    if use_estimator or use_tpu:
         # For convenience, use list of dicts instead of dict of lists
         _params = [{key: value[i] for (key, value) in params.items()}
                    for i in range(len(params['model_params']))]
         _trargs = [{key: value[i] for (key, value) in train_args.items()}
                    for i in range(len(params['model_params']))]
 
-        # Use a single dataprovider for all models.
+        # Support single model
+        assert(len(_params) == 1)
         data_params = _params[0]['train_params']['data_params']
-        queue_params = _params[0]['train_params']['queue_params']
 
-        (_params[0]['train_params']['data_params'],
-         queues, inputs) = get_data(queue_params=queue_params, **data_params)
+        model_params = _params[0]['model_params']
+        lr_params = _params[0]['learning_rate_params']
+        opt_params = _params[0]['optimizer_params']
+        loss_params = _params[0]['loss_params']
+        validation_params = _params[0]['validation_params']
+        # set up estimator func
+        estimator_fn = create_estimator_fn(use_tpu=use_tpu, 
+                                           model_params=model_params,
+                                           lr_params=lr_params,
+                                           opt_params=opt_params,
+                                           loss_params=loss_params,
+                                           validation_params=validation_params)
 
-        # Build a graph for each distinct model.
-        for param, trarg in zip(_params, _trargs):
-            with tf.variable_scope(param['model_params']['prefix']):
+        tf.Estimator(model_fn=estimator_fn)
+    else:
+        with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
-                trarg['global_step'] = tf.get_variable('global_step', [],
-                                                       dtype=tf.int64, trainable=False,
-                                                       initializer=tf.constant_initializer(0))
+            # For convenience, use list of dicts instead of dict of lists
+            _params = [{key: value[i] for (key, value) in params.items()}
+                       for i in range(len(params['model_params']))]
+            _trargs = [{key: value[i] for (key, value) in train_args.items()}
+                       for i in range(len(params['model_params']))]
 
-                _, _, param, trarg = get_model(inputs,
-                                               param['model_params'],
-                                               param=param,
-                                               trarg=trarg)
+            # Use a single dataprovider for all models.
+            data_params = _params[0]['train_params']['data_params']
+            queue_params = _params[0]['train_params']['queue_params']
 
-                tf.get_variable_scope().reuse_variables()
+            (_params[0]['train_params']['data_params'],
+             queues, inputs) = get_data(queue_params=queue_params, **data_params)
 
-                (trarg['validation_targets'],
-                 vqueue) = get_valid_targets_dict(queue_params=queue_params,
-                                                  **param)
-                queues.extend(vqueue)
+            # Build a graph for each distinct model.
+            for param, trarg in zip(_params, _trargs):
+                with tf.variable_scope(param['model_params']['prefix']):
 
-        # Create session.
+                    trarg['global_step'] = tf.get_variable('global_step', [],
+                                                           dtype=tf.int64, trainable=False,
+                                                           initializer=tf.constant_initializer(0))
 
-        # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
-        gpu_options = tf.GPUOptions(allow_growth=True)
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                gpu_options=gpu_options,
-                                                log_device_placement=log_device_placement,
-                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
+                    _, _, param, trarg = get_model(inputs,
+                                                   param['model_params'],
+                                                   param=param,
+                                                   trarg=trarg)
 
-        init_op_global = tf.global_variables_initializer()
-        sess.run(init_op_global)
-        init_op_local = tf.local_variables_initializer()
-        sess.run(init_op_local)
-        log.info('Initialized from scratch first')
+                    tf.get_variable_scope().reuse_variables()
 
-        for param, trarg in zip(_params, _trargs):
+                    (trarg['validation_targets'],
+                     vqueue) = get_valid_targets_dict(queue_params=queue_params,
+                                                      **param)
+                    queues.extend(vqueue)
 
-            prefix = param['model_params']['prefix'] + '/'
-            all_vars = variables._all_saveable_objects()
-            var_list = strip_prefix(prefix, all_vars)
-            for var in var_list:
-                print(var)
+            # Create session.
 
-            trarg['dbinterface'] = DBInterface(sess=sess,
-                                               params=param,
-                                               var_list=var_list,
-                                               global_step=trarg['global_step'],
-                                               save_params=param['save_params'],
-                                               load_params=param['load_params'])
-            trarg['dbinterface'].initialize()
-            trarg['queues'] = queues
+            # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+            gpu_options = tf.GPUOptions(allow_growth=True)
+            sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
+                                                    gpu_options=gpu_options,
+                                                    log_device_placement=log_device_placement,
+                                                    inter_op_parallelism_threads=inter_op_parallelism_threads))
 
-        # Convert back to a dictionary of lists
-        params = {key: [param[key] for param in _params]
-                  for key in _params[0].keys()}
-        train_args = {key: [trarg[key] for trarg in _trargs]
-                      for key in _trargs[0].keys()}
+            init_op_global = tf.global_variables_initializer()
+            sess.run(init_op_global)
+            init_op_local = tf.local_variables_initializer()
+            sess.run(init_op_local)
+            log.info('Initialized from scratch first')
 
-        if dont_run:
-            return train_args
+            for param, trarg in zip(_params, _trargs):
 
-        return train(sess, **train_args)
+                prefix = param['model_params']['prefix'] + '/'
+                all_vars = variables._all_saveable_objects()
+                var_list = strip_prefix(prefix, all_vars)
+                for var in var_list:
+                    print(var)
+
+                trarg['dbinterface'] = DBInterface(sess=sess,
+                                                   params=param,
+                                                   var_list=var_list,
+                                                   global_step=trarg['global_step'],
+                                                   save_params=param['save_params'],
+                                                   load_params=param['load_params'])
+                trarg['dbinterface'].initialize()
+                trarg['queues'] = queues
+
+            # Convert back to a dictionary of lists
+            params = {key: [param[key] for param in _params]
+                      for key in _params[0].keys()}
+            train_args = {key: [trarg[key] for trarg in _trargs]
+                          for key in _trargs[0].keys()}
+
+            if dont_run:
+                return train_args
+
+            return train(sess, **train_args)
 
 
 def get_valid_targets_dict(validation_params,
