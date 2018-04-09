@@ -1154,6 +1154,7 @@ def create_estimator_fn(use_tpu,
     """
     Creates a model_fn for use with tf.Estimator.
     """
+    # set up loss params 
     if 'agg_func' not in loss_params:
         agg_func = DEFAULT_LOSS_PARAMS['agg_func']
     else:
@@ -1173,6 +1174,10 @@ def create_estimator_fn(use_tpu,
         agg_func_kwargs = {}
     else:
         agg_func_kwargs = loss_params['agg_func_kwargs']
+
+    # tells clip optimizer to use tpu
+    if opt_params['func'].__name__ == 'ClipOptimizer':
+        opt_params['use_tpu'] = use_tpu
 
     def model_fn(features, labels, mode, params):
         model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
