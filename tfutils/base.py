@@ -43,7 +43,6 @@ from tfutils.utils import (sonify,
 # tpu and estimator imports
 from tensorflow.contrib.tpu.python.tpu import tpu_config
 from tensorflow.contrib.tpu.python.tpu import tpu_estimator
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
 
@@ -1155,7 +1154,6 @@ def create_estimator_fn(use_tpu,
     """
     Creates a model_fn for use with tf.Estimator.
     """
-    model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
     if 'agg_func' not in loss_params:
         agg_func = DEFAULT_LOSS_PARAMS['agg_func']
     else:
@@ -1177,6 +1175,7 @@ def create_estimator_fn(use_tpu,
         agg_func_kwargs = loss_params['agg_func_kwargs']
 
     def model_fn(features, labels, mode, params):
+        model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
         model_params, output = get_model_base(input=features, **model_params)
         loss_args = (features, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
