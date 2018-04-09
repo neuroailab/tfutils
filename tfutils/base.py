@@ -64,6 +64,10 @@ if 'TFUTILS_HOME' in os.environ:
 else:
     TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
 
+DEFAULT_TPU_ZONE = None
+DEFAULT_NUM_SHARDS = 8
+DEFAULT_ITERATIONS_PER_LOOP = 100
+
 DEFAULT_MODEL_SEED = 0
 DEFAULT_MODEL_TRAIN = False
 DEFAULT_MODEL_PARAMS = frozendict({'seed': DEFAULT_MODEL_SEED,
@@ -1143,6 +1147,37 @@ def train(sess,
     sess.close()
     return res
 
+def train_estimator(cls,
+                    param,
+                    trarg):
+
+    model_dir = param['save_params'].get('cache_dir', '')
+    train_steps = param['train_params']['num_steps']
+    valid_k = param['validation_params'].keys()[0]
+    validation_data_params = param['validation_params'][valid_k]['data_params']
+    valid_steps = validation_data_params['num_steps']
+    steps_per_checkpoint = param['save_params']['save_filters_freq']
+    current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
+    log.info('Training beginning ...')
+    log.info('Training for %d steps. Current '
+                    'step %d' % (train_steps,
+                                 current_step))
+
+    # initialize db here
+    
+    while current_step < train_steps:
+        next_checkpoint = min(current_step + steps_per_checkpoint,
+                            train_steps)
+        cls.train(
+        input_fn=ImageNetInput(True, FLAGS.data_dir).input_fn, max_steps=next_checkpoint)
+        current_step = next_checkpoint
+
+        log.info('Starting to evaluate.')
+        eval_results = cls.evaluate(
+          input_fn=ImageNetInput(False, FLAGS.data_dir).input_fn,
+          steps=valid_steps)
+        # save to db here
+        log.info('Eval results: %s' % eval_results)
 
 def create_estimator_fn(use_tpu, 
                         model_params,
@@ -1155,25 +1190,13 @@ def create_estimator_fn(use_tpu,
     Creates a model_fn for use with tf.Estimator.
     """
     # set up loss params 
-    if 'agg_func' not in loss_params:
-        agg_func = DEFAULT_LOSS_PARAMS['agg_func']
-    else:
-        agg_func = loss_params['agg_func']
+    agg_func = loss_params.get('agg_func', DEFAULT_LOSS_PARAMS['agg_func'])
 
-    if 'loss_per_case_func' not in loss_params:
-        loss_per_case_func = DEFAULT_LOSS_PARAMS['loss_per_case_func']
-    else:
-        loss_per_case_func = loss_params['loss_per_case_func']
+    loss_per_case_func = loss_params.get('loss_per_case_func', DEFAULT_LOSS_PARAMS['loss_per_case_func'])
 
-    if 'loss_func_kwargs' not in loss_params:
-        loss_func_kwargs = {}
-    else:
-        loss_func_kwargs = loss_params['loss_func_kwargs']
+    loss_func_kwargs = loss_params.get('loss_func_kwargs', {})
 
-    if 'agg_func_kwargs' not in loss_params:
-        agg_func_kwargs = {}
-    else:
-        agg_func_kwargs = loss_params['agg_func_kwargs']
+    agg_func_kwargs = loss_params.get('agg_func_kwargs', {})
 
     # tells clip optimizer to use tpu
     if opt_params['func'].__name__ == 'ClipOptimizer':
@@ -1246,6 +1269,36 @@ def create_estimator_fn(use_tpu,
 
     return model_fn
 
+def create_tpu_config(model_dir,
+                      tpu_name,
+                      gcp_project,
+                      steps_per_checkpoint,
+                      tpu_zone=DEFAULT_TPU_ZONE,
+                      num_shards=DEFAULT_NUM_SHARDS,
+                      iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
+
+    tpu_cluster_resolver = (
+        tf.contrib.cluster_resolver.TPUClusterResolver(
+            tpu_names=[tpu_name],
+            zone=tpu_zone,
+            project=gcp_project))
+    tpu_grpc_url = tpu_cluster_resolver.get_master()
+
+    if iterations_per_loop == -1 or steps_per_checkpoint < iterations_per_loop:
+        iterations_per_loop = steps_per_checkpoint
+
+    config = tpu_config.RunConfig(
+        master=tpu_grpc_url,
+        evaluation_master=tpu_grpc_url,
+        model_dir=model_dir,
+        save_checkpoints_steps=steps_per_checkpoint,
+        log_step_count_steps=iterations_per_loop,
+        tpu_config=tpu_config.TPUConfig(
+            iterations_per_loop=iterations_per_loop,
+            num_shards=num_shards))
+
+    return config
+
 def train_from_params(save_params,
                       model_params,
                       train_params,
@@ -1258,18 +1311,14 @@ def train_from_params(save_params,
                       dont_run=False,
                       skip_check=False,
                       inter_op_parallelism_threads=40,
-                      use_estimator=False,
-                      use_tpu=False
+                      use_estimator=False
                       ):
     """
     Main training interface function.
 
     Args:
         use_estimator (bool): Whether to use tf.Estimator interface to train and evaluate models (default False).
-            In this case, the session is created internally. Must use when using tpus.
-
-
-        use_tpu (bool): Whether to use TPUs for training. In this case, the TPUEstimator will be used.
+            In this case, the session is created internally. Will automatically be used when using tpus. 
 
         save_params (dict): Dictionary of arguments for creating saver object (see Saver class).
 
@@ -1437,6 +1486,8 @@ def train_from_params(save_params,
                                       inter_op_parallelism_threads=inter_op_parallelism_threads)
 
 
+    
+    use_tpu = (params['model_params'][0].get('tpu_name', None) is not None)
     # do not need to create sess with estimator interface
     if use_estimator or use_tpu:
         # For convenience, use list of dicts instead of dict of lists
@@ -1445,15 +1496,20 @@ def train_from_params(save_params,
         _trargs = [{key: value[i] for (key, value) in train_args.items()}
                    for i in range(len(params['model_params']))]
 
-        # Support single model
+        param = _params[0]
+        trarg = _trargs[0]
+        # Support only single model
         assert(len(_params) == 1)
-        data_params = _params[0]['train_params']['data_params']
+        train_data_params = param['train_params']['data_params']
+        valid_k = param['validation_params'].keys()[0]
+        validation_data_params = param['validation_params'][valid_k]['data_params']
 
-        model_params = _params[0]['model_params']
-        lr_params = _params[0]['learning_rate_params']
-        opt_params = _params[0]['optimizer_params']
-        loss_params = _params[0]['loss_params']
-        validation_params = _params[0]['validation_params']
+        model_params = param['model_params']
+        lr_params = param['learning_rate_params']
+        opt_params = param['optimizer_params']
+        loss_params = param['loss_params']
+        validation_params = param['validation_params']
+        save_params = param['save_params']
         # set up estimator func
         estimator_fn = create_estimator_fn(use_tpu=use_tpu, 
                                            model_params=model_params,
@@ -1462,7 +1518,29 @@ def train_from_params(save_params,
                                            loss_params=loss_params,
                                            validation_params=validation_params)
 
-        tf.Estimator(model_fn=estimator_fn)
+        if use_tpu:
+            # grab tpu name and gcp, etc from model params
+            m_config = create_tpu_config(model_dir=save_params.get('cache_dir', ''),
+                                         tpu_name=model_params.get('tpu_name', None), 
+                                         gcp_project=model_params.get('gcp_project', None), 
+                                         steps_per_checkpoint=save_params['save_filters_freq'],
+                                         tpu_zone=model_params.get('tpu_zone', DEFAULT_TPU_ZONE), 
+                                         num_shards=model_params.get('num_shards', DEFAULT_NUM_SHARDS),
+                                         iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP))
+
+            estimator_classifier = tpu_estimator.TPUEstimator(
+                                        use_tpu=True,
+                                        model_fn=estimator_fn,
+                                        config=m_config,
+                                        train_batch_size=train_data_params['batch_size'],
+                                        eval_batch_size=validation_data_params['batch_size'])
+
+        else:
+            # TO DO need to verify non tpu estimator support
+            estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn)
+
+        return train_estimator(cls=estimator_classifier, param=param, trarg=trarg)
+
     else:
         with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
