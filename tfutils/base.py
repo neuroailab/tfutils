@@ -1156,6 +1156,8 @@ def train_estimator(cls,
     valid_k = param['validation_params'].keys()[0]
     validation_data_params = param['validation_params'][valid_k]['data_params']
     valid_steps = validation_data_params['num_steps']
+    train_fn = param['train_params']['func'] 
+    valid_fn = validation_data_params['func']
     steps_per_checkpoint = param['save_params']['save_filters_freq']
     current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
     log.info('Training beginning ...')
@@ -1164,17 +1166,17 @@ def train_estimator(cls,
                                  current_step))
 
     # initialize db here
-    
+
     while current_step < train_steps:
         next_checkpoint = min(current_step + steps_per_checkpoint,
                             train_steps)
         cls.train(
-        input_fn=ImageNetInput(True, FLAGS.data_dir).input_fn, max_steps=next_checkpoint)
+        input_fn=train_fn, max_steps=next_checkpoint)
         current_step = next_checkpoint
 
         log.info('Starting to evaluate.')
         eval_results = cls.evaluate(
-          input_fn=ImageNetInput(False, FLAGS.data_dir).input_fn,
+          input_fn=valid_fn,
           steps=valid_steps)
         # save to db here
         log.info('Eval results: %s' % eval_results)
@@ -1204,6 +1206,8 @@ def create_estimator_fn(use_tpu,
 
     def model_fn(features, labels, mode, params):
         model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
+        if use_tpu:
+            model_params['batch_size'] = params['batch_size'] # per shard batch_size
         model_params, output = get_model_base(input=features, **model_params)
         loss_args = (features, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
