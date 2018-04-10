@@ -19,6 +19,7 @@ class ClipOptimizer(object):
 
     def __init__(self, optimizer_class, use_tpu=False, clip=True, clip_min=-1.0, clip_max=1.0, trainable_names=None, *optimizer_args, **optimizer_kwargs):
         if use_tpu:
+            log.info('Passing optimizer class to CrossShardOptimizer')
             self._optimizer = tpu_optimizer.CrossShardOptimizer(optimizer_class(*optimizer_args, **optimizer_kwargs))
         else:
             self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
