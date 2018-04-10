@@ -1499,6 +1499,8 @@ def train_from_params(save_params,
         TYPE: Description.
 
     """
+    # use tpu only if a tpu_name has been specified
+    use_tpu = (model_params.get('tpu_name', None) is not None)
     params, train_args = parse_params('train',
                                       model_params,
                                       dont_run=dont_run,
@@ -1511,11 +1513,11 @@ def train_from_params(save_params,
                                       validation_params=validation_params,
                                       learning_rate_params=learning_rate_params,
                                       log_device_placement=log_device_placement,
-                                      inter_op_parallelism_threads=inter_op_parallelism_threads)
+                                      inter_op_parallelism_threads=inter_op_parallelism_threads,
+                                      use_tpu=use_tpu)
 
 
     
-    use_tpu = (params['model_params'][0].get('tpu_name', None) is not None)
     # do not need to create sess with estimator interface
     if use_estimator or use_tpu:
         # For convenience, use list of dicts instead of dict of lists
@@ -1952,6 +1954,7 @@ def parse_params(mode,
                  learning_rate_params=None,
                  log_device_placement=False,
                  inter_op_parallelism_threads=40,
+                 use_tpu=False
                  ):
     """Ensure the params dictionary has the correct structure.
 
@@ -2020,22 +2023,23 @@ def parse_params(mode,
                     else:
                         param['train'] = False
 
-                # Parse device specification.
-                if 'devices' not in param:
-                    param['devices'] = [DEVICES.pop(0)]
-                    log.info('No devices specified for model {}... '.format(model_num) +
-                             'Defaulting to gpus: {}.'.format(param['devices']))
-                param['devices'] = format_devices(param['devices'])
+                if not use_tpu:
+                    # Parse device specification.
+                    if 'devices' not in param:
+                        param['devices'] = [DEVICES.pop(0)]
+                        log.info('No devices specified for model {}... '.format(model_num) +
+                                 'Defaulting to gpus: {}.'.format(param['devices']))
+                    param['devices'] = format_devices(param['devices'])
 
-                if 'num_gpus' not in param:
-                    param['num_gpus'] = len(param['devices'])
+                    if 'num_gpus' not in param:
+                        param['num_gpus'] = len(param['devices'])
 
-                if not isinstance(param['num_gpus'], list):
-                    assert param['num_gpus'] == len(param['devices']), (
-                       'num_gpus does not match the number of gpus specified in devices.')
-                else:
-                    assert len(param['num_gpus']) == len(param['devices']), (
-                       'num_gpus does not match the number of gpus specified in devices.')
+                    if not isinstance(param['num_gpus'], list):
+                        assert param['num_gpus'] == len(param['devices']), (
+                           'num_gpus does not match the number of gpus specified in devices.')
+                    else:
+                        assert len(param['num_gpus']) == len(param['devices']), (
+                           'num_gpus does not match the number of gpus specified in devices.')
 
             # Parse train_params.
             if name == 'train_params':
