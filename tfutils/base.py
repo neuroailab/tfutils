@@ -1196,10 +1196,10 @@ def train_estimator(cls,
           steps=valid_steps)
         log.info('Eval results: %s' %eval_results)
         # save to db here
-        log.info('Saving eval results to db')
+        log.info('Saving eval results to database.')
         # set validation only to be True to just save the results and not filters
         #trarg['dbinterface'].save(valid_res=eval_results, validation_only=True)
-        log.info('Done saving eval results to db')
+        log.info('Done saving eval results to database.')
     
     # sync with hosts?
     res = []
