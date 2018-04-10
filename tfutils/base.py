@@ -1184,6 +1184,8 @@ def train_estimator(cls,
             trarg['dbinterface'].start_time_step = time.time()
         next_checkpoint = min(current_step + steps_per_checkpoint,
                             train_steps)
+
+        log.info('Training until step %d' % next_checkpoint)
         cls.train(
         input_fn=train_fn, max_steps=next_checkpoint)
         current_step = next_checkpoint
