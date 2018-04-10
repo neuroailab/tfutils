@@ -632,7 +632,8 @@ class DBInterface(object):
             log.info(message)
 
         if validation_only:
-            rec['validates'] = self.load_data[0]['_id']
+            if self.sess is not None:
+                rec['validates'] = self.load_data[0]['_id']
             save_filters_permanent = save_filters_tmp = False
             need_to_save = True
         else:
@@ -1163,25 +1164,24 @@ def train_estimator(cls,
 
 
     current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
-    # initialize db here (need to modify init so load_params can load from different dir, estimator interface limited
+    # initialize db here (currently no support for loading and saving to different places. May need to modify init so load_params can load from different dir, estimator interface limited
     #    when loading and saving to different paths, may need to create a new config)
 
-    #trarg['dbinterface'] = DBInterface(sess=None,
-    #                               params=param,
-    #                               global_step=current_step,
-    #                               save_params=param['save_params'],
-    #                               load_params=param['load_params'],
-    #                               cache_dir=model_dir)
+    trarg['dbinterface'] = DBInterface(sess=None,
+                                   params=param,
+                                   global_step=current_step,
+                                   save_params=param['save_params'],
+                                   load_params=param['load_params'],
+                                   cache_dir=model_dir)
 
 
     log.info('Training beginning ...')
     log.info('Training for %d steps. Current '
                     'step %d' % (train_steps,
                                  current_step))
-    
+
+    trarg['dbinterface'].start_time_step = time.time()
     while current_step < train_steps:
-    #    if current_step == 0:
-    #        trarg['dbinterface'].start_time_step = time.time()
         next_checkpoint = min(current_step + steps_per_checkpoint,
                             train_steps)
 
@@ -1194,18 +1194,16 @@ def train_estimator(cls,
         eval_results = cls.evaluate(
           input_fn=valid_fn,
           steps=valid_steps)
-        log.info('Eval results: %s' %eval_results)
-        # save to db here
         log.info('Saving eval results to database.')
         # set validation only to be True to just save the results and not filters
-        #trarg['dbinterface'].save(valid_res=eval_results, validation_only=True)
+        trarg['dbinterface'].save(valid_res={valid_k: eval_results}, validation_only=True)
         log.info('Done saving eval results to database.')
     
-    # sync with hosts?
+    # sync with hosts
     res = []
-    #trarg['dbinterface'].sync_with_host()
-    #res.append(trarg['dbinterface'].outrecs)
-    # returning eval results for convenience
+    trarg['dbinterface'].sync_with_host()
+    res.append(trarg['dbinterface'].outrecs)
+    # returning final eval results for convenience
     return eval_results, res
 
 def create_estimator_fn(use_tpu, 
