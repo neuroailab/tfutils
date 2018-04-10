@@ -2066,28 +2066,36 @@ def parse_params(mode,
 
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
-                    param['num_minibatches'] = 1
-                    param['minibatch_size'] = param['queue_params']['batch_size']
-                    log.info('minibatch_size not specified for training data_params... ' +
-                             'Defaulting minibatch_size to: {} (identical to the batch size).'
-                             .format(param['queue_params']['batch_size']))
+                    if not use_tpu:
+                        param['num_minibatches'] = 1
+                        param['minibatch_size'] = param['queue_params']['batch_size']
+                        log.info('minibatch_size not specified for training data_params... ' +
+                                 'Defaulting minibatch_size to: {} (identical to the batch size).'
+                                 .format(param['queue_params']['batch_size']))
                 else:
-                    batch_size = param['queue_params']['batch_size']
-                    minibatch_size = param['minibatch_size']
-                    assert minibatch_size <= batch_size, (
-                           'Minibatch size cannot be larger than batch size.')
+                    if use_tpu:
+                        batch_size = param['train_params']['batch_size']
+                        minibatch_size = param['minibatch_size']
+                        if batch_size != minibatch_size:
+                            log.info('Minibatching currently not supported on TPU. Setting minibatch size ({}) ' +
+                                     'to be original batch size ({}).'.format(minibatch_size, batch_size))
+                    else:
+                        batch_size = param['queue_params']['batch_size']
+                        minibatch_size = param['minibatch_size']
+                        assert minibatch_size <= batch_size, (
+                               'Minibatch size cannot be larger than batch size.')
 
-                    num_minibatches = batch_size / float(minibatch_size)
-                    if num_minibatches % 1 != 0:
-                        num_minibatches = round(num_minibatches)
-                        minibatch_size = batch_size / num_minibatches
-                        log.warning('Minibatch size ({}) does not divide batch size ({}) evenly...'
-                                    .format(minibatch_size, batch_size))
-                        log.info('Rounding minibatch size to closest factor of batch size: {}'
-                                 .format(minibatch_size))
-                    param['minibatch_size'] = minibatch_size
-                    param['num_minibatches'] = num_minibatches
-                    param['queue_params']['batch_size'] = minibatch_size
+                        num_minibatches = batch_size / float(minibatch_size)
+                        if num_minibatches % 1 != 0:
+                            num_minibatches = round(num_minibatches)
+                            minibatch_size = batch_size / num_minibatches
+                            log.warning('Minibatch size ({}) does not divide batch size ({}) evenly...'
+                                        .format(minibatch_size, batch_size))
+                            log.info('Rounding minibatch size to closest factor of batch size: {}'
+                                     .format(minibatch_size))
+                        param['minibatch_size'] = minibatch_size
+                        param['num_minibatches'] = num_minibatches
+                        param['queue_params']['batch_size'] = minibatch_size
 
         params[name] = param_list
 
