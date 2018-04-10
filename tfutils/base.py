@@ -1166,12 +1166,12 @@ def train_estimator(cls,
     # initialize db here (need to modify init so load_params can load from different dir, estimator interface limited
     #    when loading and saving to different paths, may need to create a new config)
 
-    trarg['dbinterface'] = DBInterface(sess=None,
-                                   params=param,
-                                   global_step=current_step,
-                                   save_params=param['save_params'],
-                                   load_params=param['load_params'],
-                                   cache_dir=model_dir)
+    #trarg['dbinterface'] = DBInterface(sess=None,
+    #                               params=param,
+    #                               global_step=current_step,
+    #                               save_params=param['save_params'],
+    #                               load_params=param['load_params'],
+    #                               cache_dir=model_dir)
 
 
     log.info('Training beginning ...')
@@ -1180,8 +1180,8 @@ def train_estimator(cls,
                                  current_step))
     
     while current_step < train_steps:
-        if current_step == 0:
-            trarg['dbinterface'].start_time_step = time.time()
+    #    if current_step == 0:
+    #        trarg['dbinterface'].start_time_step = time.time()
         next_checkpoint = min(current_step + steps_per_checkpoint,
                             train_steps)
 
@@ -1197,13 +1197,13 @@ def train_estimator(cls,
         # save to db here
         log.info('Saving eval results to db')
         # set validation only to be True to just save the results and not filters
-        trarg['dbinterface'].save(valid_res=eval_results, validation_only=True)
+        #trarg['dbinterface'].save(valid_res=eval_results, validation_only=True)
         log.info('Done saving eval results to db')
     
     # sync with hosts?
     res = []
-    trarg['dbinterface'].sync_with_host()
-    res.append(trarg['dbinterface'].outrecs)
+    #trarg['dbinterface'].sync_with_host()
+    #res.append(trarg['dbinterface'].outrecs)
     # returning eval results for convenience
     return eval_results, res
 
@@ -1269,20 +1269,20 @@ def create_estimator_fn(use_tpu,
                        # metric_fn_kwargs.update(kw_val)
                        metric_fn_kwargs[kw] = kw_val
                eval_metrics = (metric_fn, metric_fn_kwargs)
-            else:
-                # normal estimators expect dicts
-                eval_dict = {}
-                for k in validation_params.keys():
-                    k_metric_fn_kwargs = metric_fn_kwargs
-                    k_target = k['targets']
-                    for kw in k_target.keys():
+           else:
+               # normal estimators expect dicts
+               eval_dict = {}
+               for k in validation_params.keys():
+                   k_metric_fn_kwargs = metric_fn_kwargs
+                   k_target = k['targets']
+                   for kw in k_target.keys():
                        if kw != 'func':
                            # add any additional kwargs
                            kw_val = k_target[kw]
                            k_metric_fn_kwargs[kw] = kw_val 
                            # k_metric_fn_kwargs.update(kw_val)                         
-                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
-                eval_metrics = eval_dict
+                   eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
+               eval_metrics = eval_dict
 
         if use_tpu:
             return tpu_estimator.TPUEstimatorSpec(
@@ -1315,6 +1315,7 @@ def create_tpu_config(model_dir,
     tpu_grpc_url = tpu_cluster_resolver.get_master()
 
     if iterations_per_loop == -1 or steps_per_checkpoint < iterations_per_loop:
+        log.info('Setting iterations_per_loop to be the same as steps_per_checkpoint')
         iterations_per_loop = steps_per_checkpoint
 
     config = tpu_config.RunConfig(
@@ -1502,6 +1503,7 @@ def train_from_params(save_params,
 
     """
     # use tpu only if a tpu_name has been specified
+    print('TPU_NAME: ', model_params['tpu_name'])
     use_tpu = (model_params.get('tpu_name', None) is not None)
     params, train_args = parse_params('train',
                                       model_params,
