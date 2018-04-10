@@ -700,28 +700,29 @@ class DBInterface(object):
             save_rec['saved_filters'] = True
             save_path = os.path.join(self.cache_dir, 'checkpoint')
             log.info('Saving model with path prefix %s ... ' % save_path)
-            saved_path = self.tf_saver.save(self.sess,
-                                            save_path=save_path,
-                                            global_step=step,
-                                            write_meta_graph=False)
-            log.info('... done saving with path prefix %s' % saved_path)
-            putfs = self.collfs if save_filters_permanent else self.collfs_recent
-            log.info('Putting filters into %s database' % repr(putfs))
-            save_rec['_saver_write_version'] = self.tf_saver._write_version
-            if self.tf_saver._write_version == saver_pb2.SaverDef.V2:
-                file_data = get_saver_pb2_v2_files(saved_path)
-                save_rec['_saver_num_data_files'] = file_data['num_data_files']
-                tarfilepath = saved_path + '.tar'
-                tar = tarfile.open(tarfilepath, 'w')
-                for _f in file_data['files']:
-                    tar.add(_f, arcname=os.path.split(_f)[1])
-                tar.close()
-                with open(tarfilepath, 'rb') as _fp:
-                    outrec = putfs.put(_fp, filename=tarfilepath, **save_rec)
-            else:
-                with open(saved_path, 'rb') as _fp:
-                    outrec = putfs.put(_fp, filename=saved_path, **save_rec)
-            log.info('... done putting filters into database.')
+            if self.sess is not None: # can be None if using estimator
+                saved_path = self.tf_saver.save(self.sess,
+                                                save_path=save_path,
+                                                global_step=step,
+                                                write_meta_graph=False)
+                log.info('... done saving with path prefix %s' % saved_path)
+                putfs = self.collfs if save_filters_permanent else self.collfs_recent
+                log.info('Putting filters into %s database' % repr(putfs))
+                save_rec['_saver_write_version'] = self.tf_saver._write_version
+                if self.tf_saver._write_version == saver_pb2.SaverDef.V2:
+                    file_data = get_saver_pb2_v2_files(saved_path)
+                    save_rec['_saver_num_data_files'] = file_data['num_data_files']
+                    tarfilepath = saved_path + '.tar'
+                    tar = tarfile.open(tarfilepath, 'w')
+                    for _f in file_data['files']:
+                        tar.add(_f, arcname=os.path.split(_f)[1])
+                    tar.close()
+                    with open(tarfilepath, 'rb') as _fp:
+                        outrec = putfs.put(_fp, filename=tarfilepath, **save_rec)
+                else:
+                    with open(saved_path, 'rb') as _fp:
+                        outrec = putfs.put(_fp, filename=saved_path, **save_rec)
+                log.info('... done putting filters into database.')
 
             if not save_filters_permanent:
                 recent_gridfs_files = self.collfs_recent._GridFS__files
@@ -1179,6 +1180,8 @@ def train_estimator(cls,
                                  current_step))
     
     while current_step < train_steps:
+        if current_step == 0:
+            trarg['dbinterface'].start_time_step = time.time()
         next_checkpoint = min(current_step + steps_per_checkpoint,
                             train_steps)
         cls.train(
@@ -1191,6 +1194,7 @@ def train_estimator(cls,
           steps=valid_steps)
         # save to db here
         log.info('Saving eval results to db')
+        # set validation only to be True to just save the results and not filters
         trarg['dbinterface'].save(valid_res=eval_results, validation_only=True)
         log.info('Done saving eval results to db')
     
