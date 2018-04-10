@@ -1156,7 +1156,7 @@ def train_estimator(cls,
     train_steps = param['train_params']['num_steps']
     valid_k = param['validation_params'].keys()[0]
     validation_data_params = param['validation_params'][valid_k]['data_params']
-    valid_steps = validation_data_params['num_steps']
+    valid_steps = param['validation_params'][valid_k]['num_steps']
     train_fn = param['train_params']['data_params']['func'] 
     valid_fn = validation_data_params['func']
     steps_per_checkpoint = param['save_params']['save_filters_freq']
@@ -1218,37 +1218,59 @@ def create_estimator_fn(use_tpu,
     Creates a model_fn for use with tf.Estimator.
     """
     # set up loss params 
-    agg_func = loss_params.get('agg_func', DEFAULT_LOSS_PARAMS['agg_func'])
+    loss_agg_func = loss_params.get('agg_func', DEFAULT_LOSS_PARAMS['agg_func'])
 
     loss_per_case_func = loss_params.get('loss_per_case_func', DEFAULT_LOSS_PARAMS['loss_per_case_func'])
 
     loss_func_kwargs = loss_params.get('loss_func_kwargs', {})
 
-    agg_func_kwargs = loss_params.get('agg_func_kwargs', {})
+    loss_agg_func_kwargs = loss_params.get('agg_func_kwargs', {})
 
     # tells clip optimizer to use tpu
     if opt_params['func'].__name__ == 'ClipOptimizer':
         opt_params['use_tpu'] = use_tpu
 
+    # build params dictionary to be instantiated with the model_fn
+    params_to_pass = {}
+    params_to_pass['model_params'] = model_params
+    params_to_pass['opt_params'] = opt_params
+    params_to_pass['loss_agg_func'] = loss_agg_func
+    params_to_pass['loss_per_case_func'] = loss_per_case_func
+    params_to_pass['loss_func_kwargs'] = loss_func_kwargs
+    params_to_pass['loss_agg_func_kwargs'] = loss_agg_func_kwargs
+    params_to_pass['lr_params'] = lr_params
+
     def model_fn(features, labels, mode, params):
+        model_params = params['model_params']
+        opt_params = params['opt_params']
+        loss_agg_func = params['loss_agg_func']
+        loss_per_case_func = params['loss_per_case_func']
+        loss_func_kwargs = params['loss_func_kwargs']
+        loss_agg_func_kwargs = params['loss_agg_func_kwargs']
+        lr_params = params['lr_params']
+
         model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
-        if use_tpu:
+        if opt_params['use_tpu']:
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
-        model_params, output = get_model_base(input=features, **model_params)
-        loss_args = (features, labels)
+
+        model_func = model_params.pop('func')
+        output = model_func(inputs=features, **model_params)
+        loss_args = (output, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
-        loss = agg_func(loss, **agg_func_kwargs)
+        loss = loss_agg_func(loss, **loss_agg_func_kwargs)
 
         global_step = tf.train.get_global_step()
 
-        _, learning_rate = get_learning_rate(global_step, **lr_params)
+        lr_func = lr_params.pop('func')
+        learning_rate = lr_func(global_step=global_step, **lr_params)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
-            _, optimizer_base = get_optimizer_base(learning_rate, opt_params)
+            opt_func = opt_params.pop('func', ClipOptimizer)
+            optimizer_base = opt_func(learning_rate=learning_rate, **opt_params)
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                train_op = optimizer.minimize(loss, global_step)
+                train_op = optimizer_base.minimize(loss, global_step)
         else:
             train_op = None
 
@@ -1257,7 +1279,7 @@ def create_estimator_fn(use_tpu,
         if mode == tf.estimator.ModeKeys.EVAL:
            num_valid_targets = len(validation_params.keys())
            metric_fn_kwargs = {'labels': labels, 'logits': logits}
-           if use_tpu:
+           if opt_params['use_tpu']:
                assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
                first_valid = validation_params.keys()[0]
                valid_target = first_valid['targets']
@@ -1284,7 +1306,7 @@ def create_estimator_fn(use_tpu,
                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
                eval_metrics = eval_dict
 
-        if use_tpu:
+        if opt_params['use_tpu']:
             return tpu_estimator.TPUEstimatorSpec(
               mode=mode,
               loss=loss,
@@ -1297,7 +1319,7 @@ def create_estimator_fn(use_tpu,
                 train_op=train_op,
                 eval_metrics_ops=eval_metrics)
 
-    return model_fn
+    return model_fn, params_to_pass
 
 def create_tpu_config(model_dir,
                       tpu_name,
@@ -1545,7 +1567,7 @@ def train_from_params(save_params,
         validation_params = param['validation_params']
         save_params = param['save_params']
         # set up estimator func
-        estimator_fn = create_estimator_fn(use_tpu=use_tpu, 
+        estimator_fn, params_to_pass = create_estimator_fn(use_tpu=use_tpu, 
                                            model_params=model_params,
                                            lr_params=lr_params,
                                            opt_params=opt_params,
@@ -1567,11 +1589,12 @@ def train_from_params(save_params,
                                         model_fn=estimator_fn,
                                         config=m_config,
                                         train_batch_size=train_data_params['batch_size'],
-                                        eval_batch_size=validation_data_params['batch_size'])
+                                        eval_batch_size=validation_data_params['batch_size'],
+                                        params=params_to_pass)
 
         else:
             # TO DO need to verify non tpu estimator support
-            estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn)
+            estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn, params=params_to_pass)
 
         return train_estimator(cls=estimator_classifier, param=param, trarg=trarg)
 
@@ -2066,8 +2089,8 @@ def parse_params(mode,
 
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
+                    param['num_minibatches'] = 1
                     if not use_tpu:
-                        param['num_minibatches'] = 1
                         param['minibatch_size'] = param['queue_params']['batch_size']
                         log.info('minibatch_size not specified for training data_params... ' +
                                  'Defaulting minibatch_size to: {} (identical to the batch size).'
@@ -2079,6 +2102,8 @@ def parse_params(mode,
                         if batch_size != minibatch_size:
                             log.info('Minibatching currently not supported on TPU. Setting minibatch size ({}) ' +
                                      'to be original batch size ({}).'.format(minibatch_size, batch_size))
+                        param['minibatch_size'] = batch_size
+                        params['num_minibatches'] = 1
                     else:
                         batch_size = param['queue_params']['batch_size']
                         minibatch_size = param['minibatch_size']
