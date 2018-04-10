@@ -18,11 +18,14 @@ log.setLevel('DEBUG')
 class ClipOptimizer(object):
 
     def __init__(self, optimizer_class, use_tpu=False, clip=True, clip_min=-1.0, clip_max=1.0, trainable_names=None, *optimizer_args, **optimizer_kwargs):
-        if use_tpu:
+        self.use_tpu = use_tpu
+        if self.use_tpu:
             log.info('Passing optimizer class to CrossShardOptimizer')
             self._optimizer = tpu_optimizer.CrossShardOptimizer(optimizer_class(*optimizer_args, **optimizer_kwargs))
         else:
             self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
+            # we do not minibatch in tpu and variables need to have lambda initializers
+            self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
         self.clip = clip
         self.clip_min = clip_min
         self.clip_max = clip_max
@@ -32,7 +35,6 @@ class ClipOptimizer(object):
         self.trainable_names = trainable_names
         self.grads_and_vars = None
 
-        self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
 
     def compute_gradients(self, loss, *args, **kwargs):
         train_vars = None
@@ -127,12 +129,17 @@ class ClipOptimizer(object):
                 internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
-        self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
-        # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
-        with tf.control_dependencies([self.mini_flag]):
-            optimize = self._optimizer.apply_gradients(grads_and_vars,
+        if not self.use_tpu: # we do not minibatch in tpu and variables need to have lambda initializers
+            self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
+            # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
+            with tf.control_dependencies([self.mini_flag]):
+                optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                        global_step=global_step)
         #return [optimize, self.zero_grad()]
+        else:
+            optimize = self._optimizer.apply_gradients(grads_and_vars,
+                                                       global_step=global_step)
+
         return optimize
 
     def zero_grad(self):
@@ -145,15 +152,15 @@ class ClipOptimizer(object):
 
     def minimize(self, loss, global_step):
         train_vars = None
-        if self.trainable_names is not None:
-            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
-            train_vars = []
-            for scope_name in self.trainable_names:
-                new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
-                if len(new_vars) == 0:
-                    raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
-                train_vars.extend(new_vars)
-            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
-        grads_and_vars = self.compute_gradients(loss, var_list=train_vars)
+        #if self.trainable_names is not None:
+        #    log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
+        #    train_vars = []
+        #    for scope_name in self.trainable_names:
+        #        new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
+        #        if len(new_vars) == 0:
+        #            raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
+        #        train_vars.extend(new_vars)
+        #    log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
+        grads_and_vars = self.compute_gradients(loss)
         return self._optimizer.apply_gradients(grads_and_vars,
                                                global_step=global_step)

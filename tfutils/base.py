@@ -1194,6 +1194,7 @@ def train_estimator(cls,
         eval_results = cls.evaluate(
           input_fn=valid_fn,
           steps=valid_steps)
+        log.info('Eval results: %s' %eval_results)
         # save to db here
         log.info('Saving eval results to db')
         # set validation only to be True to just save the results and not filters
@@ -1254,8 +1255,8 @@ def create_estimator_fn(use_tpu,
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
 
         model_func = model_params.pop('func')
-        output = model_func(inputs=features, **model_params)
-        loss_args = (output, labels)
+        logits = model_func(inputs=features, **model_params)
+        loss_args = (logits, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
         loss = loss_agg_func(loss, **loss_agg_func_kwargs)
 
@@ -1282,7 +1283,7 @@ def create_estimator_fn(use_tpu,
            if opt_params['use_tpu']:
                assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
                first_valid = validation_params.keys()[0]
-               valid_target = first_valid['targets']
+               valid_target = validation_params[first_valid]['targets']
                metric_fn = valid_target['func']
                for kw in valid_target.keys():
                    if kw != 'func':
@@ -1525,8 +1526,9 @@ def train_from_params(save_params,
 
     """
     # use tpu only if a tpu_name has been specified
-    print('TPU_NAME: ', model_params['tpu_name'])
     use_tpu = (model_params.get('tpu_name', None) is not None)
+    if use_tpu:
+        log.info('Using tpu: %s' %model_params['tpu_name'])
     params, train_args = parse_params('train',
                                       model_params,
                                       dont_run=dont_run,
