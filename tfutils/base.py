@@ -1157,7 +1157,7 @@ def train_estimator(cls,
     valid_k = param['validation_params'].keys()[0]
     validation_data_params = param['validation_params'][valid_k]['data_params']
     valid_steps = validation_data_params['num_steps']
-    train_fn = param['train_params']['func'] 
+    train_fn = param['train_params']['data_params']['func'] 
     valid_fn = validation_data_params['func']
     steps_per_checkpoint = param['save_params']['save_filters_freq']
 
