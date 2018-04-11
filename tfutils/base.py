@@ -916,89 +916,153 @@ def test_from_params(load_params,
     For documentation, see argument descriptions in train_from_params.
 
     """
+    # use tpu only if a tpu_name has been specified
+    use_tpu = (model_params.get('tpu_name', None) is not None)
+    if use_tpu:
+        log.info('Using tpu: %s' %model_params['tpu_name'])
+
     params, test_args = parse_params('test',
-                                     model_params,
-                                     dont_run=dont_run,
-                                     skip_check=skip_check,
-                                     save_params=save_params,
-                                     load_params=load_params,
-                                     validation_params=validation_params,
-                                     log_device_placement=log_device_placement,
-                                     inter_op_parallelism_threads=inter_op_parallelism_threads)
+                                      model_params,
+                                      dont_run=dont_run,
+                                      skip_check=skip_check,
+                                      save_params=save_params,
+                                      load_params=load_params,
+                                      validation_params=validation_params,
+                                      log_device_placement=log_device_placement,
+                                      inter_op_parallelism_threads=inter_op_parallelism_threads,
+                                      use_tpu=use_tpu)
 
-    with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
-        # create session
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                log_device_placement=log_device_placement,
-                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
-
-        init_op_global = tf.global_variables_initializer()
-        sess.run(init_op_global)
-        init_op_local = tf.local_variables_initializer()
-        sess.run(init_op_local)
-        log.info('Initialized from scratch first')
-
+    
+    # do not need to create sess with estimator interface
+    if use_estimator or use_tpu:
         # For convenience, use list of dicts instead of dict of lists
         _params = [{key: value[i] for (key, value) in params.items()}
                    for i in range(len(params['model_params']))]
         _ttargs = [{key: value[i] for (key, value) in test_args.items()}
                    for i in range(len(params['model_params']))]
 
-        # Build a graph for each distinct model.
-        for param, ttarg in zip(_params, _ttargs):
+        param = _params[0]
+        ttarg = _ttargs[0]
+        # Support only single model
+        assert(len(_params) == 1)
 
-            if not 'cache_dir' in load_params:
-                temp_cache_dir = save_params.get('cache_dir', None)
-                load_params['cache_dir'] = temp_cache_dir
-                log.info('cache_dir not found in load_params, using cache_dir ({}) from save_params'.format(temp_cache_dir))
+        model_params = param['model_params']
+        validation_params = param['validation_params']
+        save_params = param['save_params']
 
-            ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
-            ttarg['dbinterface'].load_rec()
-            ld = ttarg['dbinterface'].load_data
-            assert ld is not None, "No load data found for query, aborting"
-            ld = ld[0]
-            # TODO: have option to reconstitute model_params entirely from
-            # saved object ("revivification")
-            param['model_params']['seed'] = ld['params']['model_params']['seed']
-            cfg_final = ld['params']['model_params']['cfg_final']
-            train_queue_params = ld['params']['train_params']['queue_params']
+        # store a dictionary of estimators, one for each validation params target
+        # since may have a different set of eval steps to run on tpu
+        # if dict of estimators not feasible, can just create one single estimator
+        # and run its predict method multiple times on the same data function in test_estimator (I think)
+        cls_dict = {}
+        for valid_k in validation_params.keys():
+            # set up estimator func
+            valid_target_parameter = validation_params[valid_k]
+            estimator_fn, params_to_pass = create_test_estimator_fn(use_tpu=use_tpu, 
+                                               model_params=model_params,
+                                               target_params=valid_target_parameter)
+            validation_data_params = valid_target_parameter['data_params']
+            eval_val_steps = valid_target_parameter['num_steps']
 
-            (ttarg['validation_targets'],
-             ttarg['queues']) = get_valid_targets_dict(loss_params=None,
-                                                       cfg_final=cfg_final,
-                                                       queue_params=train_queue_params,
-                                                       **param)
+            if use_tpu:
+                # grab tpu name and gcp, etc from model params
+                m_config = create_test_tpu_config(model_dir=save_params.get('cache_dir', ''),
+                                             eval_steps=eval_val_steps,
+                                             tpu_name=model_params.get('tpu_name', None), 
+                                             gcp_project=model_params.get('gcp_project', None), 
+                                             tpu_zone=model_params.get('tpu_zone', DEFAULT_TPU_ZONE), 
+                                             num_shards=model_params.get('num_shards', DEFAULT_NUM_SHARDS),
+                                             iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP))
 
-            # tf.get_variable_scope().reuse_variables()
+                estimator_classifier = tpu_estimator.TPUEstimator(
+                                            use_tpu=True,
+                                            model_fn=estimator_fn,
+                                            config=m_config,
+                                            predict_batch_size=validation_data_params['batch_size'],
+                                            params=params_to_pass)
 
-            param['load_params']['do_restore'] = True
-            param['model_params']['cfg_final'] = cfg_final
+            else:
+                # TO DO need to verify non tpu estimator support
+                estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn, params=params_to_pass)
 
-            prefix = param['model_params']['prefix'] + '/'
-            all_vars = variables._all_saveable_objects()
-            var_list = strip_prefix(prefix, all_vars)
+            cls_dict[valid_k] = estimator_classifier
+        return test_estimator(cls_dict=cls_dict, param=param, ttarg=ttarg)
 
-            ttarg['dbinterface'] = DBInterface(sess=sess,
-                                               params=param,
-                                               var_list=var_list,
-                                               load_params=param['load_params'],
-                                               save_params=param['save_params'])
-            ttarg['dbinterface'].initialize(no_scratch=True)
-            ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
+    else:
+        with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
-        # Convert back to a dictionary of lists
-        params = {key: [param[key] for param in _params]
-                  for key in _params[0].keys()}
-        test_args = {key: [ttarg[key] for ttarg in _ttargs]
-                     for key in _ttargs[0].keys()}
+            # create session
+            sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
+                                                    log_device_placement=log_device_placement,
+                                                    inter_op_parallelism_threads=inter_op_parallelism_threads))
 
-        if dont_run:
-            return test_args
+            init_op_global = tf.global_variables_initializer()
+            sess.run(init_op_global)
+            init_op_local = tf.local_variables_initializer()
+            sess.run(init_op_local)
+            log.info('Initialized from scratch first')
 
-        res = test(sess, **test_args)
-        sess.close()
-        return res
+            # For convenience, use list of dicts instead of dict of lists
+            _params = [{key: value[i] for (key, value) in params.items()}
+                       for i in range(len(params['model_params']))]
+            _ttargs = [{key: value[i] for (key, value) in test_args.items()}
+                       for i in range(len(params['model_params']))]
+
+            # Build a graph for each distinct model.
+            for param, ttarg in zip(_params, _ttargs):
+
+                if not 'cache_dir' in load_params:
+                    temp_cache_dir = save_params.get('cache_dir', None)
+                    load_params['cache_dir'] = temp_cache_dir
+                    log.info('cache_dir not found in load_params, using cache_dir ({}) from save_params'.format(temp_cache_dir))
+
+                ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
+                ttarg['dbinterface'].load_rec()
+                ld = ttarg['dbinterface'].load_data
+                assert ld is not None, "No load data found for query, aborting"
+                ld = ld[0]
+                # TODO: have option to reconstitute model_params entirely from
+                # saved object ("revivification")
+                param['model_params']['seed'] = ld['params']['model_params']['seed']
+                cfg_final = ld['params']['model_params']['cfg_final']
+                train_queue_params = ld['params']['train_params']['queue_params']
+
+                (ttarg['validation_targets'],
+                 ttarg['queues']) = get_valid_targets_dict(loss_params=None,
+                                                           cfg_final=cfg_final,
+                                                           queue_params=train_queue_params,
+                                                           **param)
+
+                # tf.get_variable_scope().reuse_variables()
+
+                param['load_params']['do_restore'] = True
+                param['model_params']['cfg_final'] = cfg_final
+
+                prefix = param['model_params']['prefix'] + '/'
+                all_vars = variables._all_saveable_objects()
+                var_list = strip_prefix(prefix, all_vars)
+
+                ttarg['dbinterface'] = DBInterface(sess=sess,
+                                                   params=param,
+                                                   var_list=var_list,
+                                                   load_params=param['load_params'],
+                                                   save_params=param['save_params'])
+                ttarg['dbinterface'].initialize(no_scratch=True)
+                ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
+
+            # Convert back to a dictionary of lists
+            params = {key: [param[key] for param in _params]
+                      for key in _params[0].keys()}
+            test_args = {key: [ttarg[key] for ttarg in _ttargs]
+                         for key in _ttargs[0].keys()}
+
+            if dont_run:
+                return test_args
+
+            res = test(sess, **test_args)
+            sess.close()
+            return res
 
 
 def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
@@ -1206,7 +1270,53 @@ def train_estimator(cls,
     # returning final eval results for convenience
     return eval_results, res
 
-def create_estimator_fn(use_tpu, 
+def test_estimator(cls_dict,
+                    param,
+                    ttarg):
+
+    # load params query stores path to checkpoint
+    if param['load_params']['do_restore'] and (param['load_params']['query'] is not None):
+        # path to specific checkpoint
+        load_dir = param['load_params']['query']
+    else:
+        # gets latest checkpoint from model_dir
+        load_dir = None
+
+    # can use to filter particular params to save, if not there will set to None and all saved
+    filter_keys = param['save_params'].get('save_to_gfs') 
+
+    ttarg['dbinterface'] = DBInterface(sess=None,
+                                   params=param,
+                                   load_params=param['load_params'])
+
+
+    ttarg['dbinterface'].start_time_step = time.time()
+
+    m_predictions = {}
+    for valid_k in cls_dict.keys():
+        cls = cls_dict[valid_k]
+        validation_data_params = param['validation_params'][valid_k]['data_params']
+        valid_fn = validation_data_params['func']
+        log.info('Starting to evaluate ({}).'.format(valid_k))
+        eval_results = cls.predict(
+          input_fn=valid_fn,
+          predict_keys=filter_keys,
+          checkpoint_path=load_dir)
+        m_predictions[valid_k] = eval_results
+
+    log.info('Saving eval results to database.')
+    # set validation only to be True to just save the results and not filters
+    ttarg['dbinterface'].save(valid_res=m_predictions, validation_only=True)
+    log.info('Done saving eval results to database.')
+    
+    # sync with hosts
+    res = []
+    ttarg['dbinterface'].sync_with_host()
+    res.append(trarg['dbinterface'].outrecs)
+    # returning final eval results for convenience
+    return eval_results, res
+
+def create_train_estimator_fn(use_tpu, 
                         model_params,
                         lr_params,
                         opt_params,
@@ -1214,7 +1324,7 @@ def create_estimator_fn(use_tpu,
                         validation_params):
 
     """
-    Creates a model_fn for use with tf.Estimator.
+    Creates a model_fn for use with tf.Estimator for training and eval.
     """
     # set up loss params 
     loss_agg_func = loss_params.get('agg_func', DEFAULT_LOSS_PARAMS['agg_func'])
@@ -1291,7 +1401,7 @@ def create_estimator_fn(use_tpu,
                        metric_fn_kwargs[kw] = kw_val
                eval_metrics = (metric_fn, metric_fn_kwargs)
            else:
-               # normal estimators expect dicts
+               # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
                eval_dict = {}
                for k in validation_params.keys():
                    k_metric_fn_kwargs = metric_fn_kwargs
@@ -1320,7 +1430,59 @@ def create_estimator_fn(use_tpu,
 
     return model_fn, params_to_pass
 
-def create_tpu_config(model_dir,
+def create_test_estimator_fn(use_tpu, 
+                        model_params,
+                        target_params):
+
+    """
+    Creates a model_fn for use with tf.Estimator for eval only. Uses predict mode.
+    """
+    # build params dictionary to be instantiated with the model_fn
+    params_to_pass = {}
+    params_to_pass['model_params'] = model_params
+    params_to_pass['target_params'] = target_params
+    params_to_pass['use_tpu'] = use_tpu
+
+    def model_fn(features, labels, mode, params):
+        model_params = params['model_params']
+        target_params = params['target_params']
+        target_key = params['target_key']
+        model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
+        if params['use_tpu']:
+            model_params['batch_size'] = params['batch_size'] # per shard batch_size
+
+        model_func = model_params.pop('func')
+        logits = model_func(inputs=features, **model_params)
+
+        predictions = None
+        if mode == tf.estimator.ModeKeys.PREDICT:
+           metric_fn_kwargs = {'labels': labels, 'logits': logits}
+
+           eval_dict = {}
+           k_metric_fn_kwargs = metric_fn_kwargs
+           k_target = target_params['targets']
+           for kw in k_target.keys():
+               if kw != 'func':
+                   # add any additional kwargs
+                   kw_val = k_target[kw]
+                   k_metric_fn_kwargs[kw] = kw_val 
+                   # k_metric_fn_kwargs.update(kw_val)  
+           k_target_func = k_target.pop('func')                       
+           eval_dict['predictions'] = k_target_func(**k_metric_fn_kwargs)
+           predictions = eval_dict
+
+        if params['use_tpu']:
+            return tpu_estimator.TPUEstimatorSpec(
+              mode=mode,
+              predictions=predictions)
+        else:
+            return tf.Estimator.EstimatorSpec(
+                mode=mode,
+                predictions=predictions)
+
+    return model_fn, params_to_pass
+
+def create_train_tpu_config(model_dir,
                       tpu_name,
                       gcp_project,
                       steps_per_checkpoint,
@@ -1336,7 +1498,7 @@ def create_tpu_config(model_dir,
     tpu_grpc_url = tpu_cluster_resolver.get_master()
 
     if iterations_per_loop == -1 or steps_per_checkpoint < iterations_per_loop:
-        log.info('Setting iterations_per_loop to be the same as steps_per_checkpoint')
+        log.info('Setting iterations_per_loop ({}) to be the same as steps_per_checkpoint ({}).'.format(iterations_per_loop, steps_per_checkpoint))
         iterations_per_loop = steps_per_checkpoint
 
     config = tpu_config.RunConfig(
@@ -1347,6 +1509,32 @@ def create_tpu_config(model_dir,
         log_step_count_steps=iterations_per_loop,
         tpu_config=tpu_config.TPUConfig(
             iterations_per_loop=iterations_per_loop,
+            num_shards=num_shards))
+
+    return config
+
+def create_test_tpu_config(model_dir,
+                      eval_steps,
+                      tpu_name,
+                      gcp_project,
+                      tpu_zone=DEFAULT_TPU_ZONE,
+                      num_shards=DEFAULT_NUM_SHARDS,
+                      iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
+
+    tpu_cluster_resolver = (
+        tf.contrib.cluster_resolver.TPUClusterResolver(
+            tpu_names=[tpu_name],
+            zone=tpu_zone,
+            project=gcp_project))
+    tpu_grpc_url = tpu_cluster_resolver.get_master()
+
+    config = tpu_config.RunConfig(
+        master=tpu_grpc_url,
+        evaluation_master=tpu_grpc_url,
+        model_dir=model_dir,
+        log_step_count_steps=iterations_per_loop,
+        tpu_config=tpu_config.TPUConfig(
+            iterations_per_loop=eval_steps,
             num_shards=num_shards))
 
     return config
@@ -1567,7 +1755,7 @@ def train_from_params(save_params,
         validation_params = param['validation_params']
         save_params = param['save_params']
         # set up estimator func
-        estimator_fn, params_to_pass = create_estimator_fn(use_tpu=use_tpu, 
+        estimator_fn, params_to_pass = create_train_estimator_fn(use_tpu=use_tpu, 
                                            model_params=model_params,
                                            lr_params=lr_params,
                                            opt_params=opt_params,
@@ -1576,7 +1764,7 @@ def train_from_params(save_params,
 
         if use_tpu:
             # grab tpu name and gcp, etc from model params
-            m_config = create_tpu_config(model_dir=save_params.get('cache_dir', ''),
+            m_config = create_train_tpu_config(model_dir=save_params.get('cache_dir', ''),
                                          tpu_name=model_params.get('tpu_name', None), 
                                          gcp_project=model_params.get('gcp_project', None), 
                                          steps_per_checkpoint=save_params['save_filters_freq'],
