@@ -936,6 +936,8 @@ def test_from_params(load_params,
     
     # do not need to create sess with estimator interface
     if use_estimator or use_tpu:
+        # use this for tpu and estimator logging
+        tf.logging.set_verbosity(tf.logging.INFO)
         # For convenience, use list of dicts instead of dict of lists
         _params = [{key: value[i] for (key, value) in params.items()}
                    for i in range(len(params['model_params']))]
@@ -1734,6 +1736,8 @@ def train_from_params(save_params,
     
     # do not need to create sess with estimator interface
     if use_estimator or use_tpu:
+        # use this for tpu and estimator logging
+        tf.logging.set_verbosity(tf.logging.INFO)
         # For convenience, use list of dicts instead of dict of lists
         _params = [{key: value[i] for (key, value) in params.items()}
                    for i in range(len(params['model_params']))]
