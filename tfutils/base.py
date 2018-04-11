@@ -915,6 +915,7 @@ def test_from_params(load_params,
 
     For documentation, see argument descriptions in train_from_params.
 
+    CAUTION: for tpu and estimators, test_from_params is UNtested.
     """
     # use tpu only if a tpu_name has been specified
     use_tpu = (model_params.get('tpu_name', None) is not None)
@@ -1221,6 +1222,7 @@ def train_estimator(cls,
 
     model_dir = param['save_params'].get('cache_dir', '')
     train_steps = param['train_params']['num_steps']
+    # only single targets during eval mode
     valid_k = param['validation_params'].keys()[0]
     validation_data_params = param['validation_params'][valid_k]['data_params']
     valid_steps = param['validation_params'][valid_k]['num_steps']
@@ -1228,6 +1230,8 @@ def train_estimator(cls,
     valid_fn = validation_data_params['func']
     steps_per_checkpoint = param['save_params']['save_filters_freq']
 
+    train_hooks = param['train_params'].get('hooks')
+    valid_hooks = param['validation_params'][valid_k].get('hooks')
 
     current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
     # initialize db here (currently no support for loading and saving to different places. May need to modify init so load_params can load from different dir, estimator interface limited
@@ -1253,12 +1257,13 @@ def train_estimator(cls,
 
         log.info('Training until step %d' % next_checkpoint)
         cls.train(
-        input_fn=train_fn, max_steps=next_checkpoint)
+        input_fn=train_fn, max_steps=next_checkpoint, hooks=train_hooks)
         current_step = next_checkpoint
 
         log.info('Starting to evaluate.')
         eval_results = cls.evaluate(
           input_fn=valid_fn,
+          hooks=valid_hooks,
           steps=valid_steps)
         log.info('Saving eval results to database.')
         # set validation only to be True to just save the results and not filters
@@ -1284,9 +1289,6 @@ def test_estimator(cls_dict,
         # gets latest checkpoint from model_dir
         load_dir = None
 
-    # can use to filter particular params to save, if not there will set to None and all saved
-    filter_keys = param['save_params'].get('save_to_gfs') 
-
     ttarg['dbinterface'] = DBInterface(sess=None,
                                    params=param,
                                    load_params=param['load_params'])
@@ -1298,11 +1300,15 @@ def test_estimator(cls_dict,
     for valid_k in cls_dict.keys():
         cls = cls_dict[valid_k]
         validation_data_params = param['validation_params'][valid_k]['data_params']
+        # can use to filter particular params to save, if not there will set to None and all saved
+        filter_keys = param['validation_params'][valid_k].get('keys_to_save') 
+        session_hooks = param['validation_params'][valid_k].get('hooks') 
         valid_fn = validation_data_params['func']
         log.info('Starting to evaluate ({}).'.format(valid_k))
         eval_results = cls.predict(
           input_fn=valid_fn,
           predict_keys=filter_keys,
+          hooks=session_hooks,
           checkpoint_path=load_dir)
         m_predictions[valid_k] = eval_results
 
@@ -1448,7 +1454,6 @@ def create_test_estimator_fn(use_tpu,
     def model_fn(features, labels, mode, params):
         model_params = params['model_params']
         target_params = params['target_params']
-        target_key = params['target_key']
         model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
         if params['use_tpu']:
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
