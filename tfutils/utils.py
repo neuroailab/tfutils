@@ -243,7 +243,7 @@ def sonify(arg, memo=None, skip=False):
         rval.update({'objname': objname,
                      'modname': modname})
         rval = sonify(rval, skip=skip)
-    elif isinstance(arg, object):
+    elif isinstance(arg, object): # primarily for sessionrunhooks
         objname = arg.__class__.__name__
         rval = {}
         rval.update({'objname': objname})
