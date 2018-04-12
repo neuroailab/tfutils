@@ -244,7 +244,10 @@ def sonify(arg, memo=None, skip=False):
                      'modname': modname})
         rval = sonify(rval, skip=skip)
     else:
-        raise TypeError('sonify', arg)
+        objname = arg.__name__
+        rval = {}
+        rval.update({'objname': objname})
+        # raise TypeError('sonify', arg)
 
     memo[id(rval)] = rval
     return rval
