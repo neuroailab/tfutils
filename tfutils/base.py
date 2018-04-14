@@ -1228,7 +1228,13 @@ def train_estimator(cls,
     valid_steps = param['validation_params'][valid_k]['num_steps']
     train_fn = param['train_params']['data_params']['func'] 
     valid_fn = validation_data_params['func']
-    steps_per_checkpoint = param['save_params']['save_filters_freq']
+    steps_per_eval = param['save_params']['save_valid_freq']
+
+    iterations_per_loop = model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP)
+
+    if steps_per_eval < iterations_per_loop: # eval steps cannot be less than TPU iterations
+        log.info('Setting save_valid_freq ({}) to be the same as iterations_per_loop ({}).'.format(steps_per_eval, iterations_per_loop))
+        steps_per_eval = iterations_per_loop
 
     train_hooks = param['train_params'].get('hooks')
     valid_hooks = param['validation_params'][valid_k].get('hooks')
@@ -1252,13 +1258,13 @@ def train_estimator(cls,
 
     trarg['dbinterface'].start_time_step = time.time()
     while current_step < train_steps:
-        next_checkpoint = min(current_step + steps_per_checkpoint,
+        next_eval = min(current_step + steps_per_eval,
                             train_steps)
 
-        log.info('Training until step %d' % next_checkpoint)
+        log.info('Training until step %d' % next_eval)
         cls.train(
-        input_fn=train_fn, max_steps=next_checkpoint, hooks=train_hooks)
-        current_step = next_checkpoint
+        input_fn=train_fn, max_steps=next_eval, hooks=train_hooks)
+        current_step = next_eval
 
         log.info('Starting to evaluate.')
         eval_results = cls.evaluate(
@@ -1490,6 +1496,7 @@ def create_test_estimator_fn(use_tpu,
     return model_fn, params_to_pass
 
 def create_train_tpu_config(model_dir,
+                      model_params,
                       tpu_name,
                       gcp_project,
                       steps_per_checkpoint,
@@ -1504,15 +1511,17 @@ def create_train_tpu_config(model_dir,
             project=gcp_project))
     tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-    if iterations_per_loop == -1 or steps_per_checkpoint < iterations_per_loop:
+    if iterations_per_loop == -1 or (steps_per_checkpoint is not None and steps_per_checkpoint < iterations_per_loop):
         log.info('Setting iterations_per_loop ({}) to be the same as steps_per_checkpoint ({}).'.format(iterations_per_loop, steps_per_checkpoint))
         iterations_per_loop = steps_per_checkpoint
+        model_params['iterations_per_loop'] = iterations_per_loop
 
     config = tpu_config.RunConfig(
         master=tpu_grpc_url,
         evaluation_master=tpu_grpc_url,
         model_dir=model_dir,
         save_checkpoints_steps=steps_per_checkpoint,
+        save_checkpoints_secs=None,
         log_step_count_steps=iterations_per_loop,
         tpu_config=tpu_config.TPUConfig(
             iterations_per_loop=iterations_per_loop,
@@ -1776,10 +1785,11 @@ def train_from_params(save_params,
             m_config = create_train_tpu_config(model_dir=save_params.get('cache_dir', ''),
                                          tpu_name=model_params.get('tpu_name', None), 
                                          gcp_project=model_params.get('gcp_project', None), 
-                                         steps_per_checkpoint=save_params['save_filters_freq'],
+                                         steps_per_checkpoint=save_params.get('save_filters_freq', None),
                                          tpu_zone=model_params.get('tpu_zone', DEFAULT_TPU_ZONE), 
                                          num_shards=model_params.get('num_shards', DEFAULT_NUM_SHARDS),
-                                         iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP))
+                                         iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
+                                         model_params=model_params)
 
             estimator_classifier = tpu_estimator.TPUEstimator(
                                         use_tpu=True,
@@ -1790,7 +1800,7 @@ def train_from_params(save_params,
                                         params=params_to_pass)
 
         else:
-            # TO DO need to verify non tpu estimator support
+            # TO DO need to verify non tpu estimator support, may be good to use RunConfig here
             estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn, params=params_to_pass)
 
         return train_estimator(cls=estimator_classifier, param=param, trarg=trarg)
