@@ -1377,8 +1377,17 @@ def create_train_estimator_fn(use_tpu,
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
 
         model_func = model_params.pop('func')
-        logits = model_func(inputs=features, **model_params)
-        loss_args = (logits, labels)
+
+        outputs = model_func(inputs=features, **model_params)
+        if isinstance(outputs, dict):
+            logit_key = model_params.get('logit_key')
+            if logit_key is None:
+                logit_key = 'logits'
+            logits = outputs[logit_key]
+        else:
+            logits = outputs
+            
+        loss_args = (outputs, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
         loss = loss_agg_func(loss, **loss_agg_func_kwargs)
 
@@ -1465,7 +1474,14 @@ def create_test_estimator_fn(use_tpu,
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
 
         model_func = model_params.pop('func')
-        logits = model_func(inputs=features, **model_params)
+        outputs = model_func(inputs=features, **model_params)
+        if isinstance(outputs, dict):
+            logit_key = model_params.get('logit_key')
+            if logit_key is None:
+                logit_key = 'logits'
+            logits = outputs[logit_key]
+        else:
+            logits = outputs
 
         predictions = None
         if mode == tf.estimator.ModeKeys.PREDICT:
