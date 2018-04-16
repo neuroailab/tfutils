@@ -288,9 +288,11 @@ class DBInterface(object):
                 # get variables to restore
                 if self.load_params['load_param_dict'] is None:
                     restore_vars = self.get_restore_vars(cache_filename)
+                    restore_vars_names = [var.name for var in restore_vars]
                     log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars])+'\n'+str(len(restore_vars)))
                     tf_saver_restore = tf.train.Saver(restore_vars)
                 else:
+                    restore_vars = self.get_restore_vars(cache_filename)
                     all_variables = tf.global_variables() + tf.local_variables()
                     # associate values with actual variables
                     load_var_dict = {}
@@ -299,22 +301,28 @@ class DBInterface(object):
                             if var.name.split(':')[0] == value:
                                load_var_dict[key] = var
                                break 
-                    restore_vars = list(load_var_dict.values()) 
+                    restore_vars = list(load_var_dict.values())
+                    restore_vars_names = list(load_var_dict.keys())
                     log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars])+'\n'+str(len(restore_vars)))
                     tf_saver_restore = tf.train.Saver(load_var_dict) 
                 # tensorflow restore
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
                 tf_saver_restore.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
-                all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
-                unrestorable_vars = [var for var in all_variables \
-                        if var not in restore_vars] # compute list of variables not restored
+                if self.load_params['var_load_assert'] is not None:
+                    self.load_params['var_load_assert'](
+                            restore_vars_names,
+                            self.all_vars)
+                unrestorable_vars = [var for var in self.all_vars \
+                            if var not in restore_vars_names] # compute list of variables not restored
                 #unrestored_vars = [var for var in restore_vars \
                 #        if var not in all_variables]
-                log.info('New Unrestorable Vars:\n'+str([var.name for var in unrestorable_vars])+'\n'+str(len(unrestorable_vars)))
+                log.info('New Unrestorable Vars:\n'+str([var for var in unrestorable_vars])+'\n'+str(len(unrestorable_vars)))
                 #log.info('Unrestored Vars:\n'+str([var.name for var in unrestored_vars])+'\n'+str(len(unrestored_vars)))
-                #raise NotImplementedError
-                self.sess.run(tf.variables_initializer(unrestorable_vars)) # initialize variables not restored
+                all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
+                unrestored_vars = [var for var in all_variables \
+                        if var not in restore_vars]
+                self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
             init_op_global = tf.global_variables_initializer()
