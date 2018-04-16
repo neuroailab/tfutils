@@ -1228,8 +1228,19 @@ def train_estimator(cls,
     valid_steps = param['validation_params'][valid_k]['num_steps']
     train_fn = param['train_params']['data_params']['func'] 
     valid_fn = validation_data_params['func']
-    steps_per_eval = param['save_params']['save_valid_freq']
+    steps_per_eval = param['save_params'].get('save_valid_freq')
+    if steps_per_eval is None:
+        steps_per_eval = param['save_params']['save_filters_freq']
+    else:
+        save_filters_freq = param['save_params'].get('save_filters_freq')
+        if save_filters_freq is not None:
+            # these need to be the same right now because estimator loads
+            # from last checkpoint after validating
+            assert(steps_per_eval == save_filters_freq)
+        else:
+            param['save_params']['save_filters_freq'] = steps_per_eval
 
+    model_params = param['model_params']
     iterations_per_loop = model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP)
 
     if steps_per_eval < iterations_per_loop: # eval steps cannot be less than TPU iterations
