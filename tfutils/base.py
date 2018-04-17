@@ -907,6 +907,7 @@ def test_from_params(load_params,
                      dont_run=False,
                      skip_check=False,
                      inter_op_parallelism_threads=40,
+                     use_estimator=False
                      ):
     """
     Main testing interface function.
@@ -982,6 +983,7 @@ def test_from_params(load_params,
                                             use_tpu=True,
                                             model_fn=estimator_fn,
                                             config=m_config,
+                                            train_batch_size=validation_data_params['batch_size'],
                                             predict_batch_size=validation_data_params['batch_size'],
                                             params=params_to_pass)
 
@@ -1308,6 +1310,7 @@ def test_estimator(cls_dict,
 
     ttarg['dbinterface'] = DBInterface(sess=None,
                                    params=param,
+                                   save_params=param['save_params'],
                                    load_params=param['load_params'])
 
 
@@ -1327,7 +1330,7 @@ def test_estimator(cls_dict,
           predict_keys=filter_keys,
           hooks=session_hooks,
           checkpoint_path=load_dir)
-        m_predictions[valid_k] = eval_results
+        m_predictions[valid_k] = list(eval_results)
 
     log.info('Saving eval results to database.')
     # set validation only to be True to just save the results and not filters
