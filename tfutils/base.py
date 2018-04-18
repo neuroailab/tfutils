@@ -521,7 +521,8 @@ class DBInterface(object):
         try:
             count_recent = collfs_recent.find(query).count()
         except Exception as inst:
-            raise er.OperationFailure(inst.args[0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
+            #raise er.OperationFailure(inst.args[0] + "\n Is your dbname too long? Mongo requires that dbnames be no longer than 64 characters.")
+            count_recent = 0
         if count_recent > 0:  # get latest that matches query
             ckpt_record_recent = coll_recent.find(query, sort=[('uploadDate', -1)])[0]
             # use the record with latest timestamp
