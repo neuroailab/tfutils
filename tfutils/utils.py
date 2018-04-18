@@ -364,7 +364,7 @@ def aggregate_outputs(tower_outputs):
 
     """
     if len(tower_outputs) <= 1:
-        return tower_outputs
+        return tower_outputs[0]
 
     # Tensorflow tensors are concatenated along axis 0.
     elif isinstance(tower_outputs[0], tf.Tensor):
