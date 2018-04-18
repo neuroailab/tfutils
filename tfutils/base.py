@@ -598,6 +598,10 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
+            for k, v in train_res.items():
+                if k not in ['optimizer', '__grads__'] and \
+                        isinstance(v, np.ndarray) and len(v) > 1:
+                    train_res[k] = np.mean(v)
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
                     if k not in ['optimizer', '__grads__'] and k not in self.save_to_gfs]
             message += ', '.join(msg2)
@@ -914,11 +918,13 @@ def test_from_params(load_params,
                                      inter_op_parallelism_threads=inter_op_parallelism_threads)
 
     with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
-
         # create session
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                log_device_placement=log_device_placement,
-                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
+        gpu_options = tf.GPUOptions(allow_growth=True)
+        sess = tf.Session(config=tf.ConfigProto(
+            allow_soft_placement=True,
+            gpu_options=gpu_options,
+            log_device_placement=log_device_placement,
+            inter_op_parallelism_threads=inter_op_parallelism_threads))
 
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
@@ -1359,10 +1365,14 @@ def train_from_params(save_params,
 
         # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
         gpu_options = tf.GPUOptions(allow_growth=True)
-        sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True,
-                                                gpu_options=gpu_options,
-                                                log_device_placement=log_device_placement,
-                                                inter_op_parallelism_threads=inter_op_parallelism_threads))
+        sess = tf.Session(config=tf.ConfigProto(
+            allow_soft_placement=True,
+            gpu_options=gpu_options,
+            log_device_placement=log_device_placement,
+            inter_op_parallelism_threads=inter_op_parallelism_threads,
+            #operation_timeout_in_ms=2000, 
+            #intra_op_parallelism_threads=8
+            ))
 
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
