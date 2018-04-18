@@ -363,11 +363,15 @@ def aggregate_outputs(tower_outputs):
         {'tensor': <tf.Tensor 'concat:0' shape=(100, 10) dtype=float32>}
 
     """
-    if len(tower_outputs) == 1:
-        return tower_outputs.pop()
+    if len(tower_outputs) <= 1:
+        return tower_outputs
 
     # Tensorflow tensors are concatenated along axis 0.
     elif isinstance(tower_outputs[0], tf.Tensor):
+        if tower_outputs[0].shape.ndims == 0:
+            for i, output in enumerate(tower_outputs):
+                tower_outputs[i] = tf.expand_dims(output, axis=0)
+            tf.concat(tower_outputs, axis=0)
         return tf.concat(tower_outputs, axis=0)
 
     # Dict values are aggregated by key.
@@ -376,13 +380,12 @@ def aggregate_outputs(tower_outputs):
                 for key in tower_outputs[0]}
 
     # List elements are aggregated by index.
-    elif isinstance(tower_outputs[0], collections.Iterable):
-        return [aggregate_outputs(out) for out in zip(*tower_outputs)]
+    elif isinstance(tower_outputs[0], list):
+        return [aggregate_outputs(out) for out in tower_outputs]
 
-    # All other types are not supported.
-    raise TypeError('Aggregation not supported for type: {}'.
-                    format(type(tower_outputs[0])))
-
+    # Simply return all other types
+    else:
+        return tower_outputs
 
 def get_loss(inputs,
              outputs,
