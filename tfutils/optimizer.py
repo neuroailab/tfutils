@@ -91,18 +91,22 @@ class ClipOptimizer(object):
                 var) for var in self.var_list]
 
         # Add 1/num_minibatches * minibatch_grads to current gradients.
-        def _add_op(gv_tmp, mgv_tmp):
-            return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
-        def _set_op(gv_tmp, mgv_tmp):
-            return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
-        #grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
-        #         for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
-        #grads = tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _add_op(), fn2 = lambda: _set_op())
 
-        grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _set_op(gv[0], mgv[0]), fn2 = lambda: _add_op(gv[0], mgv[0]))
-                 for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
-        with tf.control_dependencies(grads):
-            self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
+        if num_minibatches>1:
+            def _add_op(gv_tmp, mgv_tmp):
+                return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
+            def _set_op(gv_tmp, mgv_tmp):
+                return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
+            #grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
+            #         for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
+            #grads = tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _add_op(), fn2 = lambda: _set_op())
+            grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _set_op(gv[0], mgv[0]), fn2 = lambda: _add_op(gv[0], mgv[0]))
+                     for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
+
+            with tf.control_dependencies(grads):
+                self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
+        else:
+            grads = [mgv[0] for mgv in minibatch_grads]
         grads = [(only_grad, gv[1])
                  for (gv, only_grad) in zip(self.grads_and_vars, grads)]
         return self.mini_flag, grads
