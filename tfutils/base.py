@@ -1391,8 +1391,15 @@ def create_train_estimator_fn(use_tpu,
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
 
         model_func = model_params.pop('func')
-        logits = model_func(inputs=features, **model_params)
-        loss_args = (logits, labels)
+
+        outputs = model_func(inputs=features, **model_params)
+        if isinstance(outputs, dict):
+            logit_key = model_params.get('logit_key', 'logits')
+            logits = outputs[logit_key]
+        else:
+            logits = outputs
+            
+        loss_args = (outputs, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
         loss = loss_agg_func(loss, **loss_agg_func_kwargs)
 
@@ -1421,12 +1428,20 @@ def create_train_estimator_fn(use_tpu,
                first_valid = validation_params.keys()[0]
                valid_target = validation_params[first_valid]['targets']
                metric_fn = valid_target['func']
+               if isinstance(outputs, dict):
+                   for kw in outputs.keys():
+                       if kw != logit_key:
+                           kw_val = outputs[kw]
+                           metric_fn_kwargs.update({kw:kw_val})
+
                for kw in valid_target.keys():
-                   if kw != 'func':
-                       # add any additional kwargs
-                       kw_val = valid_target[kw]
-                       # metric_fn_kwargs.update(kw_val)
-                       metric_fn_kwargs[kw] = kw_val
+                   v = valid_target[kw]
+                   if isinstance(v, dict):
+                       for kw1 in v.keys():
+                           # add any additional kwargs
+                           kw_val = v[kw1]
+                           metric_fn_kwargs.update({kw1: kw_val})
+                           #metric_fn_kwargs[kw] = kw_val
                eval_metrics = (metric_fn, metric_fn_kwargs)
            else:
                # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
@@ -1479,7 +1494,14 @@ def create_test_estimator_fn(use_tpu,
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
 
         model_func = model_params.pop('func')
-        logits = model_func(inputs=features, **model_params)
+        outputs = model_func(inputs=features, **model_params)
+        if isinstance(outputs, dict):
+            logit_key = model_params.get('logit_key')
+            if logit_key is None:
+                logit_key = 'logits'
+            logits = outputs[logit_key]
+        else:
+            logits = outputs
 
         predictions = None
         if mode == tf.estimator.ModeKeys.PREDICT:
