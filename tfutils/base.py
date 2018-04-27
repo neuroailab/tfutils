@@ -1465,11 +1465,11 @@ def create_train_estimator_fn(use_tpu,
               train_op=train_op,
               eval_metrics=eval_metrics)
         else:
-            return tf.Estimator.EstimatorSpec(
+            return tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=loss,
                 train_op=train_op,
-                eval_metrics_ops=eval_metrics)
+                eval_metric_ops=eval_metrics)
 
     return model_fn, params_to_pass
 
@@ -1780,7 +1780,7 @@ def train_from_params(save_params,
                                       learning_rate_params=learning_rate_params,
                                       log_device_placement=log_device_placement,
                                       inter_op_parallelism_threads=inter_op_parallelism_threads,
-                                      use_tpu=use_tpu)
+                                      use_tpu=use_tpu or use_estimator)
 
 
     
@@ -1799,8 +1799,6 @@ def train_from_params(save_params,
         # Support only single model
         assert(len(_params) == 1)
         train_data_params = param['train_params']['data_params']
-        valid_k = param['validation_params'].keys()[0]
-        validation_data_params = param['validation_params'][valid_k]['data_params']
 
         model_params = param['model_params']
         lr_params = param['learning_rate_params']
@@ -1817,6 +1815,8 @@ def train_from_params(save_params,
                                            validation_params=validation_params)
 
         if use_tpu:
+            valid_k = param['validation_params'].keys()[0]
+            validation_data_params = param['validation_params'][valid_k]['data_params']
             # grab tpu name and gcp, etc from model params
             m_config = create_train_tpu_config(model_dir=save_params.get('cache_dir', ''),
                                          tpu_name=model_params.get('tpu_name', None), 
