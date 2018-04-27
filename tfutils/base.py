@@ -1225,32 +1225,37 @@ def train_estimator(cls,
     model_dir = param['save_params'].get('cache_dir', '')
     train_steps = param['train_params']['num_steps']
     # only single targets during eval mode
-    valid_k = param['validation_params'].keys()[0]
-    validation_data_params = param['validation_params'][valid_k]['data_params']
-    valid_steps = param['validation_params'][valid_k]['num_steps']
-    train_fn = param['train_params']['data_params']['func'] 
-    valid_fn = validation_data_params['func']
+    need_val = len(param['validation_params'].keys())>0
     steps_per_eval = param['save_params'].get('save_valid_freq')
-    if steps_per_eval is None:
-        steps_per_eval = param['save_params']['save_filters_freq']
-    else:
-        save_filters_freq = param['save_params'].get('save_filters_freq')
-        if save_filters_freq is not None:
-            # these need to be the same right now because estimator loads
-            # from last checkpoint after validating
-            assert(steps_per_eval == save_filters_freq)
+    if need_val:
+        valid_k = param['validation_params'].keys()[0]
+        validation_data_params = param['validation_params'][valid_k]['data_params']
+        valid_steps = param['validation_params'][valid_k]['num_steps']
+        valid_fn = validation_data_params['func']
+        if steps_per_eval is None:
+            steps_per_eval = param['save_params']['save_filters_freq']
         else:
-            param['save_params']['save_filters_freq'] = steps_per_eval
+            save_filters_freq = param['save_params'].get('save_filters_freq')
+            if save_filters_freq is not None:
+                # these need to be the same right now because estimator loads
+                # from last checkpoint after validating
+                assert(steps_per_eval == save_filters_freq)
+            else:
+                param['save_params']['save_filters_freq'] = steps_per_eval
+    train_fn = param['train_params']['data_params']['func'] 
 
     model_params = param['model_params']
     iterations_per_loop = model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP)
 
-    if steps_per_eval < iterations_per_loop: # eval steps cannot be less than TPU iterations
+    if (steps_per_eval is None) or (steps_per_eval < iterations_per_loop): # eval steps cannot be less than TPU iterations
         log.info('Setting save_valid_freq ({}) to be the same as iterations_per_loop ({}).'.format(steps_per_eval, iterations_per_loop))
         steps_per_eval = iterations_per_loop
 
     train_hooks = param['train_params'].get('hooks')
-    valid_hooks = param['validation_params'][valid_k].get('hooks')
+    if need_val:
+        valid_hooks = param['validation_params'][valid_k].get('hooks')
+    else:
+        valid_hooks = None
 
     current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
     # initialize db here (currently no support for loading and saving to different places. May need to modify init so load_params can load from different dir, estimator interface limited
@@ -1279,15 +1284,16 @@ def train_estimator(cls,
         input_fn=train_fn, max_steps=next_eval, hooks=train_hooks)
         current_step = next_eval
 
-        log.info('Starting to evaluate.')
-        eval_results = cls.evaluate(
-          input_fn=valid_fn,
-          hooks=valid_hooks,
-          steps=valid_steps)
-        log.info('Saving eval results to database.')
-        # set validation only to be True to just save the results and not filters
-        trarg['dbinterface'].save(valid_res={valid_k: eval_results}, validation_only=True)
-        log.info('Done saving eval results to database.')
+        if need_val:
+            log.info('Starting to evaluate.')
+            eval_results = cls.evaluate(
+              input_fn=valid_fn,
+              hooks=valid_hooks,
+              steps=valid_steps)
+            log.info('Saving eval results to database.')
+            # set validation only to be True to just save the results and not filters
+            trarg['dbinterface'].save(valid_res={valid_k: eval_results}, validation_only=True)
+            log.info('Done saving eval results to database.')
     
     # sync with hosts
     res = []
@@ -1815,8 +1821,12 @@ def train_from_params(save_params,
                                            validation_params=validation_params)
 
         if use_tpu:
-            valid_k = param['validation_params'].keys()[0]
-            validation_data_params = param['validation_params'][valid_k]['data_params']
+            if len(param['validation_params'].keys())>0:
+                valid_k = param['validation_params'].keys()[0]
+                validation_data_params = param['validation_params'][valid_k]['data_params']
+                eval_batch_size = validation_data_params['batch_size']
+            else:
+                eval_batch_size = None
             # grab tpu name and gcp, etc from model params
             m_config = create_train_tpu_config(model_dir=save_params.get('cache_dir', ''),
                                          tpu_name=model_params.get('tpu_name', None), 
@@ -1832,7 +1842,7 @@ def train_from_params(save_params,
                                         model_fn=estimator_fn,
                                         config=m_config,
                                         train_batch_size=train_data_params['batch_size'],
-                                        eval_batch_size=validation_data_params['batch_size'],
+                                        eval_batch_size=eval_batch_size,
                                         params=params_to_pass)
 
         else:
