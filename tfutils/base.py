@@ -1602,18 +1602,18 @@ def get_model(inputs, model_params, param=None, trarg=None):
             trarg['train_targets']['optimizer'] = optimizer
         if 'learning_rate' not in trarg['train_targets']:
             trarg['train_targets']['learning_rate'] = learning_rate
-        if 'grad_stats' not in trarg['train_targets']:
-            trarg['train_targets']['grad_stats'] = {}
-            for gv in grads:
-                var_name = gv[1].name
-                var_grad = gv[0]
-                if var_grad is None:
-                    trarg['train_targets']['grad_stats'][var_name] = None
-                else:
-                    trarg['train_targets']['grad_stats'][var_name] = {}
-                    trarg['train_targets']['grad_stats'][var_name]['mean'] = tf.reduce_mean(tf.abs(var_grad))
-                    for c in [50, 75, 95]:
-                        trarg['train_targets']['grad_stats'][var_name]['prec' + str(c)] = percentile(tf.abs(var_grad), q=c)
+        #if 'grad_stats' not in trarg['train_targets']:
+        #    trarg['train_targets']['grad_stats'] = {}
+        #    for gv in grads:
+        #        var_name = gv[1].name
+        #        var_grad = gv[0]
+        #        if var_grad is None:
+        #            trarg['train_targets']['grad_stats'][var_name] = None
+        #        else:
+        #            trarg['train_targets']['grad_stats'][var_name] = {}
+        #            trarg['train_targets']['grad_stats'][var_name]['mean'] = tf.reduce_mean(tf.abs(var_grad))
+        #            for c in [50, 75, 95]:
+        #                trarg['train_targets']['grad_stats'][var_name]['prec' + str(c)] = percentile(tf.abs(var_grad), q=c)
 
         param['model_params'] = model_params
         return param['model_params'], output, param, trarg
