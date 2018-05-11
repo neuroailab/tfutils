@@ -620,7 +620,8 @@ class DBInterface(object):
             log.info(message)
 
         if validation_only:
-            rec['validates'] = self.load_data[0]['_id']
+	    if self.load_data is not None:
+		rec['validates'] = self.load_data[0]['_id']
             save_filters_permanent = save_filters_tmp = False
             need_to_save = True
         else:
@@ -931,29 +932,32 @@ def test_from_params(load_params,
         _ttargs = [{key: value[i] for (key, value) in test_args.items()}
                    for i in range(len(params['model_params']))]
 
+	from_ckpt = _params[0]['load_params'].get('from_ckpt')
+	use_ckpt = (from_ckpt is not None)
+
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
 
-            if not 'cache_dir' in load_params:
-                temp_cache_dir = save_params.get('cache_dir', None)
-                load_params['cache_dir'] = temp_cache_dir
-                log.info('cache_dir not found in load_params, using cache_dir ({}) from save_params'.format(temp_cache_dir))
-
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
-            ttarg['dbinterface'].load_rec()
-            ld = ttarg['dbinterface'].load_data
-            assert ld is not None, "No load data found for query, aborting"
-            ld = ld[0]
-            # TODO: have option to reconstitute model_params entirely from
-            # saved object ("revivification")
-            param['model_params']['seed'] = ld['params']['model_params']['seed']
-            cfg_final = ld['params']['model_params']['cfg_final']
-            train_queue_params = ld['params']['train_params']['queue_params']
+	    if not use_ckpt:
+                ttarg['dbinterface'].load_rec()
+                ld = ttarg['dbinterface'].load_data
+                assert ld is not None, "No load data found for query, aborting"
+                ld = ld[0]
+                # TODO: have option to reconstitute model_params entirely from
+                # saved object ("revivification")
+                param['model_params']['seed'] = ld['params']['model_params']['seed']
+                cfg_final = ld['params']['model_params']['cfg_final']
+                load_queue_params = ld['params']['train_params']['queue_params']
+	    else:
+		first_targ = param['validation_params'].keys()[0]
+		load_queue_params = param['validation_params'][first_targ]['queue_params']
+		cfg_final = param['model_params'].get('cfg_final', {})
 
             (ttarg['validation_targets'],
              ttarg['queues']) = get_valid_targets_dict(loss_params=None,
                                                        cfg_final=cfg_final,
-                                                       queue_params=train_queue_params,
+                                                       queue_params=load_queue_params,
                                                        **param)
 
             # tf.get_variable_scope().reuse_variables()
