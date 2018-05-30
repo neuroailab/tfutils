@@ -13,6 +13,26 @@ def initializer(kind='xavier', *args, **kwargs):
         init = getattr(tf, kind + '_initializer')(*args, **kwargs)
     return init
 
+def batchnorm_corr(inputs, is_training, decay = 0.999, epsilon = 1e-3):
+
+    scale = tf.get_variable(name = 'scale', shape = [inputs.get_shape()[-1]], initializer = tf.ones_initializer(), trainable=True)
+    beta = tf.get_variable(name = 'beta', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=True)
+    pop_mean = tf.get_variable(name = 'bn_mean', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=False)
+    pop_var = tf.get_variable(name = 'bn_var', shape = [inputs.get_shape()[-1]], initializer = tf.ones_initializer(), trainable=False)
+
+    if is_training:
+        batch_mean, batch_var = tf.nn.moments(inputs, list(range(inputs.get_shape().ndims - 1)))
+        train_mean = tf.assign(pop_mean, pop_mean * decay + batch_mean * (1 - decay))
+        train_var = tf.assign(pop_var, pop_var * decay + batch_var * (1 - decay))
+
+        with tf.control_dependencies([train_mean, train_var]):
+            output = tf.nn.batch_normalization(inputs,
+                batch_mean, batch_var, beta, scale, epsilon)
+    else:
+        output = tf.nn.batch_normalization(inputs,
+            pop_mean, pop_var, beta, scale, epsilon)
+
+    return output
 
 def conv(inp,
          out_depth,
@@ -33,8 +53,8 @@ def conv(inp,
          name='conv'
          ):
 
-    BATCH_NORM_DECAY = 0.9
-    BATCH_NORM_EPSILON = 1e-5
+    # BATCH_NORM_DECAY = 0.9
+    # BATCH_NORM_EPSILON = 1e-5
     
     # assert out_shape is not None
     if weight_decay is None:
@@ -68,27 +88,28 @@ def conv(inp,
     output = tf.nn.bias_add(conv, biases, name=name)
 
     if batch_norm:
-        # if activation is none, should use zeros; else ones
-        if init_zero is None:
-            init_zero = True if activation is None else False
-        if init_zero: 
-            gamma_init = tf.zeros_initializer()
-        else:
-            gamma_init = tf.ones_initializer()
+        # # if activation is none, should use zeros; else ones
+        # if init_zero is None:
+        #     init_zero = True if activation is None else False
+        # if init_zero: 
+        #     gamma_init = tf.zeros_initializer()
+        # else:
+        #     gamma_init = tf.ones_initializer()
 
-        axis = 1 if data_format == 'channels_first' else 3
-        output = tf.layers.batch_normalization(inputs=output,
-                                               axis=axis,
-                                               momentum=BATCH_NORM_DECAY,
-                                               epsilon=BATCH_NORM_EPSILON,
-                                               center=True,
-                                               scale=True,
-                                               training=is_training,
-                                               trainable=True,
-                                               fused=True,
-                                               gamma_initializer=gamma_init,
-                                               name="post_conv_BN")
+        # axis = 1 if data_format == 'channels_first' else 3
+        # output = tf.layers.batch_normalization(inputs=output,
+        #                                        axis=axis,
+        #                                        momentum=BATCH_NORM_DECAY,
+        #                                        epsilon=BATCH_NORM_EPSILON,
+        #                                        center=True,
+        #                                        scale=True,
+        #                                        training=is_training,
+        #                                        trainable=True,
+        #                                        fused=True,
+        #                                        gamma_initializer=gamma_init,
+        #                                        name="post_conv_BN")
 
+        output = batchnorm_corr(output, is_training=is_training, decay = 0.999, epsilon = 1e-3)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
