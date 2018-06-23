@@ -45,6 +45,7 @@ from tensorflow.contrib.tpu.python.tpu import tpu_config
 from tensorflow.contrib.tpu.python.tpu import tpu_estimator
 from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
+import pdb
 
 
 logging.basicConfig()
@@ -1275,6 +1276,23 @@ def train_estimator(cls,
                                  current_step))
 
     trarg['dbinterface'].start_time_step = time.time()
+
+    tpu_validate_first = param['train_params'].get('tpu_validate_first', False)
+    def do_tpu_validation():
+        log.info('Starting to evaluate.')
+        eval_results = cls.evaluate(
+          input_fn=valid_fn,
+          hooks=valid_hooks,
+          steps=valid_steps)
+        log.info('Saving eval results to database.')
+        trarg['dbinterface'].save(valid_res={valid_k: eval_results}, validation_only=True)
+        log.info('Done saving eval results to database.')
+
+        return eval_results
+
+    if tpu_validate_first:
+        eval_results = do_tpu_validation()
+
     while current_step < train_steps:
         next_eval = min(current_step + steps_per_eval,
                             train_steps)
@@ -1285,15 +1303,7 @@ def train_estimator(cls,
         current_step = next_eval
 
         if need_val:
-            log.info('Starting to evaluate.')
-            eval_results = cls.evaluate(
-              input_fn=valid_fn,
-              hooks=valid_hooks,
-              steps=valid_steps)
-            log.info('Saving eval results to database.')
-            # set validation only to be True to just save the results and not filters
-            trarg['dbinterface'].save(valid_res={valid_k: eval_results}, validation_only=True)
-            log.info('Done saving eval results to database.')
+            eval_results = do_tpu_validation()
     
     # sync with hosts
     res = []
@@ -1438,7 +1448,10 @@ def create_train_estimator_fn(use_tpu,
                    for kw in outputs.keys():
                        if kw != logit_key:
                            kw_val = outputs[kw]
-                           metric_fn_kwargs.update({kw:kw_val})
+                           new_kw = kw
+                           if isinstance(new_kw, int):
+                               new_kw = 'i%i' % new_kw
+                           metric_fn_kwargs.update({new_kw:kw_val})
 
                for kw in valid_target.keys():
                    v = valid_target[kw]
@@ -1544,6 +1557,7 @@ def create_train_tpu_config(model_dir,
                       steps_per_checkpoint,
                       tpu_zone=DEFAULT_TPU_ZONE,
                       num_shards=DEFAULT_NUM_SHARDS,
+                      keep_checkpoint_max=5,
                       iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
 
     tpu_cluster_resolver = (
@@ -1565,6 +1579,7 @@ def create_train_tpu_config(model_dir,
         model_dir=model_dir,
         save_checkpoints_steps=steps_per_checkpoint,
         save_checkpoints_secs=None,
+        keep_checkpoint_max=keep_checkpoint_max,
         log_step_count_steps=iterations_per_loop,
         tpu_config=tpu_config.TPUConfig(
             iterations_per_loop=iterations_per_loop,
@@ -1835,6 +1850,7 @@ def train_from_params(save_params,
                                          steps_per_checkpoint=save_params.get('save_filters_freq', None),
                                          tpu_zone=model_params.get('tpu_zone', DEFAULT_TPU_ZONE), 
                                          num_shards=model_params.get('num_shards', DEFAULT_NUM_SHARDS),
+                                         keep_checkpoint_max=save_params.get('checkpoint_max', 5),
                                          iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
                                          model_params=model_params)
 
