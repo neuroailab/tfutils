@@ -1542,7 +1542,7 @@ def create_train_tpu_config(model_dir,
 
     tpu_cluster_resolver = (
         tf.contrib.cluster_resolver.TPUClusterResolver(
-            tpu_names=[tpu_name],
+            tpu=[tpu_name],
             zone=tpu_zone,
             project=gcp_project))
     tpu_grpc_url = tpu_cluster_resolver.get_master()
@@ -1575,7 +1575,7 @@ def create_test_tpu_config(model_dir,
 
     tpu_cluster_resolver = (
         tf.contrib.cluster_resolver.TPUClusterResolver(
-            tpu_names=[tpu_name],
+            tpu=[tpu_name],
             zone=tpu_zone,
             project=gcp_project))
     tpu_grpc_url = tpu_cluster_resolver.get_master()
