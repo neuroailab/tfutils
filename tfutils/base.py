@@ -1432,7 +1432,7 @@ def get_valid_targets_dict(validation_params,
         scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
             _mp, voutputs = get_model(vinputs, model_params)
-            check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
+            #check_model_equivalence(_mp['cfg_final'], cfg_final, scope_name)
             tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = get_validation_target(vinputs, voutputs,
                                                                                     **validation_params[vtarg])
