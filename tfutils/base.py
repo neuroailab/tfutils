@@ -41,10 +41,12 @@ from tfutils.utils import (sonify,
 
 if 'TFUTILS_LOGFILE' in os.environ:
     logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
+    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
 else:
     logging.basicConfig()
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
+log.info("TESTING LOGGING")
 
 """
 TODO:

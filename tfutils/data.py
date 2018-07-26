@@ -15,7 +15,12 @@ from tensorflow.contrib.learn.python.learn.datasets.mnist import read_data_sets
 
 from tfutils.utils import isstring
 
-logging.basicConfig()
+if 'TFUTILS_LOGFILE' in os.environ:
+    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
+    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
+else:
+    logging.basicConfig()
+
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 

@@ -19,7 +19,11 @@ from tensorflow.python import DType
 from tensorflow.python.client import device_lib
 # from tfutils.error import RepoIsDirtyError
 
-logging.basicConfig()
+if 'TFUTILS_LOGFILE' in os.environ:
+    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
+    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
+else:
+    logging.basicConfig()
 log = logging.getLogger('tfutils')
 
 
