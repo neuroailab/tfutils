@@ -161,7 +161,8 @@ def sonify(arg, memo=None):
         mod = inspect.getmodule(arg)
         modname = mod.__name__
         objname = arg.__name__
-        rval = version_check_and_info(mod)
+        #rval = version_check_and_info(mod)
+        rval = {}
         rval.update({'objname': objname,
                      'modname': modname})
         rval = sonify(rval)
