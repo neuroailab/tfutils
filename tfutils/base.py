@@ -357,6 +357,7 @@ class DBInterface(object):
                 log.info('Restored Vars:\n' + str(restore_names))
                 tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
+                #tf.train.export_meta_graph(filename='/mnt/fs1/mrowca/curious_model.meta')
                 log.info('... done restoring.')
 
                 # Reinitialize all other, unrestored vars.
