@@ -1061,7 +1061,8 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
 
     # Compute final targets (includes zeroing gradient accumulator variable)
 
-    return sess.run(train_targets)
+    run_options = tf.RunOptions(report_tensor_allocations_upon_oom = True)
+    return sess.run(train_targets, options=run_options)
 
 
 def train(sess,
