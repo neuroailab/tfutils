@@ -984,7 +984,7 @@ def test_from_params(load_params,
             ld = ld[0]
             # TODO: have option to reconstitute model_params entirely from
             # saved object ("revivification")
-            is_rename = False
+            is_rename = 'agent_params' in ld['params']
             if is_rename:
                 ld = rename_interaction_utils(ld)
             param['model_params']['seed'] = ld['params']['model_params']['seed']
