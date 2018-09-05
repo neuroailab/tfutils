@@ -6,11 +6,17 @@ performing minibatching (accumulating and aggregating
 gradients for multiple batches before applying a gradient update).
 
 """
+import os
 import copy
 import tensorflow as tf
 import logging
 
-logging.basicConfig()
+if 'TFUTILS_LOGFILE' in os.environ:
+    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
+    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
+else:
+    logging.basicConfig()
+
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 

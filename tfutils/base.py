@@ -40,9 +40,14 @@ from tfutils.utils import (sonify,
                    get_saver_pb2_v2_files,
                    strip_prefix_from_name)
 
-logging.basicConfig()
+if 'TFUTILS_LOGFILE' in os.environ:
+    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
+    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
+else:
+    logging.basicConfig()
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
+log.info("TESTING LOGGING")
 
 """
 TODO:
@@ -1875,7 +1880,7 @@ def parse_params(mode,
 
             assert len(set(s['exp_id'] for s in params[key])) == num_models
 
-# Prepare run_args to be passed to `base.(train|test)(**run_args)`.
+    # Prepare run_args to be passed to `base.(train|test)(**run_args)`.
     run_args = {
         'queues': num_models * [None],
         'dbinterface': num_models * [None],
