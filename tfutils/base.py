@@ -286,9 +286,9 @@ class DBInterface(object):
             if self.load_data is not None:
                 rec, cache_filename = self.load_data
                 # get variables to restore
-                if self.load_params['load_param_dict'] is None:
+                if self.load_params.get('load_param_dict', None) is None:
                     restore_vars = self.get_restore_vars(cache_filename)
-                    restore_vars_names = [var.name for var in restore_vars]
+                    restore_vars_names = [var.name.split(':')[0] for var in restore_vars]
                     log.info('Restored Vars:\n'+str([restore_var.name for restore_var in restore_vars])+'\n'+str(len(restore_vars)))
                     tf_saver_restore = tf.train.Saver(restore_vars)
                 else:
@@ -309,7 +309,7 @@ class DBInterface(object):
                 log.info('Restoring variables from record %s (step %d)...' % (str(rec['_id']), rec['step']))
                 tf_saver_restore.restore(self.sess, cache_filename)
                 log.info('... done restoring.')
-                if self.load_params['var_load_assert'] is not None:
+                if self.load_params.get('var_load_assert', None) is not None:
                     self.load_params['var_load_assert'](
                             restore_vars_names,
                             self.all_vars)
@@ -354,6 +354,8 @@ class DBInterface(object):
             var_shape = curr_var.get_shape().as_list()
             if var_shape == saved_shapes[saved_var_name]:
                 restore_vars.append(curr_var)
+            else:
+                print(curr_var.name, var_shape, saved_shapes[saved_var_name])
         return restore_vars
 
     @property
