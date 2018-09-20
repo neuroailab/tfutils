@@ -99,10 +99,7 @@ class ClipOptimizer(object):
             return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
         def _set_op(gv_tmp, mgv_tmp):
             return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
-        #grads = [(gv[0].assign_add(tf.divide(mgv[0], num_minibatches)), gv[1])
-        #         for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
-        #grads = tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _add_op(), fn2 = lambda: _set_op())
-        grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), fn1 = lambda: _set_op(gv[0], mgv[0]), fn2 = lambda: _add_op(gv[0], mgv[0]))
+        grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), lambda: _set_op(gv[0], mgv[0]), lambda: _add_op(gv[0], mgv[0]))
                  for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
         with tf.control_dependencies(grads):
             self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
@@ -128,7 +125,8 @@ class ClipOptimizer(object):
         """
         self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
         # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
-        with tf.control_dependencies([self.mini_flag]):
+        extra_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies([self.mini_flag] + extra_ops):
             optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                        global_step=global_step)
         #return [optimize, self.zero_grad()]
