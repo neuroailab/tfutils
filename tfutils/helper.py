@@ -1,6 +1,15 @@
 import argparse
 from tfutils.utils import frozendict, format_devices
+import logging
 
+
+if 'TFUTILS_LOGFILE' in os.environ:
+    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
+    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
+else:
+    logging.basicConfig()
+log = logging.getLogger('tfutils')
+log.setLevel('DEBUG')
 
 DEFAULT_DONT_RUN = False
 DEFAULT_SKIP_CHECK = False
@@ -165,12 +174,12 @@ def parse_params(mode,
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
                     param['num_minibatches'] = 1
-                    param['minibatch_size'] = param['queue_params']['batch_size']
+                    param['minibatch_size'] = param['data_params']['batch_size']
                     log.info('minibatch_size not specified for training data_params... ' +
                              'Defaulting minibatch_size to: {} (identical to the batch size).'
-                             .format(param['queue_params']['batch_size']))
+                             .format(param['data_params']['batch_size']))
                 else:
-                    batch_size = param['queue_params']['batch_size']
+                    batch_size = param['data_params']['batch_size']
                     minibatch_size = param['minibatch_size']
                     assert minibatch_size <= batch_size, (
                            'Minibatch size cannot be larger than batch size.')
@@ -185,7 +194,7 @@ def parse_params(mode,
                                  .format(minibatch_size))
                     param['minibatch_size'] = minibatch_size
                     param['num_minibatches'] = num_minibatches
-                    param['queue_params']['batch_size'] = minibatch_size
+                    param['data_params']['batch_size'] = minibatch_size
 
         params[name] = param_list
 
@@ -212,7 +221,6 @@ def parse_params(mode,
 
     # Prepare run_args to be passed to `base.(train|test)(**run_args)`.
     run_args = {
-        'queues': num_models * [None],
         'dbinterface': num_models * [None],
         'validation_targets': [dict() for _ in range(num_models)]}
 

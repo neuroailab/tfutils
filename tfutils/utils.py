@@ -17,14 +17,6 @@ import git
 import tensorflow as tf
 from tensorflow.python import DType
 from tensorflow.python.client import device_lib
-# from tfutils.error import RepoIsDirtyError
-
-if 'TFUTILS_LOGFILE' in os.environ:
-    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
-    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
-else:
-    logging.basicConfig()
-log = logging.getLogger('tfutils')
 
 
 def isstring(x):

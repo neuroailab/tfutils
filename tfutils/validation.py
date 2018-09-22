@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import tqdm
 from tfutils.helper import check_model_equivalence
 from tfutils.train import get_model
 
@@ -40,7 +41,6 @@ def get_validation_target(vinputs, voutputs,
 def get_valid_targets_dict(validation_params,
                            model_params,
                            loss_params,
-                           queue_params,
                            cfg_final=None,
                            **params):
     """Helper function for creating validation target operations.
@@ -49,7 +49,6 @@ def get_valid_targets_dict(validation_params,
 
     """
     valid_targets_dict = OrderedDict()
-    queues = []
     model_params = copy.deepcopy(model_params)
     # model_params.pop('train', None)  # hackety-hack
     model_params['train'] = False
@@ -59,10 +58,7 @@ def get_valid_targets_dict(validation_params,
         cfg_final = model_params['cfg_final']
     assert 'seed' in model_params
     for vtarg in validation_params:
-        queue_params = validation_params[vtarg].get('queue_params', queue_params)
-        _, queue, vinputs = get_data(queue_params=queue_params,
-                                     **validation_params[vtarg]['data_params'])
-        queues.extend(queue)
+        _, vinputs = get_data(**validation_params[vtarg]['data_params'])
         # scope_name = 'validation/%s' % vtarg
         scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
@@ -74,7 +70,7 @@ def get_valid_targets_dict(validation_params,
                         vinputs, voutputs,
                         **validation_params[vtarg])
 
-    return valid_targets_dict, queues
+    return valid_targets_dict
 
 
 def run_all_validations(

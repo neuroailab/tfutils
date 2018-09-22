@@ -1,5 +1,5 @@
 from tfutils.db_interface import DBInterface
-from tfutils.helper import parse_params
+from tfutils.helper import parse_params, log
 from tfutils.validation import run_all_validations, get_valid_targets_dict
 
 
@@ -114,13 +114,11 @@ def test_from_params(load_params,
             # saved object ("revivification")
             param['model_params']['seed'] = ld['params']['model_params']['seed']
             cfg_final = ld['params']['model_params']['cfg_final']
-            train_queue_params = ld['params']['train_params']['queue_params']
 
-            (ttarg['validation_targets'], ttarg['queues']) = \
+            ttarg['validation_targets'] = \
                     get_valid_targets_dict(
                         loss_params=None,
                         cfg_final=cfg_final,
-                        queue_params=train_queue_params,
                         **param)
 
             # tf.get_variable_scope().reuse_variables()

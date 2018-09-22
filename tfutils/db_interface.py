@@ -2,6 +2,9 @@ import pymongo
 from pymongo import errors as er
 import gridfs
 from tfutils.utils import strip_prefix_from_name
+from tfutils.helper import log
+import tarfile
+import cPickle
 
 
 def verify_pb2_v2_files(cache_prefix, ckpt_record):
@@ -140,81 +143,7 @@ class DBInterface(object):
             - params (dict)
                 Describing all parameters of experiment
             - save_params (dict)
-                Describing the parameters need to construct the save database, and
-                control saving.  These include:
-                    - host (str)
-                        Hostname where database connection lives
-                    - port (int)
-                        Port where database connection lives
-                    - dbname (str)
-                        Name of database for storage
-                    - collname (str)
-                        Name of collection for storage
-                    - exp_id (str)
-                        Experiment id descriptor
-                        NOTE: the variables host/port/dbname/coll/exp_id control
-                        the location of the saved data for the run, in order of
-                        increasing specificity.  When choosing these, note that:
-                            1.  If a given host/port/dbname/coll/exp_id already has saved checkpoints,
-                                then any new call to start training with these same location variables
-                                will start to train from the most recent saved checkpoint.  If you mistakenly
-                                try to start training a new model with different variable names, or structure,
-                                from that existing checkpoint, an error will be raised, as the model will be
-                                incompatiable with the saved variables.
-                            2.  When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb
-                                queries only operate over a single collection.  So if you want to analyze
-                                results from a bunch of experiments together using mongod queries, you should
-                                put them all in the same collection, but with different exp_ids.  If, on the
-                                other hand, you never expect to analyze data from two experiments together,
-                                you can put them in different collections or different databases.  Choosing
-                                between putting two experiments in two collections in the same database
-                                or in two totally different databases will depend on how you want to organize
-                                your results and is really a matter of preference.
-                    - do_save (bool, default: True)
-                        Whether to save to database
-                    - save_initial_filters (bool, default: True)
-                        Whether to save initial model filters at step = 0,
-                    - save_metrics_freq (int, default: 5)
-                        How often to store train results to database
-                    - save_valid_freq (int, default: 3000)
-                        How often to calculate and store validation results
-                                                to database
-                    - save_filters_freq (int, default: 30000)
-                        How often to save filter values to database
-                    - cache_filters_freq (int, default: 3000)
-                        How often to cache filter values locally and save
-                        to ___RECENT database
-                    - cache_max_num (int, default: 6)
-                        Maximal number of cached filters to keep in __RECENT database
-                    - cache_dir (str, default: None)
-                        Path where caches will be saved locally. If None, will default to
-                        ~/.tfutils/<host:post>/<dbname>/<collname>/<exp_id>.
             - load_params (dict)
-                Similar to save_params, if you want loading to happen from a different
-                location than where saving occurs.   Parameters include:
-                    - host (str)
-                        Hostname where database connection lives
-                    - port (int)
-                        Port where database connection lives
-                    - dbname (str)
-                        Name of database for storage
-                    - collname (str)
-                        Name of collection for storage
-                    - exp_id (str)
-                        Experiment id descriptor
-                    - do_restore (bool, default: True)
-                        Whether to restore from saved model
-                    - load_query (dict)
-                        mongodb query describing how to load from loading database
-                    - from_ckpt (string)
-                        Path to load from a TensorFlow checkpoint (instead of from the db)
-                    - to_restore (list of strings or a regex/callable which returns strings)
-                        Specifies which variables should be loaded from the checkpoint.
-                        Any variables not specified here will be reinitialized.
-                    - load_param_dict (dict)
-                        A dictionary whose keys are the names of the variables that are to be loaded
-                        from the checkpoint, and the values are the names of the variables of the model
-                        that you want to restore with the value of the corresponding checkpoint variable.
             - sess (tesorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
