@@ -27,40 +27,6 @@ else:
 log = logging.getLogger('tfutils')
 
 
-class CoordinatedThread(threading.Thread):
-    """A thread class coordinated by tf.train.Coordinator."""
-
-    def __init__(self, coord=None, group=None, target=None, name=None, args=(), kwargs={}):
-        # threading.Thread.__init__(
-            # self, group=group, target=target, name=name, args=args,
-            # kwargs=kwargs)
-        super(CoordinatedThread, self).__init__(
-            group=None, target=target, name=name, args=args, kwargs=kwargs)
-        self._coord = coord
-        self._target = target
-        self._args = args
-        self._kwargs = kwargs
-
-    def run(self):
-        """Run the thread's main activity.
-
-        You may override this method in a subclass. The standard run() method
-        invokes the callable object passed to the object's constructor as the
-        target argument, if any, with sequential and keyword arguments taken
-        from the args and kwargs arguments, respectively.
-
-        """
-        try:
-            if self._target:
-                self._target(*self._args, **self._kwargs)
-        except Exception as error:
-            self._coord.request_stop(error)
-        finally:
-            # Avoid a refcycle if the thread is running a function with
-            # an argument that has a member that points to the thread.
-            del self._target, self._args, self._kwargs
-
-
 def isstring(x):
     try:
         x + ''
@@ -167,101 +133,6 @@ def git_info(repo):
             'active_branch_in_origin': active_branch_in_origin,
             'commit_in_log': commit_in_log}
     return info
-
-
-def make_mongo_safe(_d):
-    """Make a json-izable actually safe for insertion into Mongo.
-
-    Args:
-        _d (dict): a dictionary to make safe for Mongo.
-
-    """
-    klist = _d.keys()[:]
-    for _k in klist:
-        if hasattr(_d[_k], 'keys'):
-            make_mongo_safe(_d[_k])
-        if not isinstance(_k, str):
-            _d[str(_k)] = _d.pop(_k)
-        _k = str(_k)
-        if '.' in _k:
-            _d[_k.replace('.', '___')] = _d.pop(_k)
-
-
-def sonify(arg, memo=None, skip=False):
-    """Return version of arg that can be trivally serialized to json format.
-
-    Args:
-        arg (object): an argument to sonify.
-        memo (dict, optional): A dictionary to contain args. Defaults to None.
-        skip (bool, optional): Skip git repo info check. Defaults to False.
-
-    Returns:
-        Sonified return argument.
-
-    Raises:
-        TypeError: Cannot sonify argument type.
-
-    """
-    if memo is None:
-        memo = {}
-    if id(arg) in memo:
-        rval = memo[id(arg)]
-
-    if isinstance(arg, ObjectId):
-        rval = arg
-    elif isinstance(arg, datetime.datetime):
-        rval = arg
-    elif isinstance(arg, DType):
-        rval = arg
-    elif isinstance(arg, np.floating):
-        rval = float(arg)
-    elif isinstance(arg, np.integer):
-        rval = int(arg)
-    elif isinstance(arg, (list, tuple)):
-        rval = type(arg)([sonify(ai, memo, skip) for ai in arg])
-    elif isinstance(arg, collections.OrderedDict):
-        rval = collections.OrderedDict([(sonify(k, memo, skip),
-                                         sonify(v, memo, skip))
-                                        for k, v in arg.items()])
-    elif isinstance(arg, dict):
-        rval = dict([(sonify(k, memo, skip), sonify(v, memo, skip))
-                     for k, v in arg.items()])
-    elif isinstance(arg, (basestring, float, int, type(None))):
-        rval = arg
-    elif isinstance(arg, np.ndarray):
-        if arg.ndim == 0:
-            rval = sonify(arg.sum(), skip=skip)
-        else:
-            rval = map(sonify, arg)  # N.B. memo None
-    # -- put this after ndarray because ndarray not hashable
-    elif arg in (True, False):
-        rval = int(arg)
-    elif callable(arg):
-        mod = inspect.getmodule(arg)
-        modname = mod.__name__
-        objname = arg.__name__
-        if not skip:
-            rval = version_check_and_info(mod)
-        else:
-            rval = {}
-        rval.update({'objname': objname,
-                     'modname': modname})
-        rval = sonify(rval, skip=skip)
-    else:
-        raise TypeError('sonify', arg)
-
-    memo[id(rval)] = rval
-    return rval
-
-
-def jsonize(x):
-    """Return version of x that can be serialized trivally to json format."""
-    try:
-        json.dumps(x)
-    except TypeError:
-        return sonify(x)
-    else:
-        return x
 
 
 def get_available_gpus():
@@ -453,40 +324,6 @@ def get_loss_dict(*args, **kwargs):
     return {name: get_loss(*args, **kwargs)}
 
 
-def verify_pb2_v2_files(cache_prefix, ckpt_record):
-    file_data = get_saver_pb2_v2_files(cache_prefix)
-    ndf = file_data['num_data_files']
-    sndf = ckpt_record['_saver_num_data_files']
-    assert ndf == sndf, (ndf, sndf)
-
-
-def get_saver_pb2_v2_files(prefix):
-    dirn, pref = os.path.split(prefix)
-    pref = pref + '.'
-    files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
-                   os.listdir(dirn))
-    indexf = pref + 'index'
-    assert indexf in files, (prefix, indexf, files)
-    notindexfiles = [_f for _f in files if _f != indexf]
-    p = re.compile(pref + 'data-([\d]+)-of-([\d]+)$')
-    total0 = None
-    fns = []
-    for f in notindexfiles:
-        match = p.match(f)
-        assert match, (f, prefix)
-        thisf, total = map(int, match.groups())
-        if total0 is None:
-            total0 = total
-        else:
-            assert total == total0, (f, total, total0)
-        fns.append(thisf)
-    fns = list(set(fns))
-    fns.sort()
-    assert fns == range(total0), (fns, total0)
-    files = [os.path.join(dirn, f) for f in files]
-    file_data = {'files': files, 'num_data_files': total0}
-    return file_data
-
 
 def identity_func(x):
     if not hasattr(x, 'keys'):
@@ -578,3 +415,14 @@ class frozendict(collections.Mapping):
                 h ^= hash((key, value))
             self._hash = h
         return self._hash
+
+
+def predict(step, results):
+    if not hasattr(results['output'], '__iter__'):
+        outputs = [results['outputs']]
+    else:
+        outputs = results['outputs']
+
+    preds = [tf.argmax(output, 1) for output in outputs]
+
+    return preds
