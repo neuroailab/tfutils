@@ -1,32 +1,26 @@
 from __future__ import absolute_import, division, print_function
 
-import os
-import re
-import sys
 import time
 import importlib
 import json
 import copy
 
-from bson.objectid import ObjectId
 import tensorflow as tf
-from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.ops import variables
 import numpy as np
 
 import tfutils.utils as utils
-from tfutils.optimizer import ClipOptimizer
-from tfutils.error import HiLossError, NoGlobalStepError, NoChangeError
-from tfutils.utils import strip_prefix, aggregate_outputs
+from tfutils.error import HiLossError, NoChangeError
+from tfutils.utils import strip_prefix
 from tfutils.db_interface import DBInterface
 from tfutils.helper import \
         parse_params, get_params, \
+        get_data, get_model, get_loss, \
         DEFAULT_PARAMS, DEFAULT_TRAIN_THRES_LOSS, \
-        split_input, log
+        split_input, log, get_model, DEFAULT_LOOP_PARAMS
 from tfutils.validation import run_all_validations, get_valid_targets_dict
 
 DEFAULT_HOST = '/cpu:0'
-DEFAULT_LOOP_PARAMS = frozendict()
 
 
 def train_from_params(
@@ -474,185 +468,3 @@ def train(sess,
 
     sess.close()
     return res
-
-
-def get_data(func, **data_params):
-    inputs = func(**data_params)
-    data_params['func'] = func
-    return data_params, inputs
-
-
-def get_model_base(input, func, seed=0, train=False, **model_params):
-    model_params['seed'] = seed
-    model_params['train'] = train
-    outputs, cfg_final = func(inputs=input,
-                              **model_params)
-    model_params['func'] = func
-    model_params['cfg_final'] = cfg_final
-    return model_params, outputs
-
-
-def get_model(inputs, model_params, param=None, trarg=None):
-    """Return model and any other targets (loss + optimizer) specified.
-
-    Args:
-        inputs (tf.Operation): Model inputs
-        model_params (dict): Specifies model configuration and must contain:
-            'devices' (list): device specs (e.g. '/gpu:0')
-            'train' (bool): whether getting model for training
-        param (None, optional): Description.
-        trarg (None, optional): Description.
-
-    Returns:
-        tuple: Description.
-
-    """
-    with tf.variable_scope(tf.get_variable_scope()):
-
-        tower_outputs = []
-        devices = model_params['devices']
-        num_gpus = model_params['num_gpus']
-        multi_gpu_inputs = split_input(inputs, num_gpus)
-        # DEFAULT: Prepare loss and optimizer if training.
-        if model_params['train']:
-            assert param and trarg is not None
-
-            tower_losses = []
-            tower_grads = []
-
-            (param['learning_rate_params'],
-             learning_rate) = get_learning_rate(trarg['global_step'],
-                                                **param['learning_rate_params'])
-            (param['optimizer_params'],
-             optimizer_base) = get_optimizer(learning_rate,
-                                             param['optimizer_params'])
-
-        # Distribute graph across desired devices.
-        for device, each_input in zip(devices, multi_gpu_inputs):
-            with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
-
-                model_params, output = get_model_base(each_input, **model_params)
-                tower_outputs.append(output)
-
-                tf.get_variable_scope().reuse_variables()
-
-                # Get loss and optimizer if training
-                if model_params['train']:
-                    param['loss_params'], loss = get_loss(
-                            each_input, output, 
-                            **param['loss_params'])
-
-                    tf.get_variable_scope().reuse_variables()
-
-                    grad = optimizer_base.compute_gradients(loss)
-                    tower_losses.append(loss)
-                    tower_grads.append(grad)
-
-    # Gather and aggregate outputs on the host (CPU).
-    output = aggregate_outputs(tower_outputs)
-
-    # DEFAULT: Accumulate and average gradients on the host (CPU).
-    if model_params['train']:
-
-        if param['train_params'].get('targets'):
-            ttargs = copy.deepcopy(param['train_params']['targets'])
-            ttargs_func = ttargs.pop('func')
-            ttarg = ttargs_func(inputs, output, **ttargs)
-            trarg['train_targets'].update(ttarg)
-
-        # Aggregate loss.
-        loss = tf.reduce_mean(tf.stack(tower_losses))
-
-        # Aggregate and accumulate gradients.
-        minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        mini_flag, grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
-        #grads = minibatch_grads
-
-        # Apply accumulated gradients.
-        optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
-
-        # Prepare train_targets
-        if 'loss' not in trarg['train_targets']:
-            trarg['train_targets']['loss'] = loss
-        if '__grads__' not in trarg['train_targets']:
-            trarg['train_targets']['__grads__'] = mini_flag
-            pass
-        if 'optimizer' not in trarg['train_targets']:
-            trarg['train_targets']['optimizer'] = optimizer
-        if 'learning_rate' not in trarg['train_targets']:
-            trarg['train_targets']['learning_rate'] = learning_rate
-
-        param['model_params'] = model_params
-        return param['model_params'], output, param, trarg
-    else:
-        return model_params, output
-
-
-def get_loss(train_inputs,
-             train_outputs,
-             targets=DEFAULT_PARAMS['loss_params']['targets'],
-             agg_func=DEFAULT_PARAMS['loss_params']['agg_func'],
-             loss_per_case_func=DEFAULT_PARAMS['loss_params']['loss_per_case_func'],
-             **loss_params):
-    loss_params['targets'] = targets
-    loss_params['agg_func'] = agg_func
-    loss_params['loss_per_case_func'] = loss_per_case_func
-    loss = utils.get_loss(train_inputs, train_outputs, **loss_params)
-    return loss_params, loss
-
-
-def get_learning_rate(global_step,
-                      func=tf.train.exponential_decay,
-                      **learning_rate_params):
-    learning_rate = func(global_step=global_step,
-                         **learning_rate_params)
-    learning_rate_params['func'] = func
-    return learning_rate_params, learning_rate
-
-
-def get_optimizer(
-        learning_rate,
-        optimizer_params,
-        ):
-    if not optimizer_params:
-        optimizer_params = dict(DEFAULT_PARAMS['optimizer_params'])
-    func = optimizer_params.pop('func', ClipOptimizer)
-    optimizer_base = func(learning_rate=learning_rate,
-                          **optimizer_params)
-    optimizer_params['func'] = func
-    return optimizer_params, optimizer_base
-
-
-def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
-    """Define default minibatch training loop.
-
-    A training loop that performs minibatching with ``num_minibatches``
-    minibatches.
-
-    Args:
-        sess (tf.Session): Current tensorflow session.
-        train_targets (dict): Target operations to be evaluated by ``sess.run``.
-            By default, ``base.train_from_params`` inserts the following
-            targets to facilitate minibatching:
-            * ``__grads__`` (tf.Operation): Accumulates and stores gradients.
-            * ``optimizer`` (tf.Operation): Applies and zeros gradients.
-        num_minibatches (int): number of minibatches to use.
-        **loop_params (mapping): additional, user-defined kwargs to
-            be used in the training loop.
-
-    Returns:
-        dict: A dictionary containing train targets evaluated by the session.
-
-    """
-    assert all([required in targets for targets in train_targets
-                for required in ['__grads__', 'optimizer']])
-
-    # Perform minibatching
-    range_len = (int)(num_minibatches)
-    for minibatch in range(range_len - 1):
-        # Accumulate gradient for each minibatch
-        sess.run([target['__grads__'] for target in train_targets])
-
-    # Compute final targets (includes zeroing gradient accumulator variable)
-
-    return sess.run(train_targets)

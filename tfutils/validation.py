@@ -1,7 +1,11 @@
 from collections import OrderedDict
 import tqdm
-from tfutils.helper import check_model_equivalence
-from tfutils.train import get_model
+from tfutils.helper import \
+        check_model_equivalence, get_model, get_data, \
+        DEFAULT_PARAMS, DEFAULT_LOOP_PARAMS
+import tfutils.utils as utils
+import copy
+import tensorflow as tf
 
 
 def get_validation_target(vinputs, voutputs,

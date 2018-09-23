@@ -1,6 +1,9 @@
 from tfutils.db_interface import DBInterface
 from tfutils.helper import parse_params, log
 from tfutils.validation import run_all_validations, get_valid_targets_dict
+import tensorflow as tf
+from tfutils.utils import strip_prefix
+from tensorflow.python.ops import variables
 
 
 def test(sess,

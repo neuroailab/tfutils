@@ -2,7 +2,6 @@ import sys
 import collections
 import logging
 import json
-import datetime
 import inspect
 import threading
 import pkg_resources
@@ -15,7 +14,6 @@ from bson.objectid import ObjectId
 import git
 
 import tensorflow as tf
-from tensorflow.python import DType
 from tensorflow.python.client import device_lib
 
 
@@ -418,3 +416,35 @@ def predict(step, results):
     preds = [tf.argmax(output, 1) for output in outputs]
 
     return preds
+
+
+class CoordinatedThread(threading.Thread):
+    """A thread class coordinated by tf.train.Coordinator."""
+
+    def __init__(self, coord=None, group=None, target=None, name=None, args=(), kwargs={}):
+        # threading.Thread.__init__(
+            # self, group=group, target=target, name=name, args=args,
+            # kwargs=kwargs)
+        super(CoordinatedThread, self).__init__(
+            group=None, target=target, name=name, args=args, kwargs=kwargs)
+        self._coord = coord
+        self._target = target
+        self._args = args
+        self._kwargs = kwargs
+
+    def run(self):
+        """Run the thread's main activity.
+        You may override this method in a subclass. The standard run() method
+        invokes the callable object passed to the object's constructor as the
+        target argument, if any, with sequential and keyword arguments taken
+        from the args and kwargs arguments, respectively.
+        """
+        try:
+            if self._target:
+                self._target(*self._args, **self._kwargs)
+        except Exception as error:
+            self._coord.request_stop(error)
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
