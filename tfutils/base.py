@@ -354,10 +354,10 @@ class DBInterface(object):
             if ckpt_filename is not None:
 
                 all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
-                self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars, self.restore_global_step)
+                self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
                 # Next, determine which vars should be restored from the specified checkpoint.
-                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
+                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars, self.restore_global_step)
                 restore_stripped = strip_prefix(self.params['model_params']['prefix'], list(restore_vars.values()))
                 restore_names =  [name for name, var in restore_stripped.items()]
                 # Actually load the vars.
