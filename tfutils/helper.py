@@ -67,13 +67,18 @@ DEFAULT_PARAMS = frozendict({
 })
 
 
-def get_model_base(input, func, seed=0, train=False, **model_params):
+def get_model_base(inputs, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
-    outputs, cfg_final = func(inputs=input,
+    # Your model function should return: 
+    #   1. the outputs 
+    #   2. onfiguration files you want to put to database
+    outputs, cfg_to_database = func(inputs=inputs,
                               **model_params)
     model_params['func'] = func
-    model_params['cfg_final'] = cfg_final
+    model_params['cfg_to_database'] = cfg_to_database
+    # For supporting previous behaviors
+    model_params['cfg_final'] = cfg_to_database
     return model_params, outputs
 
 

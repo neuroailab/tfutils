@@ -101,7 +101,7 @@ def train_from_params(
 
                 Returns:
                 - outputs (tf.Operations): train output tensorflow nodes
-                - final configuration used in model
+                - Additional configurations you want to store in database
 
             - Remaining items in model_params are dictionary of arguments passed to func.
 
