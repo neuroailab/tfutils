@@ -2,28 +2,24 @@ from collections import OrderedDict
 import tqdm
 from tfutils.helper import \
         check_model_equivalence, get_model, get_data, \
-        DEFAULT_PARAMS, DEFAULT_LOOP_PARAMS
+        DEFAULT_PARAMS, DEFAULT_LOOP_PARAMS, get_loss_dict
 import tfutils.utils as utils
 import copy
 import tensorflow as tf
 
 
 def get_validation_target(vinputs, voutputs,
-                          default_target_func=utils.get_loss_dict,
-                          default_target_params=DEFAULT_PARAMS['loss_params'],
-                          default_loop_func=None,
-                          default_loop_params=DEFAULT_LOOP_PARAMS,
                           agg_func=utils.identity_func,
                           online_agg_func=utils.append_and_return,
                           **validation_params):
-    target_params = validation_params.get('targets', dict(default_target_params))
-    target_func = target_params.pop('func', default_target_func)
+    target_params = validation_params.get('targets', dict(DEFAULT_PARAMS['loss_params']))
+    target_func = target_params.pop('func', get_loss_dict)
     vtargets = target_func(vinputs, voutputs, **target_params)
     target_params['func'] = target_func
     validation_params['targets'] = target_params
 
-    valid_loop_params = validation_params.get('valid_loop', dict(default_loop_params))
-    valid_loop_func = valid_loop_params.pop('func', default_loop_func)
+    valid_loop_params = validation_params.get('valid_loop', dict(DEFAULT_LOOP_PARAMS))
+    valid_loop_func = valid_loop_params.pop('func', None)
     valid_loop = valid_loop_func
     valid_loop_params['func'] = valid_loop_func
     validation_params['valid_loop'] = valid_loop_params

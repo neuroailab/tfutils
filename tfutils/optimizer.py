@@ -20,8 +20,14 @@ else:
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 
-class ClipOptimizer(object):
 
+class ClipOptimizer(object):
+    '''
+    This is a wrapper for general optimizers. 
+    This class supports:
+        1. Clipping the gradients. (controlled by clip parameter)
+        2. Train part of trainable parameters (controlled by trainable_names)
+    '''
     def __init__(self, optimizer_class, clip=True, trainable_names=None, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         self.clip = clip
@@ -29,9 +35,6 @@ class ClipOptimizer(object):
         if not isinstance(trainable_names, list) and trainable_names is not None:
             trainable_names = [trainable_names]
         self.trainable_names = trainable_names
-        self.grads_and_vars = None
-
-        self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
 
     def compute_gradients(self, loss, *args, **kwargs):
         train_vars = None
@@ -55,6 +58,44 @@ class ClipOptimizer(object):
             # no relation between the variable and loss; so we skip those.
             gvs = [(tf.clip_by_value(grad, -1., 1.), var)
                    for grad, var in gvs if grad is not None]
+        return gvs
+
+    def apply_gradients(self, grads_and_vars, global_step=None):
+        """Apply gradients to model variables specified in `grads_and_vars`.
+
+        `apply_gradients` returns an op that calls
+        `tf.train.Optimizer.apply_gradients`
+
+        Args:
+            grads_and_vars (list): Description.
+            global_step (None, optional): tensorflow global_step variable.
+
+        Returns:
+            (tf.Operation): Applies gradient update to model followed by an
+                internal gradient zeroing operation to `self.grads_and_vars`.
+
+        """
+        optimize = self._optimizer.apply_gradients(grads_and_vars,
+                                                   global_step=global_step)
+        return optimize
+
+
+class MinibatchOptimizer(object):
+    '''
+    This is a wrapper used by tfutils for general optimizers. 
+    This class supports:
+        1. Minibatch, only apply gradients after several steps.
+            By default, apply gradients after each step
+    '''
+
+    def __init__(self, builder, *optimizer_args, **optimizer_kwargs):
+        self._optimizer = builder(*optimizer_args, **optimizer_kwargs)
+        self.grads_and_vars = None
+        self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
+
+    def compute_gradients(self, loss, *args, **kwargs):
+        gvs = self._optimizer.compute_gradients(loss,
+                                                *args, **kwargs)
         return gvs
 
     @classmethod
@@ -84,8 +125,7 @@ class ClipOptimizer(object):
 
     def accumulate_gradients(self, minibatch_grads, num_minibatches=1):
         """Accumulate gradients for `num_minibatches` minibatches."""
-        if self.var_list is None:
-            self.var_list = tf.trainable_variables()
+        self.var_list = tf.trainable_variables()
 
         if self.grads_and_vars is None:
             self.grads_and_vars = [(
@@ -99,8 +139,12 @@ class ClipOptimizer(object):
             return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
         def _set_op(gv_tmp, mgv_tmp):
             return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
-        grads = [tf.cond(tf.less(self.mini_flag[0], 0.5), lambda: _set_op(gv[0], mgv[0]), lambda: _add_op(gv[0], mgv[0]))
-                 for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
+        grads = [\
+                tf.cond(
+                    tf.less(self.mini_flag[0], 0.5), 
+                    lambda: _set_op(gv[0], mgv[0]), 
+                    lambda: _add_op(gv[0], mgv[0]))
+                for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
         with tf.control_dependencies(grads):
             self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
         grads = [(only_grad, gv[1])
@@ -111,8 +155,7 @@ class ClipOptimizer(object):
         """Apply gradients to model variables specified in `grads_and_vars`.
 
         `apply_gradients` returns an op that calls
-        `tf.train.Optimizer.apply_gradients` and then zeros the gradient
-        variables stored in `self.grads_and_vars`.
+        `tf.train.Optimizer.apply_gradients`.
 
         Args:
             grads_and_vars (list): Description.
@@ -124,33 +167,8 @@ class ClipOptimizer(object):
 
         """
         self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
-        # grads_and_vars = self.aggregate_gradients(grads_and_vars, method='average')
         extra_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies([self.mini_flag] + extra_ops):
             optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                        global_step=global_step)
-        #return [optimize, self.zero_grad()]
         return optimize
-
-    def zero_grad(self):
-        if self.grads_and_vars is None:
-            self.grads_and_vars = [(
-                tf.Variable(tf.zeros_like(var), dtype=tf.float32, trainable=False),
-                var) for var in self.var_list]
-        return [tf.assign(gv[0], tf.zeros_like(gv[0]))
-                for gv in self.grads_and_vars]
-
-    def minimize(self, loss, global_step):
-        train_vars = None
-        if self.trainable_names is not None:
-            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
-            train_vars = []
-            for scope_name in self.trainable_names:
-                new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
-                if len(new_vars) == 0:
-                    raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
-                train_vars.extend(new_vars)
-            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
-        grads_and_vars = self.compute_gradients(loss, var_list=train_vars)
-        return self._optimizer.apply_gradients(grads_and_vars,
-                                               global_step=global_step)

@@ -15,12 +15,10 @@ from tfutils.utils import strip_prefix
 from tfutils.db_interface import DBInterface
 from tfutils.helper import \
         parse_params, get_params, \
-        get_data, get_model, get_loss, \
+        get_data, get_model, get_loss, DEFAULT_HOST, \
         DEFAULT_PARAMS, DEFAULT_TRAIN_THRES_LOSS, \
         split_input, log, get_model, DEFAULT_LOOP_PARAMS
 from tfutils.validation import run_all_validations, get_valid_targets_dict
-
-DEFAULT_HOST = '/cpu:0'
 
 
 def train_from_params(
@@ -119,7 +117,7 @@ def train_from_params(
                         - ``batch_size`` -- Batch size for input data
 
                     Returns:
-                    - inputs (tf.Operations): this will be sent to model function
+                    A dictionary of tensors that will be sent to model function
 
                 - ``train_params['data_params']['batch_size']`` batch size of the data, will be sent to func
 
@@ -152,32 +150,21 @@ def train_from_params(
                 How many total steps of the optimization are run.
                 If None, train is run until process is cancelled.
 
-        loss_params (dict): Parameters for to utils.get_loss function for specifying loss.
+        loss_params (dict): Parameters for to helper.get_loss_base function for specifying loss.
 
-            - ``loss_params['targets']` is a string or a list of strings,
+            - ``loss_params['pred_targets']` is a string or a list of strings,
               contain the names of inputs nodes that will be sent into the loss function
 
-            - ``loss_params['loss_per_case_func']`` is the function used to calculate the loss.
-              Must be provided. The parameters sent to this function is defined by loss_params['loss_per_case_func_params'].
+            - ``loss_params['loss_func']`` is the function used to calculate the loss. Must be provided.
 
-            - ``loss_params['loss_per_case_func_params']`` is a dict including  help information about
-              how positional parameters should be sent to loss_params['loss_per_case_func'] as named parameters.
-              Default is ``{'_outputs': 'logits', '_targets_': 'labels'}``
+            - ``loss_params['loss_func_kwargs']``. Keyword parameters sent to loss_params['loss_func']. Default is {}.
 
-            - If ``loss_params['loss_per_case_func_params']`` is empty, the parameters for
-              loss_params['loss_per_case_func'] will be (outputs, *[inputs[t] for t in targets], **loss_func_kwargs),
-              where 'outputs' is the output of the network, inputs is the input nodes,
-              and targets is ``loss_params['targets']``.
-
-            Key value can have three choices:
-            - '_outputs': the value of this key will be the name for 'outputs'.
-            - '_targets_': name for '[inputs[t] for t in targets]'.
-            - '_target_somename': name for 'inputs[somename]' is somename is inside targets.
-
-        - Parameters not mentioned by the key values will still be sent to the function as positional parameters.
             - ``loss_params['agg_func']`` is the aggregate function, default is None
-            - ``loss_params['loss_func_kwargs']``. Keyword parameters sent to loss_params['loss_per_case_func']. Default is None.
-            - ``loss_params['agg_func_kwargs']`. Keyword parameters sent to ``loss_params['agg_func']. Default is None.
+
+            - ``loss_params['agg_func_kwargs']`. Keyword parameters sent to ``loss_params['agg_func']. Default is {}.
+
+            - (Deprecated) ``loss_params['loss_per_case_func']`` deprecated parameter, the same as ``loss_params['loss_func']``.
+            - (Deprecated) ``loss_params['targets']`` deprecated parameter, the same as ``loss_params['targets']``.
 
         learning_rate_params (dict): Parameters for specifying learning_rate.
                 - :obj:`learning_rate_params['func']` is a function producing
@@ -185,20 +172,16 @@ def train_from_params(
                 - remainder of learning_rate_params are arguments to func.
 
         optimizer_params (dict): Parameters for creating optimizer.
-            - optimizer_params['func'] is a function producing a
-              tensorflow optimizer object (like a subclass of tf.train.Optimizer)
+            - optimizer_params['builder'] is a class producing an optimizer object, 
+                which should have function compute_gradients and apply_gradients. 
+                The signatures of these two functions are similar as tensorflow basic optimizer classes.
+
+            - (Deprecated) ``optimizer_params['func']`` deprecated parameter, the same as ``optimizer_params['builder']``.
 
             Must accept:
             - "learning_rate" -- the result of the learning_rate_func call
-            - Must return object with a method called "minimize" with
-              the same call signature as tensorflow.train.Optimizer.minimize --- that is:
-            - Must accept:
-                * "loss" -- result of loss_func call
-                * "global_step" -- global step used for determine learning rate,
-            Must return:
-                * tensorflow node which computes gradients and applies
-                  them, and must increment "global_step"
-            - Remainder of optimizer_params (aside form "func") are arguments
+
+            - Remainder of optimizer_params (aside form "builder") are arguments
               to the optimizer func
 
         validation_params (dict): Dictionary of validation sources. The structure if this dictionary is:
@@ -229,6 +212,7 @@ def train_from_params(
                             The final result is passed to the "agg_func".
                             Default is utils.append_and_return
                 },
+
                 <validation_target_name_2>: ...
             }
 

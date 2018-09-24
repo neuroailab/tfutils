@@ -21,6 +21,10 @@ from tensorflow.core.protobuf import saver_pb2
 import re
 import sys
 
+if 'TFUTILS_HOME' in os.environ:
+    TFUTILS_HOME = os.environ['TFUTILS_HOME']
+else:
+    TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
 
 def verify_pb2_v2_files(cache_prefix, ckpt_record):
     file_data = get_saver_pb2_v2_files(cache_prefix)
@@ -259,7 +263,7 @@ class DBInterface(object):
         else:
             cache_dir = None
 
-        if cache_dir is None:
+        if not cache_dir:
             self.cache_dir = os.path.join(TFUTILS_HOME,
                                           '%s:%d' % (self.host, self.port),
                                           self.dbname,

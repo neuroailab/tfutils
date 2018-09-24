@@ -76,7 +76,7 @@ class TestDBInterface(unittest.TestCase):
                 allow_soft_placement=True,
                 gpu_options=tf.GPUOptions(allow_growth=True),
                 log_device_placement=self.params['log_device_placement'],
-                inter_op_parallelism_threads=self.params['inter_op_parallelism_threads']))
+                ))
 
         # TODO: Determine whether this should be called here or
         # in dbinterface.initialize()
@@ -325,7 +325,6 @@ class TestDBInterface(unittest.TestCase):
             'train_params': cls.train_params,
             'validation_params': {},
             'log_device_placement': False,
-            'inter_op_parallelism_threads': 40,
             'save_params': cls.save_params,
             'load_params': cls.load_params,
             'loss_params': cls.loss_params,

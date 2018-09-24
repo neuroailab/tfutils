@@ -1,5 +1,5 @@
 from tfutils.db_interface import DBInterface
-from tfutils.helper import parse_params, log
+from tfutils.helper import parse_params, log, DEFAULT_HOST
 from tfutils.validation import run_all_validations, get_valid_targets_dict
 import tensorflow as tf
 from tfutils.utils import strip_prefix
@@ -58,7 +58,6 @@ def test_from_params(load_params,
                      save_params=None,
                      dont_run=False,
                      skip_check=False,
-                     inter_op_parallelism_threads=40,
                      ):
     """
     Main testing interface function.
@@ -77,7 +76,7 @@ def test_from_params(load_params,
             load_params=load_params,
             validation_params=validation_params,
             log_device_placement=log_device_placement,
-            inter_op_parallelism_threads=inter_op_parallelism_threads)
+            )
 
     with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
@@ -86,7 +85,7 @@ def test_from_params(load_params,
                 config=tf.ConfigProto(
                     allow_soft_placement=True,
                     log_device_placement=log_device_placement,
-                    inter_op_parallelism_threads=inter_op_parallelism_threads))
+                    ))
 
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
