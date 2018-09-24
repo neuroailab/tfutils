@@ -75,7 +75,7 @@ DEFAULT_TRAIN_THRES_LOSS = 100
 DEFAULT_HOST = '/cpu:0'
 DEFAULT_DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2', '/gpu:3']
 DEFAULT_LOOP_PARAMS = frozendict()
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'to_restore': None, 'load_param_dict': None})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'to_restore': None, 'load_param_dict': None, 'restore_global_step': True})
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
@@ -201,7 +201,9 @@ class DBInterface(object):
                         A dictionary whose keys are the names of the variables that are to be loaded
                         from the checkpoint, and the values are the names of the variables of the model
                         that you want to restore with the value of the corresponding checkpoint variable.
-            - sess (tesorflow.Session)
+                    - restore_global_step (bool, default: True)
+                        Whether to restore the global step from the checkpoint
+            - sess (tensorflow.Session)
                 Object in which to run calculations.  This is required if actual loading/
                 saving is going to be done (as opposed to just e.g. getting elements from
                 the MongoDB).
@@ -250,7 +252,7 @@ class DBInterface(object):
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
-        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
+        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict', 'restore_global_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -355,7 +357,7 @@ class DBInterface(object):
                 self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
                 # Next, determine which vars should be restored from the specified checkpoint.
-                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
+                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars, self.restore_global_step)
                 restore_stripped = strip_prefix(self.params['model_params']['prefix'], list(restore_vars.values()))
                 restore_names =  [name for name, var in restore_stripped.items()]
                 # Actually load the vars.
@@ -378,7 +380,7 @@ class DBInterface(object):
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
 
-    def get_restore_vars(self, save_file, all_vars=None):
+    def get_restore_vars(self, save_file, all_vars=None, restore_global_step=True):
         """Create the `var_list` init argument to tf.Saver from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
@@ -428,6 +430,9 @@ class DBInterface(object):
             restore_vars = load_var_dict
 
         restore_vars = self.filter_var_list(restore_vars)
+
+        if not self.restore_global_step:
+            restore_vars.pop('global_step', None)
 
         # Ensure the vars to restored have the correct shape.
         var_list = {}
