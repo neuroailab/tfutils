@@ -57,29 +57,6 @@ def version_info(module):
     return {'version': version}
 
 
-def version_check_and_info(module):
-    """Return either git info or standard module version if not a git repo.
-
-    Args:
-        module (module): python module object to get info for.
-
-    Returns:
-        dict: dictionary of info
-
-    """
-    srcpath = inspect.getsourcefile(module)
-    try:
-        repo = git.Repo(srcpath, search_parent_directories=True)
-    except git.InvalidGitRepositoryError:
-        log.info('module %s not in a git repo, checking package version' %
-                 module.__name__)
-        info = version_info(module)
-    else:
-        info = git_info(repo)
-    info['source_path'] = srcpath
-    return info
-
-
 def git_info(repo):
     """Return information about a git repo.
 
@@ -353,35 +330,3 @@ def predict(step, results):
     preds = [tf.argmax(output, 1) for output in outputs]
 
     return preds
-
-
-class CoordinatedThread(threading.Thread):
-    """A thread class coordinated by tf.train.Coordinator."""
-
-    def __init__(self, coord=None, group=None, target=None, name=None, args=(), kwargs={}):
-        # threading.Thread.__init__(
-            # self, group=group, target=target, name=name, args=args,
-            # kwargs=kwargs)
-        super(CoordinatedThread, self).__init__(
-            group=None, target=target, name=name, args=args, kwargs=kwargs)
-        self._coord = coord
-        self._target = target
-        self._args = args
-        self._kwargs = kwargs
-
-    def run(self):
-        """Run the thread's main activity.
-        You may override this method in a subclass. The standard run() method
-        invokes the callable object passed to the object's constructor as the
-        target argument, if any, with sequential and keyword arguments taken
-        from the args and kwargs arguments, respectively.
-        """
-        try:
-            if self._target:
-                self._target(*self._args, **self._kwargs)
-        except Exception as error:
-            self._coord.request_stop(error)
-        finally:
-            # Avoid a refcycle if the thread is running a function with
-            # an argument that has a member that points to the thread.
-            del self._target, self._args, self._kwargs

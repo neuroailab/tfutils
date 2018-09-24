@@ -1,8 +1,6 @@
 import pymongo
 from pymongo import errors as er
 import gridfs
-from tfutils.utils import strip_prefix_from_name, strip_prefix
-from tfutils.helper import log
 import tarfile
 import cPickle
 from bson.objectid import ObjectId
@@ -11,20 +9,23 @@ from tensorflow.python import DType
 import numpy as np
 import collections
 import inspect
-from tfutils.helper import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
 import os
 import tensorflow as tf
 import copy
 import time
-from tfutils.utils import CoordinatedThread
 from tensorflow.core.protobuf import saver_pb2
 import re
 import sys
+
+from tfutils.utils import strip_prefix_from_name, strip_prefix
+from tfutils.helper import log
+from tfutils.helper import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
 
 if 'TFUTILS_HOME' in os.environ:
     TFUTILS_HOME = os.environ['TFUTILS_HOME']
 else:
     TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
+
 
 def verify_pb2_v2_files(cache_prefix, ckpt_record):
     file_data = get_saver_pb2_v2_files(cache_prefix)
@@ -77,6 +78,29 @@ def make_mongo_safe(_d):
         _k = str(_k)
         if '.' in _k:
             _d[_k.replace('.', '___')] = _d.pop(_k)
+
+
+def version_check_and_info(module):
+    """Return either git info or standard module version if not a git repo.
+
+    Args:
+        module (module): python module object to get info for.
+
+    Returns:
+        dict: dictionary of info
+
+    """
+    srcpath = inspect.getsourcefile(module)
+    try:
+        repo = git.Repo(srcpath, search_parent_directories=True)
+    except git.InvalidGitRepositoryError:
+        log.info('module %s not in a git repo, checking package version' %
+                 module.__name__)
+        info = version_info(module)
+    else:
+        info = git_info(repo)
+    info['source_path'] = srcpath
+    return info
 
 
 def sonify(arg, memo=None, skip=False):
@@ -707,3 +731,34 @@ class DBInterface(object):
 
         sys.stdout.flush()  # flush the stdout buffer
         self.outrecs.append(outrec)
+
+
+class CoordinatedThread(threading.Thread):
+    """A thread class coordinated by tf.train.Coordinator."""
+
+    def __init__(
+            self, coord=None, group=None, 
+            target=None, name=None, args=(), kwargs={}):
+        super(CoordinatedThread, self).__init__(
+            group=None, target=target, name=name, args=args, kwargs=kwargs)
+        self._coord = coord
+        self._target = target
+        self._args = args
+        self._kwargs = kwargs
+
+    def run(self):
+        """Run the thread's main activity.
+        You may override this method in a subclass. The standard run() method
+        invokes the callable object passed to the object's constructor as the
+        target argument, if any, with sequential and keyword arguments taken
+        from the args and kwargs arguments, respectively.
+        """
+        try:
+            if self._target:
+                self._target(*self._args, **self._kwargs)
+        except Exception as error:
+            self._coord.request_stop(error)
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
