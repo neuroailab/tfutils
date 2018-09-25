@@ -6,7 +6,6 @@ import collections
 import logging
 import json
 import inspect
-import threading
 import pkg_resources
 import os
 import re

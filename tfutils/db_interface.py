@@ -16,6 +16,7 @@ import time
 from tensorflow.core.protobuf import saver_pb2
 import re
 import sys
+import threading
 
 from tfutils.utils import strip_prefix_from_name, strip_prefix
 from tfutils.helper import log

@@ -434,7 +434,7 @@ def parse_params(mode,
                              'Defaulting validate_first to: {}.'.format(param['validate_first']))
 
                 # If queue_params found, users should use old master
-                queue_params = param.get(queue_params, None)
+                queue_params = param.get('queue_params', None)
                 assert not queue_params, \
                         "Queue methods are no longer supported!"\
                         + " Please use master_w_queue branch!"
