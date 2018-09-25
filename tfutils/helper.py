@@ -155,7 +155,9 @@ def get_model(inputs, model_params, param=None, trarg=None):
 
         # Aggregate and accumulate gradients.
         minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        mini_flag, grads = optimizer_base.accumulate_gradients(minibatch_grads, trarg['num_minibatches'])
+        mini_flag, grads = optimizer_base.accumulate_gradients(
+                minibatch_grads, 
+                trarg['num_minibatches'])
         #grads = minibatch_grads
 
         # Apply accumulated gradients.
@@ -430,6 +432,12 @@ def parse_params(mode,
                     param['validate_first'] = True
                     log.info('validate_fist not specified for model {}... '.format(model_num) +
                              'Defaulting validate_first to: {}.'.format(param['validate_first']))
+
+                # If queue_params found, users should use old master
+                queue_params = param.get(queue_params, None)
+                assert not queue_params, \
+                        "Queue methods are no longer supported!"\
+                        + " Please use master_w_queue branch!"
 
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
