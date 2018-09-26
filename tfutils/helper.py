@@ -9,6 +9,7 @@ from tfutils.optimizer import ClipOptimizer, MinibatchOptimizer
 import tfutils.utils as utils
 from tfutils.utils import aggregate_outputs
 
+BRANCH_QUEUE_NAME = 'master_w_queue'
 
 if 'TFUTILS_LOGFILE' in os.environ:
     logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
@@ -305,16 +306,27 @@ def get_loss_base(
         # Very special situation for 
         #   tf.nn.sparse_softmax_cross_entropy_with_logits,
         # which only accepts named parameters rather than positional parameters
-        loss = loss_func(logits=outputs, labels=labels, **loss_func_kwargs)
+        log.info('Error in directly calling loss_func, trying softmax way!')
+        try:
+            assert len(labels)==1, \
+                    'Should only have one thing to predict!'
+            loss = loss_func(
+                    logits=outputs, 
+                    labels=labels[0], 
+                    **loss_func_kwargs)
+        except:
+            # If still fails, then original loss_func is wrong, show the error
+            log.info('Errors in loss_func!')
+            loss = loss_func(outputs, *labels, **loss_func_kwargs)
 
     if agg_func:
         loss = agg_func(loss, **agg_func_kwargs)
     return loss
 
 
-'''
+"""
 Less important functions: 
-'''
+"""
 
 
 def parse_params(mode,
@@ -437,7 +449,7 @@ def parse_params(mode,
                 queue_params = param.get('queue_params', None)
                 assert not queue_params, \
                         "Queue methods are no longer supported!"\
-                        + " Please use master_w_queue branch!"
+                        + " Please use %s branch!" % BRANCH_QUEUE_NAME
 
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:

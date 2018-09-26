@@ -111,15 +111,17 @@ class MinibatchOptimizer(object):
         average_grads = []
         for grads_and_vars in zip(*tower_grads):
             # print(grads_and_vars)
-            grads = []
-            for g, _ in grads_and_vars:
-                # print(g.get_shape().as_list(), g)
-                grads.append(tf.expand_dims(g, axis=0))
-            grad = tf.concat(grads, axis=0)
-            grad = tf.reduce_mean(grad, axis=0)
-            # all variables are the same so we just use the first gpu variables
-            var = grads_and_vars[0][1]
-            grad_and_var = (grad, var)
+            if grads_and_vars[0][0] is not None:
+                grads = []
+                for g, _ in grads_and_vars:
+                    grads.append(tf.expand_dims(g, axis=0))
+                grad = tf.concat(grads, axis=0)
+                grad = tf.reduce_mean(grad, axis=0)
+                # all variables are the same so we just use the first gpu variables
+                var = grads_and_vars[0][1]
+                grad_and_var = (grad, var)
+            else:
+                grad_and_var = grads_and_vars[0]
             average_grads.append(grad_and_var)
         return average_grads
 
@@ -139,16 +141,26 @@ class MinibatchOptimizer(object):
             return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
         def _set_op(gv_tmp, mgv_tmp):
             return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
-        grads = [\
+
+        only_grads = [\
                 tf.cond(
                     tf.less(self.mini_flag[0], 0.5), 
                     lambda: _set_op(gv[0], mgv[0]), 
-                    lambda: _add_op(gv[0], mgv[0]))
+                    lambda: _add_op(gv[0], mgv[0])) \
+                            if mgv[0] is not None else None \
                 for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
-        with tf.control_dependencies(grads):
+        only_grads_without_None = []
+        for curr_value in only_grads:
+            if curr_value is not None:
+                only_grads_without_None.append(curr_value)
+
+        with tf.control_dependencies(only_grads_without_None):
             self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
-        grads = [(only_grad, gv[1])
-                 for (gv, only_grad) in zip(self.grads_and_vars, grads)]
+
+        grads = []
+        for (gv, only_grad) in zip(self.grads_and_vars, only_grads):
+            if only_grad is not None:
+                grads.append((only_grad, gv[1]))
         return self.mini_flag, grads
 
     def apply_gradients(self, grads_and_vars, global_step=None):
