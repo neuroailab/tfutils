@@ -8,6 +8,7 @@ import tensorflow as tf
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 from tfutils import base, optimizer, model_tool
+from tfutils.utils import online_agg
 
 
 def loss_and_in_top_k(inputs, outputs, target):

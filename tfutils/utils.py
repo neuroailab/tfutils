@@ -335,6 +335,7 @@ def predict(step, results):
     return preds
 
 
+# Useful function to average items within one dictionary
 def online_agg(agg_res, res, step):
     if agg_res is None:
         agg_res = {k: [] for k in res}

@@ -91,6 +91,12 @@ class MinibatchOptimizer(object):
 
     def __init__(self, optimizer, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer(*optimizer_args, **optimizer_kwargs)
+        # The optimizer needs to have these required methods
+        required_methods = ['compute_gradients', 'apply_gradients']
+        for required_method in required_methods:
+            assert required_method in dir(self._optimizer), \
+                    "Your optimizer needs to have method %s!" % required_method
+
         self.grads_and_vars = None
         self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
         #self.var_list = None
@@ -99,7 +105,8 @@ class MinibatchOptimizer(object):
         gvs = self._optimizer.compute_gradients(
                 loss,
                 *args, **kwargs)
-        self.var_list = [each_var for grad, each_var in gvs]
+        # Get the variables to update from results of compute_gradients
+        self.var_list = [each_var for _, each_var in gvs]
         return gvs
 
     @classmethod
@@ -145,6 +152,8 @@ class MinibatchOptimizer(object):
         def _set_op(gv_tmp, mgv_tmp):
             return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
 
+        # mini_flag indicates whether it's the first minibatch, 
+        # which requires setting up the initial values
         only_grads = [\
                 tf.cond(
                     tf.less(self.mini_flag[0], 0.5), 
@@ -158,8 +167,11 @@ class MinibatchOptimizer(object):
                 only_grads_without_None.append(curr_value)
 
         with tf.control_dependencies(only_grads_without_None):
-            self.mini_flag = tf.assign(self.mini_flag, tf.constant([1], dtype = tf.float32))
+            # Set mini_flag to 1, indicates that the initial values are set
+            self.mini_flag = tf.assign(
+                    self.mini_flag, tf.constant([1], dtype = tf.float32))
 
+        # Filter out the None values here
         grads = []
         for (gv, only_grad) in zip(self.grads_and_vars, only_grads):
             if only_grad is not None:
@@ -181,9 +193,10 @@ class MinibatchOptimizer(object):
                 internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
-        #print([each_var for grad, each_var in grads_and_vars])
-        #pdb.set_trace()
-        self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
+        # Set back mini_flag as apply_gradients is only called at the end of of batch
+        # Also do UPDATE_OPS here for batch normalization related updates
+        self.mini_flag = tf.assign(
+                self.mini_flag, tf.constant([0], dtype = tf.float32))
         extra_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies([self.mini_flag] + extra_ops):
             optimize = self._optimizer.apply_gradients(grads_and_vars,
