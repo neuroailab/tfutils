@@ -173,16 +173,16 @@ def train_from_params(
                 - remainder of learning_rate_params are arguments to func.
 
         optimizer_params (dict): Parameters for creating optimizer.
-            - optimizer_params['builder'] is a class producing an optimizer object, 
+            - optimizer_params['optimizer'] is a class producing an optimizer object, 
                 which should have function compute_gradients and apply_gradients. 
                 The signatures of these two functions are similar as tensorflow basic optimizer classes.
 
-            - (Deprecated) ``optimizer_params['func']`` deprecated parameter, the same as ``optimizer_params['builder']``.
+            - (Deprecated) ``optimizer_params['func']`` deprecated parameter, the same as ``optimizer_params['optimizer']``.
 
             Must accept:
             - "learning_rate" -- the result of the learning_rate_func call
 
-            - Remainder of optimizer_params (aside form "builder") are arguments
+            - Remainder of optimizer_params (aside form "optimizer") are arguments
               to the optimizer func
 
         validation_params (dict): Dictionary of validation sources. The structure if this dictionary is:

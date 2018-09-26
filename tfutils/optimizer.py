@@ -89,8 +89,8 @@ class MinibatchOptimizer(object):
             By default, apply gradients after each step
     """
 
-    def __init__(self, builder, *optimizer_args, **optimizer_kwargs):
-        self._optimizer = builder(*optimizer_args, **optimizer_kwargs)
+    def __init__(self, optimizer, *optimizer_args, **optimizer_kwargs):
+        self._optimizer = optimizer(*optimizer_args, **optimizer_kwargs)
         self.grads_and_vars = None
         self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
         #self.var_list = None

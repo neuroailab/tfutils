@@ -7,7 +7,7 @@ import tensorflow as tf
 
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
-from tfutils import base, model, optimizer
+from tfutils import base, optimizer, model_tool
 
 
 def loss_and_in_top_k(inputs, outputs, target):
@@ -56,7 +56,7 @@ params = {
     },
 
     'model_params': {
-        'func': model.alexnet_tfutils,
+        'func': model_tool.alexnet_tfutils,
         'seed': 0
     },
 

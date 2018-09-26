@@ -231,20 +231,20 @@ def get_optimizer(
         ):
     if not optimizer_params:
         optimizer_params = dict(DEFAULT_PARAMS['optimizer_params'])
-    builder = optimizer_params.pop('builder', ClipOptimizer)
+    optimizer = optimizer_params.pop('optimizer', ClipOptimizer)
     # For deprecated parameter func
     func = optimizer_params.pop('func', None)
     if func:
         log.info('func in optimizer_params is deprecated, ' + \
-                'please use builder')
-        builder = func
+                'please use optimizer')
+        optimizer = func
 
     # Build the optimizer, use class MinibatchOptimizer as a wrapper
     optimizer_base = MinibatchOptimizer(
-            builder=builder,
+            optimizer=optimizer,
             learning_rate=learning_rate,
             **optimizer_params)
-    optimizer_params['builder'] = func
+    optimizer_params['optimizer'] = func
     return optimizer_params, optimizer_base
 
 

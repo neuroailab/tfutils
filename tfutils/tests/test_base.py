@@ -47,6 +47,7 @@ LEARNING_RATE_PARAMS = {
         'decay_steps': NUM_BATCHES_PER_EPOCH,
         'decay_rate': 0.95,
         'staircase': True}
+MODEL_BUILD_FUNC = model.mnist_tfutils_new
 
 
 def setUpModule():
@@ -104,7 +105,7 @@ class TestBase(unittest.TestCase):
 
         params = {}
         params['model_params'] = {
-            'func': model.mnist_tfutils,
+            'func': MODEL_BUILD_FUNC,
             #'devices': ['/gpu:0', '/gpu:1'],
             }
 
@@ -416,7 +417,7 @@ class TestBase(unittest.TestCase):
         assert set(vk) == set(vk1)
 
         assert r['params']['model_params']['seed'] == 0
-        assert r['params']['model_params']['func']['modname'] == 'tfutils.model'
+        assert r['params']['model_params']['func']['modname'] == 'tfutils.model_tool'
         assert r['params']['model_params']['func']['objname'] == 'mnist_tfutils'
 
         _k = vk[0]
@@ -459,7 +460,7 @@ class TestDistributedModel(TestBase):
 
         params = {}
         params['model_params'] = {
-            'func': model.mnist_tfutils,
+            'func': MODEL_BUILD_FUNC,
             'devices': ['/gpu:0', '/gpu:1']}
 
         params['save_params'] = {
@@ -489,8 +490,8 @@ class TestMultiModel(TestBase):
 
         params = {}
         params['model_params'] = [
-            {'func': model.mnist_tfutils},
-            {'func': model.mnist_tfutils}]
+            {'func': MODEL_BUILD_FUNC},
+            {'func': MODEL_BUILD_FUNC}]
 
         params['save_params'] = {
             'host': self.host,
@@ -631,9 +632,9 @@ class TestDistributedMulti(TestMultiModel):
 
         params = {}
         params['model_params'] = [
-            {'func': model.mnist_tfutils,
+            {'func': MODEL_BUILD_FUNC,
              'devices': ['/gpu:0', '/gpu:1']},
-            {'func': model.mnist_tfutils,
+            {'func': MODEL_BUILD_FUNC,
              'devices': ['/gpu:2', '/gpu:3']}]
 
         params['save_params'] = {

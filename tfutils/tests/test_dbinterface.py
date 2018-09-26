@@ -283,7 +283,7 @@ class TestDBInterface(unittest.TestCase):
 
     @classmethod
     def setup_params(cls):
-        cls.model_params = {'func': model.mnist_tfutils,
+        cls.model_params = {'func': model.mnist_tfutils_new,
                             'devices': ['/gpu:0', '/gpu:1'],
                             'prefix': 'model_0'}
 
