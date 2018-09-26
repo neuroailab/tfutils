@@ -93,13 +93,13 @@ class MinibatchOptimizer(object):
         self._optimizer = builder(*optimizer_args, **optimizer_kwargs)
         self.grads_and_vars = None
         self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
-        self.var_list = None
+        #self.var_list = None
 
     def compute_gradients(self, loss, *args, **kwargs):
         gvs = self._optimizer.compute_gradients(
                 loss,
                 *args, **kwargs)
-        #self.var_list = [each_var for grad, each_var in gvs]
+        self.var_list = [each_var for grad, each_var in gvs]
         return gvs
 
     @classmethod
@@ -131,7 +131,6 @@ class MinibatchOptimizer(object):
 
     def accumulate_gradients(self, minibatch_grads, num_minibatches=1):
         """Accumulate gradients for `num_minibatches` minibatches."""
-        self.var_list = tf.trainable_variables()
 
         if self.grads_and_vars is None:
             self.grads_and_vars = [(
@@ -182,6 +181,8 @@ class MinibatchOptimizer(object):
                 internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
+        #print([each_var for grad, each_var in grads_and_vars])
+        #pdb.set_trace()
         self.mini_flag = tf.assign(self.mini_flag, tf.constant([0], dtype = tf.float32))
         extra_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies([self.mini_flag] + extra_ops):

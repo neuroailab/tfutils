@@ -453,7 +453,6 @@ class TestBase(unittest.TestCase):
             assert 'train_params' not in r['params']
 
 
-'''
 class TestDistributedModel(TestBase):
 
     def setup_params(self, exp_id):
@@ -656,7 +655,6 @@ class TestDistributedMulti(TestMultiModel):
         params['skip_check'] = True
 
         return params
-'''
 
 if __name__ == '__main__':
     unittest.main()

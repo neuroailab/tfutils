@@ -302,14 +302,6 @@ class ConvNet(object):
                 **kwargs)
         return self.output
 
-    def softmax(self, in_layer=None):
-        if in_layer is None:
-            in_layer = self.output
-        self.output = tf.nn.softmax(in_layer, name='softmax')
-        self.params = {'input': in_layer.name,
-                       'type': 'softmax'}
-        return self.output
-
 
 def mnist(inputs, train=True, seed=0):
     m = ConvNet()
@@ -320,7 +312,6 @@ def mnist(inputs, train=True, seed=0):
     m.fc(128, layer='hidden1', in_layer=inputs, **fc_kwargs)
     m.fc(32, layer='hidden2', **fc_kwargs)
     m.fc(10, activation=None, layer='softmax_linear', **fc_kwargs)
-    m.softmax()
 
     return m
 
@@ -365,7 +356,6 @@ def alexnet(inputs, train=True, norm=True, seed=0, **kwargs):
     m.fc(4096, dropout=dropout, bias=.1, layer='fc6', **fc_kwargs)
     m.fc(4096, dropout=dropout, bias=.1, layer='fc7', **fc_kwargs)
     m.fc(1000, activation=None, dropout=None, bias=0, layer='fc8', **fc_kwargs)
-    m.softmax()
 
     return m
 
