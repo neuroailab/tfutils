@@ -152,7 +152,6 @@ params = {
             'online_agg_func': online_agg
         }
     },
-    'log_device_placement': False,  # if variable placement has to be logged
 }
 
 

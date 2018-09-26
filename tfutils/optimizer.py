@@ -23,12 +23,12 @@ log.setLevel('DEBUG')
 
 
 class ClipOptimizer(object):
-    '''
+    """
     This is a wrapper for general optimizers. 
     This class supports:
         1. Clipping the gradients. (controlled by clip parameter)
         2. Train part of trainable parameters (controlled by trainable_names)
-    '''
+    """
     def __init__(self, optimizer_class, clip=True, trainable_names=None, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         self.clip = clip
@@ -82,12 +82,12 @@ class ClipOptimizer(object):
 
 
 class MinibatchOptimizer(object):
-    '''
+    """
     This is a wrapper used by tfutils for general optimizers. 
     This class supports:
         1. Minibatch, only apply gradients after several steps.
             By default, apply gradients after each step
-    '''
+    """
 
     def __init__(self, builder, *optimizer_args, **optimizer_kwargs):
         self._optimizer = builder(*optimizer_args, **optimizer_kwargs)

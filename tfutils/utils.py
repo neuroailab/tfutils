@@ -1,6 +1,6 @@
-'''
+"""
 This scripts contains some functions that are usually short, easy to understand.
-'''
+"""
 import sys
 import collections
 import logging
