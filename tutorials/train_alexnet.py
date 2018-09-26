@@ -7,54 +7,21 @@ import tensorflow as tf
 
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
-from tfutils import base, data, model, optimizer
-
-
-host = os.uname()[1]
-if host.startswith('node') or host == 'openmind7':  # OpenMind
-    DATA_PATH = '/mnt/fs0/datasets/imagenet2012_tf'
-elif 'gpu-1' in host or 'gpu-2' in host:
-    DATA_PATH = '/scratch/imagenet2012_tf'
-elif host.startswith('braintree'):
-    DATA_PATH = '/home/qbilius/data/imagenet2012_tf'
-else:
-    DATA_PATH = '/home/qbilius/data/imagenet2012_tf'
+from tfutils import base, model, optimizer
 
 
 def loss_and_in_top_k(inputs, outputs, target):
-    return {'loss': tf.nn.sparse_softmax_cross_entropy_with_logits(logits=outputs, labels=inputs[target]),
+    return {
+            'loss': tf.nn.sparse_softmax_cross_entropy_with_logits(
+                logits=outputs, 
+                labels=inputs[target]),
             'top1': tf.nn.in_top_k(outputs, inputs[target], 1),
             'top5': tf.nn.in_top_k(outputs, inputs[target], 5)}
 
 
-def online_agg(agg_res, res, step):
-    if agg_res is None:
-        agg_res = {k: [] for k in res}
-    for k, v in res.items():
-        agg_res[k].append(np.mean(v))
-    return agg_res
-
-
 def mean_loss_with_reg(loss):
-    return tf.reduce_mean(loss) + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-
-
-def exponential_decay(global_step,
-                      learning_rate=.01,
-                      decay_factor=.95,
-                      decay_steps=1,
-                      ):
-    # Decay the learning rate exponentially based on the number of steps.
-    if decay_factor is None:
-        lr = learning_rate  # just a constant.
-    else:
-        # Calculate the learning rate schedule.
-        lr = tf.train.exponential_decay(learning_rate,  # Base learning rate.
-                                        global_step,  # Current index into the dataset.
-                                        decay_steps,  # Decay step
-                                        decay_factor,  # Decay rate.
-                                        staircase=True)
-    return lr
+    return tf.reduce_mean(loss)\
+            + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
 
 BATCH_SIZE = 256

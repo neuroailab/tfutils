@@ -214,6 +214,10 @@ def aggregate_outputs(tower_outputs):
     elif isinstance(tower_outputs[0], tf.Tensor):
         return tf.concat(tower_outputs, axis=0)
 
+    # Tensorflow variables are not processed.
+    elif isinstance(tower_outputs[0], tf.Variable):
+        return tower_outputs
+
     # Dict values are aggregated by key.
     elif isinstance(tower_outputs[0], collections.Mapping):
         return {key: aggregate_outputs([out[key] for out in tower_outputs])
@@ -329,3 +333,11 @@ def predict(step, results):
     preds = [tf.argmax(output, 1) for output in outputs]
 
     return preds
+
+
+def online_agg(agg_res, res, step):
+    if agg_res is None:
+        agg_res = {k: [] for k in res}
+    for k, v in res.items():
+        agg_res[k].append(np.mean(v))
+    return agg_res

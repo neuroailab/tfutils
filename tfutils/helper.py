@@ -8,6 +8,7 @@ import numpy as np
 from tfutils.optimizer import ClipOptimizer, MinibatchOptimizer
 import tfutils.utils as utils
 from tfutils.utils import aggregate_outputs
+import pdb
 
 BRANCH_QUEUE_NAME = 'master_w_queue'
 
@@ -531,11 +532,6 @@ def get_params():
         mod = importlib.import_module(modname)
         args[p] = getattr(mod, objname)
     return args
-
-
-def check_model_equivalence(m1, m2, name):
-    """TODO: fill this in to make it stronger."""
-    assert set(m1.keys()) == set(m2.keys()), (m1.keys(), m2.keys())
 
 
 def split_input(inputs, num_gpus=1):

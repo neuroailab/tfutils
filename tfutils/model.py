@@ -1,512 +1,380 @@
 from __future__ import absolute_import, division, print_function
-import inspect
-from functools import wraps
 from collections import OrderedDict
-from contextlib import contextmanager
 
+import numpy as np
 import tensorflow as tf
 
-def initializer(kind='xavier', *args, **kwargs):
-    if kind == 'xavier':
-        init = tf.contrib.layers.xavier_initializer(*args, **kwargs)
-    else:
-        init = getattr(tf, kind + '_initializer')(*args, **kwargs)
-    return init
-
-
-def conv(inp,
-         out_depth,
-         ksize=[3,3],
-         strides=[1,1,1,1],
-         padding='SAME',
-         kernel_init='xavier',
-         kernel_init_kwargs=None,
-         bias=0,
-         weight_decay=None,
-         activation='relu',
-         batch_norm=True,
-         dropout=None,
-         dropout_seed=0,
-         name='conv'
-         ):
-
-    # assert out_shape is not None
-    if weight_decay is None:
-        weight_decay = 0.
-    if isinstance(ksize, int):
-        ksize = [ksize, ksize]
-    if kernel_init_kwargs is None:
-        kernel_init_kwargs = {}
-    in_depth = inp.get_shape().as_list()[-1]
-
-    # weights
-    init = initializer(kernel_init, **kernel_init_kwargs)
-    kernel = tf.get_variable(initializer=init,
-                            shape=[ksize[0], ksize[1], in_depth, out_depth],
-                            dtype=tf.float32,
-                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                            name='weights')
-    init = initializer(kind='constant', value=bias)
-    biases = tf.get_variable(initializer=init,
-                            shape=[out_depth],
-                            dtype=tf.float32,
-                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                            name='bias')
-    # ops
-    if dropout is not None:
-        inp = tf.nn.dropout(inp, dropout, seed=dropout_seed, name='dropout')
-
-    conv = tf.nn.conv2d(inp, kernel,
-                        strides=strides,
-                        padding=padding)
-    output = tf.nn.bias_add(conv, biases, name=name)
-
-    if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
-    if batch_norm:
-        output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
-                            scale=None, variance_epsilon=1e-8, name='batch_norm')
-    return output
-
-def conv_bnf(inp,
-         out_depth,
-         ksize=[3,3],
-         strides=[1,1,1,1],
-         padding='SAME',
-         kernel_init='xavier',
-         kernel_init_kwargs=None,
-         bias=0,
-         weight_decay=None,
-         activation='relu6',
-         batch_norm=True,
-         train_bn=True,
-         name='conv_bnf'
-         ):
-
-    # assert out_shape is not None
-    if weight_decay is None:
-        weight_decay = 0.
-    if isinstance(ksize, int):
-        ksize = [ksize, ksize]
-    if isinstance(strides, int):
-        strides = [1, strides, strides, 1]
-        
-    if kernel_init_kwargs is None:
-        kernel_init_kwargs = {}
-    in_depth = inp.get_shape().as_list()[-1]
-
-    # weights
-    init = initializer(kernel_init, **kernel_init_kwargs)
-    kernel = tf.get_variable(initializer=init,
-                            shape=[ksize[0], ksize[1], in_depth, out_depth],
-                            dtype=tf.float32,
-                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                            name='weights')
-
-    # ops
-    conv = tf.nn.conv2d(inp, kernel,
-                        strides=strides,
-                        padding=padding)
-
-    if batch_norm:
-        output = tf.contrib.layers.batch_norm(conv, center=True, scale=True, decay=0.9997, epsilon=0.001, is_training=train_bn, trainable=True)
-    else:
-        init = initializer(kind='constant', value=bias)
-        biases = tf.get_variable(initializer=init,
-                                shape=[out_depth],
-                                dtype=tf.float32,
-                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                                name='bias')
-        output = tf.nn.bias_add(conv, biases, name=name)
-
-    if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
-
-    return output
-
-def depthsep_conv(inp,
-             out_depth,
-             multiplier=1,
-             ksize=3,
-             strides=1,
-             dep_padding='SAME',
-             sep_padding='SAME',
-             batch_norm = True,
-             train_bn=True,
-             name='depthsep_conv',
-             *args,
-             **kwargs
-             ):
-
-    with tf.variable_scope('depthwise_conv'):
-        d_out = depth_conv(inp, multiplier = multiplier,
-                ksize = ksize,
-                strides = strides,
-                padding = dep_padding,
-                batch_norm = batch_norm,
-                train_bn = train_bn,
-                *args, **kwargs)
-
-    with tf.variable_scope('pointwise_conv'):
-        # we batch norm first according to mobilenet paper
-        p_out = conv_bnf(d_out, out_depth = out_depth,
-                ksize = 1,
-                strides = 1,
-                padding = sep_padding,
-                batch_norm = batch_norm,
-                train_bn = train_bn,
-                *args, **kwargs)
-        
-    return p_out
-
-def depth_conv(inp,
-             multiplier=1,
-             ksize=3,
-             strides=1,
-             padding='SAME',
-             kernel_init='xavier',
-             kernel_init_kwargs=None,
-             bias=1,
-             activation='relu6',
-             weight_decay=None,
-             batch_norm = True,
-             train_bn=True,
-             name='depth_conv'
-             ):
-
-    # assert out_shape is not None
-    if weight_decay is None:
-        weight_decay = 0.
-    if isinstance(ksize, int):
-        ksize = [ksize, ksize]
-    if isinstance(strides, int):
-        strides = [1, strides, strides, 1]
-
-    if kernel_init_kwargs is None:
-        kernel_init_kwargs = {}
-    
-    in_depth = inp.get_shape().as_list()[-1]
-
-    out_depth = multiplier * in_depth
-
-    # weights
-    init = initializer(kernel_init, **kernel_init_kwargs)
-    kernel = tf.get_variable(initializer=init,
-                            shape=[ksize[0], ksize[1], in_depth, multiplier],
-                            dtype=tf.float32,
-                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                            name='weights')
-
-    conv = tf.nn.depthwise_conv2d(inp, kernel,
-                            strides=strides,
-                            padding=padding)
-        
-    if batch_norm:
-        output = tf.contrib.layers.batch_norm(conv, center=True, scale=True, decay=0.9997, epsilon=0.001, is_training=train_bn, trainable=True)
-    else:
-        init = initializer(kind='constant', value=bias)
-        biases = tf.get_variable(initializer=init,
-                                shape=[out_depth],
-                                dtype=tf.float32,
-                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                                name='bias')
-        output = tf.nn.bias_add(conv, biases, name=name)   
-
-    if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
-
-    return output
-
-def fc(inp,
-       out_depth,
-       kernel_init='xavier',
-       kernel_init_kwargs=None,
-       bias=1,
-       weight_decay=None,
-       activation='relu',
-       batch_norm=True,
-       dropout=None,
-       dropout_seed=0,
-       name='fc'):
-
-    if weight_decay is None:
-        weight_decay = 0.
-    # assert out_shape is not None
-    if kernel_init_kwargs is None:
-        kernel_init_kwargs = {}
-    resh = tf.reshape(inp, [inp.get_shape().as_list()[0], -1], name='reshape')
-    in_depth = resh.get_shape().as_list()[-1]
-
-    # weights
-    init = initializer(kernel_init, **kernel_init_kwargs)
-    kernel = tf.get_variable(initializer=init,
-                            shape=[in_depth, out_depth],
-                            dtype=tf.float32,
-                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                            name='weights')
-    init = initializer(kind='constant', value=bias)
-    biases = tf.get_variable(initializer=init,
-                            shape=[out_depth],
-                            dtype=tf.float32,
-                            regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
-                            name='bias')
-
-    # ops
-    if dropout is not None:
-        resh = tf.nn.dropout(resh, dropout, seed=dropout_seed, name='dropout')
-    fcm = tf.matmul(resh, kernel)
-    output = tf.nn.bias_add(fcm, biases, name=name)
-
-    if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
-    if batch_norm:
-        output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
-                            scale=None, variance_epsilon=1e-8, name='batch_norm')
-    return output
-
-
-def global_pool(inp, kind='avg', keep_dims=False, name=None):
-    if kind not in ['max', 'avg']:
-        raise ValueError('Only global avg or max pool is allowed, but'
-                            'you requested {}.'.format(kind))
-    if name is None:
-        name = 'global_{}_pool'.format(kind)
-    h, w = inp.get_shape().as_list()[1:3]
-    out = getattr(tf.nn, kind + '_pool')(inp,
-                                    ksize=[1,h,w,1],
-                                    strides=[1,1,1,1],
-                                    padding='VALID')
-    if keep_dims:
-        output = tf.identity(out, name=name)
-    else:
-        output = tf.reshape(out, [out.get_shape().as_list()[0], -1], name=name)
-        
-    return output
-
-def avg_pool2d(inp, kernel_size, stride=2, padding='VALID', name=None):
-    if name is None:
-        name = 'avg_pool2d'
-    output = tf.contrib.layers.avg_pool2d(inp, kernel_size=kernel_size, stride=stride, padding=padding)
-    return output
-
 class ConvNet(object):
+    """Basic implementation of ConvNet class compatible with tfutils.
+    """
 
-    INTERNAL_FUNC = ['arg_scope', '_func_wrapper', '_val2list', 'layer',
-                     '_reuse_scope_name', '__call__', '_get_func']
-    CUSTOM_FUNC = [conv, fc, global_pool, conv_bnf, depthsep_conv, depth_conv, avg_pool2d]
-
-    def __init__(self, defaults=None, name=None):
-        """
-        A quick convolutional neural network constructor
-
-        This is wrapper over many tf.nn functions for a quick construction of
-        a standard convolutional neural network that uses 2d convolutions, pooling
-        and fully-connected layers, and most other tf.nn methods.
-
-        It also stores layers and their parameters easily accessible per
-        tfutils' approach of saving everything.
-
-        Kwargs:
-            - defaults
-                Default kwargs values for functions. Complimentary to `arg_scope
-            - name (default: '')
-                If '', then the existing scope is used.
-        """
-        self._defaults = defaults if defaults is not None else {}
-        self.name = name
-        self.state = None
+    def __init__(
+            self, 
+            seed=None, 
+            **kwargs):
+        self.seed = seed
         self.output = None
-        self._layer = None
-        self.layers = OrderedDict()
-        self.params = OrderedDict()
-        self._scope_initialized = False
+        self._params = OrderedDict()
 
-    def __getattribute__(self, attr):
-        attrs = object.__getattribute__(self, '__dict__')
-        internal_func = object.__getattribute__(self, 'INTERNAL_FUNC')
+    @property
+    def params(self):
+        return self._params
 
-        if attr in attrs:  # is it an attribute?
-            return attrs[attr]
-        elif attr in internal_func:  # is it one of the internal functions?
-            return object.__getattribute__(self, attr)
+    @params.setter
+    def params(self, value):
+        name = tf.get_variable_scope().name
+        if name not in self._params:
+            self._params[name] = OrderedDict()
+        self._params[name][value['type']] = value
+
+    @property
+    def graph(self):
+        return tf.get_default_graph().as_graph_def()
+
+    def initializer(
+            self, kind='xavier', 
+            stddev=0.01):
+
+        if kind == 'xavier':
+            init = tf.contrib.layers.xavier_initializer(seed=self.seed)
+
+        elif kind == 'trunc_norm':
+            init = tf.truncated_normal_initializer(
+                    mean=0, stddev=stddev, 
+                    seed=self.seed)
+
+        elif kind == 'variance_scaling_initializer':
+            init = tf.contrib.layers.variance_scaling_initializer(
+                    seed=self.seed)
+
         else:
-            func = self._get_func(attr)
-            return self._func_wrapper(func)
+            raise ValueError('Please provide an appropriate initialization '
+                             'method: xavier or trunc_norm')
+        return init
 
-    def _get_func(self, attr):
-        custom_func = object.__getattribute__(self, 'CUSTOM_FUNC')
-        custom_func_names = [f.__name__ for f in custom_func]
-        if attr in custom_func_names:  # is it one of the custom functions?
-            func = custom_func[custom_func_names.index(attr)]
+    @tf.contrib.framework.add_arg_scope
+    def batchnorm(
+            self, is_training, 
+            in_layer=None, decay=0.997, 
+            epsilon=1e-5):
+        if not in_layer:
+            in_layer = self.output
+        self.output = tf.layers.batch_normalization(
+                inputs=in_layer, axis=-1,
+                momentum=decay, epsilon=epsilon, 
+                center=True, scale=True, 
+                training=is_training, fused=True, 
+                )
+        return self.output
+
+    @tf.contrib.framework.add_arg_scope
+    def conv(self,
+             out_shape,
+             ksize=3,
+             stride=1,
+             padding='SAME',
+             init='xavier',
+             stddev=.01,
+             bias=1,
+             activation='relu',
+             train=True,
+             add_bn=False,
+             weight_decay=None,
+             in_layer=None,
+             layer='conv',
+             ):
+        # Set parameters
+        if in_layer is None:
+            in_layer = self.output
+        if not weight_decay:
+            weight_decay = 0.
+
+        # Get conv kernel shape
+        in_shape = in_layer.get_shape().as_list()[-1]
+        conv2d_strides = [1, stride, stride, 1]
+        if isinstance(ksize, int):
+            ksize1 = ksize
+            ksize2 = ksize
         else:
-            func = getattr(tf.nn, attr)  # ok, so it is a tf.nn function
-        return func
+            ksize1, ksize2 = ksize
+        conv_k_shape = [ksize1, ksize2, in_shape, out_shape]
 
-    def _func_wrapper(self, func):
-        """
-        A wrapper on top of *any* function that is called.
+        # Define variable
+        bias_init = tf.constant_initializer(bias)
+        with tf.variable_scope(layer, reuse=tf.AUTO_REUSE):
+            kernel = tf.get_variable(
+                    initializer=self.initializer(init, stddev=stddev),
+                    shape=conv_k_shape,
+                    dtype=tf.float32,
+                    regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                    name='weights')
+            biases = tf.get_variable(
+                    initializer=bias_init,
+                    shape=[out_shape],
+                    dtype=tf.float32,
+                    regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                    name='bias')
 
-        - Pops `inp` and `layer` from kwargs,
-        - All args are turned into kwargs
-        - Default values from arg_scope are set
-        - Sets the name in kwargs to func.__name__ if not specified
-        - Expands `strides` from an int or list inputs for
-          all functions and expands `ksize` for pool functions.
+        # Do the actual computation
+        conv = tf.nn.conv2d(
+                in_layer, kernel,
+                strides=conv2d_strides,
+                dilations=conv2d_dilat,
+                padding=padding,
+                data_format=self.conv2d_data_format)
+        self.output = tf.nn.bias_add(
+                conv, biases, 
+                name='conv', data_format=self.conv2d_data_format)
 
-        If `layer` is not None, a new scope is created, else the existing scope
-        is reused.
+        # Whether adding batch normalization
+        if add_bn:
+            with tf.variable_scope(layer, reuse=tf.AUTO_REUSE):
+                self.output = self.batchnorm(train)
+        # Add activation
+        if activation:
+            self.output = self.activation(kind=activation)
 
-        Finally, all params are stored.
-        """
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            kwargs['func_name'] = func.__name__
+        # Set parameters (this dict will be appended to the final params)
+        self.params = {'input': in_layer.name,
+                       'type': 'conv',
+                       'num_filters': out_shape,
+                       'stride': stride,
+                       'kernel_size': (ksize1, ksize2),
+                       'padding': padding,
+                       'init': init,
+                       'stddev': stddev,
+                       'bias': bias,
+                       'activation': activation,
+                       'weight_decay': weight_decay,
+                       'seed': self.seed}
+        return self.output
 
-            # convert args to kwargs
-            varnames = inspect.getargspec(func).args
-            for i, arg in enumerate(args):
-                kwargs[varnames[i+1]] = arg  # skip the first (inputs)
+    @tf.contrib.framework.add_arg_scope
+    def fc(self,
+           out_shape,
+           init='xavier',
+           stddev=.01,
+           bias=1,
+           activation='relu',
+           dropout=.5,
+           in_layer=None,
+           weight_decay=None,
+           layer='fc',
+           ):
 
-            layer = kwargs.pop('layer', self._layer)
-            if layer not in self.params:
-                self.params[layer] = OrderedDict()
+        # Set parameters
+        if weight_decay is None:
+            weight_decay = 0.
 
-            # update kwargs with default values defined by user
-            if func.__name__ in self._defaults:
-                kwargs.update(self._defaults[func.__name__])
+        if in_layer is None:
+            in_layer = self.output
+        resh = tf.reshape(in_layer,
+                          [in_layer.get_shape().as_list()[0], -1],
+                          name='reshape')
+        in_shape = resh.get_shape().as_list()[-1]
 
-            if 'name' not in kwargs:
-                fname = func.__name__
-                if fname in self.params[layer]:
-                    if fname in self.params[layer]:
-                        i = 1
-                        while fname + '_{}'.format(i) in self.params[layer]:
-                            i += 1
-                        fname += '_{}'.format(i)
-                kwargs['name'] = fname
+        # Define variable
+        bias_init = tf.constant_initializer(bias)
+        with tf.variable_scope(layer, reuse=tf.AUTO_REUSE):
+            kernel = tf.get_variable(
+                    initializer=self.initializer(init, stddev=stddev),
+                    shape=[in_shape, out_shape],
+                    dtype=tf.float32,
+                    regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                    name='weights')
+            biases = tf.get_variable(
+                    initializer=bias_init,
+                    shape=[out_shape],
+                    dtype=tf.float32,
+                    regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
+                    name='bias')
 
-            spec = ['avg_pool', 'max_pool', 'max_pool_with_argmax']
-            if 'ksize' in kwargs and func.__name__ in spec:
-                kwargs['ksize'] = self._val2list(kwargs['ksize'])
-            if 'strides' in kwargs:
-                kwargs['strides'] = self._val2list(kwargs['strides'])
+        # Do the actual computation
+        fcm = tf.matmul(resh, kernel)
+        self.output = tf.nn.bias_add(fcm, biases, name='fc')
 
-            self.params[layer][kwargs['name']] = kwargs
+        # Add activation or dropout
+        if activation is not None:
+            self.activation(kind=activation)
+        if dropout is not None:
+            self.dropout(dropout=dropout)
 
-        return wrapper
+        self.params = {'input': in_layer.name,
+                       'type': 'fc',
+                       'num_filters': out_shape,
+                       'init': init,
+                       'bias': bias,
+                       'stddev': stddev,
+                       'activation': activation,
+                       'dropout': dropout,
+                       'weight_decay': weight_decay,
+                       'seed': self.seed}
+        return self.output
 
-    def __call__(self, inp=None):
-        output = inp
-        for layer, params in self.params.items():
-            with tf.variable_scope(layer):
-                for func_name, kwargs in params.items():
-                    with tf.variable_scope(func_name):
-                        output = kwargs.get('inp', output)
-                        if output is None:
-                            raise ValueError('Layer {} function {} got None as input'.format(layer, func_name))
-                        kw = {k:v for k,v in kwargs.items() if k not in ['func_name', 'inp']}
-                        func = self._get_func(kwargs['func_name'])
-                        output = tf.identity(func(output, **kw), name='output')
-                self.layers[layer] = tf.identity(output, name='output')
-        self.output = output
-        return output
+    @tf.contrib.framework.add_arg_scope
+    def lrn(
+            self,
+            depth_radius=2,
+            bias=1,
+            alpha=0.0001,
+            beta=.75,
+            in_layer=None,
+            layer='lrn'):
+        if in_layer is None:
+            in_layer = self.output
+        with tf.variable_scope(layer, reuse=tf.AUTO_REUSE):
+            self.output = tf.nn.lrn(
+                    in_layer,
+                    depth_radius=np.float(depth_radius),
+                    bias=np.float(bias),
+                    alpha=alpha,
+                    beta=beta,
+                    name='norm')
+        self.params = {'input': in_layer.name,
+                       'type': 'lrnorm',
+                       'depth_radius': depth_radius,
+                       'bias': bias,
+                       'alpha': alpha,
+                       'beta': beta}
+        return self.output
 
-
-    def _val2list(self, value):
-        if isinstance(value, int):
-            out = [1, value, value, 1]
-        elif len(value) == 2:
-            out = [1, value[0], value[1], 1]
+    @tf.contrib.framework.add_arg_scope
+    def pool(self,
+             ksize=3,
+             stride=2,
+             padding='SAME',
+             pool_type='maxpool',
+             in_layer=None):
+        # Set parameters
+        if in_layer is None:
+            in_layer = self.output
+        if isinstance(ksize, int):
+            ksize1 = ksize
+            ksize2 = ksize
         else:
-            out = value
+            ksize1, ksize2 = ksize
+        if isinstance(stride, int):
+            stride1 = stride
+            stride2 = stride
+        else:
+            stride1, stride2 = stride
+        ksizes = [1, ksize1, ksize2, 1]
+        strides = [1, stride1, stride2, 1]
+
+        # Do the pooling
+        if pool_type=='maxpool':
+            pool_func = tf.nn.max_pool
+        else:
+            pool_func = tf.nn.avg_pool
+        self.output = pool_func(
+                in_layer,
+                ksize=ksizes,
+                strides=strides,
+                padding=padding,
+                name='pool',
+                )
+
+        # Set params, return the value
+        self.params = {
+                'input':in_layer.name,
+                'type':pool_type,
+                'kernel_size': (ksize1, ksize2),
+                'stride': stride,
+                'padding': padding}
+        return self.output
+
+    def activation(self, kind='relu', in_layer=None):
+        if in_layer is None:
+            in_layer = self.output
+        if kind == 'relu':
+            out = tf.nn.relu(in_layer, name='relu')
+        else:
+            raise ValueError("Activation '{}' not defined".format(kind))
+        self.output = out
         return out
 
-    @contextmanager
-    def arg_scope(self, defaults):
-        """
-        Sets the arg_scope.
+    def dropout(self, dropout=.5, in_layer=None, **kwargs):
+        if in_layer is None:
+            in_layer = self.output
+        self.output = tf.nn.dropout(
+                in_layer, dropout, 
+                seed=self.seed, name='dropout', 
+                **kwargs)
+        return self.output
 
-        Pass a dict of {<func_name>: {<arg_name>: <arg_value>, ...}, ...}. These
-        values will then override the default values for the specified functions
-        whenever that function is called.
-        """
-        self._defaults = defaults
-        yield
-        self._defaults = {}
-
-    @contextmanager
-    def layer(self, name):
-        """
-        Sets the scope. Can be used with `with`.
-        """
-        if name is None or name == '':
-            raise ValueError('Layer name cannot be None or an empty string')
-        self._layer = name
-        yield
-
-    def _reuse_scope_name(self, name):
-        graph = tf.get_default_graph()
-        if graph._name_stack is not None and graph._name_stack != '':
-            name = graph._name_stack + '/' + name + '/'  # this will reuse the already-created scope
-        else:
-            name += '/'
-        return name
+    def softmax(self, in_layer=None):
+        if in_layer is None:
+            in_layer = self.output
+        self.output = tf.nn.softmax(in_layer, name='softmax')
+        self.params = {'input': in_layer.name,
+                       'type': 'softmax'}
+        return self.output
 
 
-def mnist(train=True, seed=0):
+def mnist(inputs, train=True, seed=0):
     m = ConvNet()
-    with m.arg_scope({'fc': {'kernel_init': 'truncated_normal',
-                             'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
-                             'dropout': None, 'batch_norm': False}}):
-        m.fc(128, layer='hidden1')
-        m.fc(32, layer='hidden2')
-        m.fc(10, activation=None, layer='softmax_linear')
+    fc_kwargs = {
+            'init': 'xavier',
+            'dropout': None,
+            }
+    m.fc(128, layer='hidden1', in_layer=inputs, **fc_kwargs)
+    m.fc(32, layer='hidden2', **fc_kwargs)
+    m.fc(10, activation=None, layer='softmax_linear', **fc_kwargs)
+    m.softmax()
 
     return m
 
 
-def alexnet(train=True, norm=True, seed=0, **kwargs):
-    defaults = {'conv': {'batch_norm': False,
-                         'kernel_init': 'xavier',
-                         'kernel_init_kwargs': {'seed': seed}},
-                         'weight_decay': .0005,
-                'max_pool': {'padding': 'SAME'},
-                'fc': {'batch_norm': False,
-                       'kernel_init': 'truncated_normal',
-                       'kernel_init_kwargs': {'stddev': .01, 'seed': seed},
-                       'weight_decay': .0005,
-                       'dropout_seed': 0}}
-    m = ConvNet(defaults=defaults)
+def alexnet(inputs, train=True, norm=True, seed=0, **kwargs):
+    # Define model class and default kwargs for different types of layers
+    m = ConvNet(seed=seed)
+    conv_kwargs = {
+            'add_bn': False,
+            'init': 'xavier',
+            'weight_decay': .0005,
+            }
+    pool_kwargs = {
+            'pool_type': 'maxpool',
+            }
+    fc_kwargs = {
+            'init': 'trunc_norm',
+            'weight_decay': .0005,
+            'stddev': .01,
+            }
     dropout = .5 if train else None
 
-    m.conv(96, 11, 4, padding='VALID', layer='conv1')
+    # Actually define the network
+    m.conv(
+            96, 11, 4, padding='VALID', 
+            layer='conv1', in_layer=inputs, **conv_kwargs)
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
-    m.max_pool(3, 2, layer='conv1')
+    m.max_pool(3, 2, layer='conv1', **pool_kwargs)
 
-    m.conv(256, 5, 1, layer='conv2')
+    m.conv(256, 5, 1, layer='conv2', **conv_kwargs)
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv2')
-    m.max_pool(3, 2, layer='conv2')
+    m.max_pool(3, 2, layer='conv2', **pool_kwargs)
 
-    m.conv(384, 3, 1, layer='conv3')
-    m.conv(384, 3, 1, layer='conv4')
+    m.conv(384, 3, 1, layer='conv3', **conv_kwargs)
+    m.conv(384, 3, 1, layer='conv4', **conv_kwargs)
 
-    m.conv(256, 3, 1, layer='conv5')
-    m.max_pool(3, 2, layer='conv5')
+    m.conv(256, 3, 1, layer='conv5', **conv_kwargs)
+    m.max_pool(3, 2, layer='conv5', **pool_kwargs)
 
-    m.fc(4096, dropout=dropout, bias=.1, layer='fc6')
-    m.fc(4096, dropout=dropout, bias=.1, layer='fc7')
-    m.fc(1000, activation=None, dropout=None, bias=0, layer='fc8')
+    m.fc(4096, dropout=dropout, bias=.1, layer='fc6', **fc_kwargs)
+    m.fc(4096, dropout=dropout, bias=.1, layer='fc7', **fc_kwargs)
+    m.fc(1000, activation=None, dropout=None, bias=0, layer='fc8', **fc_kwargs)
+    m.softmax()
 
     return m
 
 
 def mnist_tfutils(inputs, train=True, **kwargs):
-    m = mnist(train=train)
-    return m(inputs['images']), m.params
+    m = mnist(inputs['images'], train=train)
+    return m.output, m.params
 
 
 def alexnet_tfutils(inputs, **kwargs):
-    m = alexnet(**kwargs)
-    return m(inputs['images']), m.params
+    m = alexnet(inputs['images'], **kwargs)
+    return m.output, m.params

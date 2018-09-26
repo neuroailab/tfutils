@@ -92,7 +92,7 @@ def dataset(directory, images_file, labels_file):
     image = tf.decode_raw(image, tf.uint8)
     image = tf.cast(image, tf.float32)
     image = tf.reshape(image, [784])
-    return image / 255.0
+    return image / 255.0 - 0.5
 
   def decode_label(label):
     label = tf.decode_raw(label, tf.uint8)  # tf.string -> [tf.uint8]

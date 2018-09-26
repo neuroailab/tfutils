@@ -10,6 +10,7 @@ import os
 import copy
 import tensorflow as tf
 import logging
+import pdb
 
 if 'TFUTILS_LOGFILE' in os.environ:
     logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
@@ -92,10 +93,13 @@ class MinibatchOptimizer(object):
         self._optimizer = builder(*optimizer_args, **optimizer_kwargs)
         self.grads_and_vars = None
         self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
+        self.var_list = None
 
     def compute_gradients(self, loss, *args, **kwargs):
-        gvs = self._optimizer.compute_gradients(loss,
-                                                *args, **kwargs)
+        gvs = self._optimizer.compute_gradients(
+                loss,
+                *args, **kwargs)
+        #self.var_list = [each_var for grad, each_var in gvs]
         return gvs
 
     @classmethod
