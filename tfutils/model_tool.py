@@ -119,12 +119,10 @@ class ConvNet(object):
         conv = tf.nn.conv2d(
                 in_layer, kernel,
                 strides=conv2d_strides,
-                dilations=conv2d_dilat,
-                padding=padding,
-                data_format=self.conv2d_data_format)
+                padding=padding)
         self.output = tf.nn.bias_add(
                 conv, biases, 
-                name='conv', data_format=self.conv2d_data_format)
+                name='conv')
 
         # Whether adding batch normalization
         if add_bn:
@@ -340,18 +338,18 @@ def alexnet(inputs, train=True, norm=True, seed=0, **kwargs):
             layer='conv1', in_layer=inputs, **conv_kwargs)
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv1')
-    m.max_pool(3, 2, layer='conv1', **pool_kwargs)
+    m.pool(3, 2, **pool_kwargs)
 
     m.conv(256, 5, 1, layer='conv2', **conv_kwargs)
     if norm:
         m.lrn(depth_radius=5, bias=1, alpha=.0001, beta=.75, layer='conv2')
-    m.max_pool(3, 2, layer='conv2', **pool_kwargs)
+    m.pool(3, 2, **pool_kwargs)
 
     m.conv(384, 3, 1, layer='conv3', **conv_kwargs)
     m.conv(384, 3, 1, layer='conv4', **conv_kwargs)
 
     m.conv(256, 3, 1, layer='conv5', **conv_kwargs)
-    m.max_pool(3, 2, layer='conv5', **pool_kwargs)
+    m.pool(3, 2, **pool_kwargs)
 
     m.fc(4096, dropout=dropout, bias=.1, layer='fc6', **fc_kwargs)
     m.fc(4096, dropout=dropout, bias=.1, layer='fc7', **fc_kwargs)

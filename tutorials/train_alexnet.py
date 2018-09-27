@@ -4,11 +4,33 @@ import sys
 
 import numpy as np
 import tensorflow as tf
+import argparse
 
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 from tfutils import base, optimizer, model_tool
 from tfutils.utils import online_agg
+from imagenet_data import dataset_func
+
+
+DATA_LEN_IMAGENET_FULL = 1281167
+VALIDATION_LEN = 50000
+
+
+def get_learning_rate(
+        global_step, 
+        nb_per_epoch,
+        init_lr,
+        ):
+    """
+    Drop by 10 for every 30 epochs
+    """
+    curr_epoch = tf.div(
+            tf.cast(global_step, tf.float32), 
+            tf.cast(nb_per_epoch, tf.float32))
+    drop_times = tf.minimum(curr_epoch / 30, 3)
+    curr_lr = init_lr * tf.pow(0.1, drop_times)
+    return curr_lr
 
 
 def loss_and_in_top_k(inputs, outputs, target):
@@ -25,137 +47,160 @@ def mean_loss_with_reg(loss):
             + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
 
-BATCH_SIZE = 256
-NUM_BATCHES_PER_EPOCH = data.ImageNet.N_TRAIN // BATCH_SIZE
-IMAGE_SIZE_CROP = 224
+def get_parser():
+    parser = argparse.ArgumentParser(
+            description='Train AlexNet using tfutils')
+    parser.add_argument(
+            '--image_dir',
+            default=None, required=True,
+            type=str, action='store', help='Where the tfrecords are stored')
+    parser.add_argument(
+            '--gpu',
+            default='0', type=str, action='store', 
+            help='Availabel GPUs, multiple GPUs are separated by ","')
+    parser.add_argument(
+            '--batch_size',
+            default=256,
+            type=int, action='store', help='Batch size')
+    return parser
 
-params = {
-    'save_params': {
-        'host': 'localhost',
-        'port': 27017,
-        'dbname': 'AlexNet-test',
-        'collname': 'alexnet',
-        'exp_id': 'trainval0',
 
-        'do_save': False,
-        'save_initial_filters': False,
-        'save_metrics_freq': 5,  # keeps loss from every SAVE_LOSS_FREQ steps.
-        'save_valid_freq': 3000,
-        'save_filters_freq': 30000,
-        'cache_filters_freq': 30000,
-        # 'cache_dir': None,  # defaults to '~/.tfutils'
-    },
+def get_params_from_arg(args):
+    '''
+    This function gets parameters needed for tfutils.train_from_params()
+    '''
+    multi_gpu = len(args.gpu.split(','))
+    dbname = 'tfutils_tutorial'
+    collname = 'control'
+    exp_id = 'alexnet'
+    NUM_BATCHES_PER_EPOCH = DATA_LEN_IMAGENET_FULL // args.batch_size 
 
-    'load_params': {
-        # 'host': 'localhost',
-        # 'port': 29101,
-        # 'dbname': 'alexnet-test',
-        # 'collname': 'alexnet',
-        # 'exp_id': 'trainval0',
-        'do_restore': False,
-        'query': None
-    },
+    # save_params: defining where to save the models
+    save_params = {
+            'host': 'localhost',
+            'port': 27009,
+            'dbname': dbname,
+            'collname': collname,
+            'exp_id': exp_id,
+            'do_save': True,
+            'save_metrics_freq': 1000,
+            'save_valid_freq': NUM_BATCHES_PER_EPOCH,
+            'save_filters_freq': NUM_BATCHES_PER_EPOCH,
+            'cache_filters_freq': NUM_BATCHES_PER_EPOCH,
+            'cache_dir': None, # where local model caches will be stored
+            }
 
-    'model_params': {
-        'func': model_tool.alexnet_tfutils,
-        'seed': 0
-    },
+    # load_params: defining where to load, if needed
+    load_params = {
+            'host': 'localhost',
+            'port': 27009,
+            'dbname': dbname,
+            'collname': collname,
+            'exp_id': exp_id,
+            'do_restore': True,
+            'query': None,
+            }
 
-    'train_params': {
-        'data_params': {
-            'func': data.ImageNetTF,
-            'source_dirs': [DATA_PATH],
-            'crop_size': IMAGE_SIZE_CROP,
-            'batch_size': BATCH_SIZE,
-            'file_pattern': 'train*.tfrecords',
-            'n_threads': 4
-        },
-        'queue_params': {
-            'queue_type': 'fifo',
-            'batch_size': BATCH_SIZE,
-            'capacity': None,
-            'min_after_dequeue': None,
+    # model_params: a function that will build the model
+    model_params = {
+            'func': model_tool.alexnet_tfutils,
+            'norm': False,
             'seed': 0,
-        },
-        'thres_loss': 1000,
-        'num_steps': 90 * NUM_BATCHES_PER_EPOCH,  # number of steps to train
-        'validate_first': True,
-    },
+            }
+    if multi_gpu > 1:
+        # How to use multiple gpu training:
+        model_params['num_gpus'] = multi_gpu
+        model_params['devices'] = \
+                ['/gpu:%i' % idx for idx in range(multi_gpu)]
 
-    'loss_params': {
-        'targets': 'labels',
-        'agg_func': mean_loss_with_reg,
-        'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits
-    },
+    # train_params: parameters about training data
+    data_param_base = {
+            'func': dataset_func,
+            'image_dir': args.image_dir,
+            }
+    train_data_param = {
+            'is_train': True,
+            'batch_size': args.batch_size
+            }
+    train_data_param.update(data_param_base)
+    train_params = {
+            'validate_first': False,
+            'data_params': train_data_param,
+            'queue_params': None,
+            'thres_loss': float('Inf'),
+            'num_steps': 120 * NUM_BATCHES_PER_EPOCH,
+            }
 
-    'learning_rate_params': {
-        'func': tf.train.exponential_decay,
-        'learning_rate': .01,
-        'decay_rate': .95,
-        'decay_steps': NUM_BATCHES_PER_EPOCH,  # exponential decay each epoch
-        'staircase': True
-    },
+    # loss_params: parameters to build the loss
+    loss_params = {
+            'pred_targets': ['labels'],
+            'agg_func': mean_loss_with_reg,
+            'loss_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+            }
 
-    'optimizer_params': {
-        'func': optimizer.ClipOptimizer,
-        'optimizer_class': tf.train.MomentumOptimizer,
-        'clip': True,
-        'momentum': .9
-    },
+    # learning_rate_params: build the learning rate
+    # For now, just stay the same
+    learning_rate_params = {
+            'func': get_learning_rate,
+            'init_lr': 0.01,
+            'nb_per_epoch': NUM_BATCHES_PER_EPOCH,
+            }
 
-    'validation_params': {
-        'topn_val': {
-            'data_params': {
-                'func': data.ImageNetTF,
-                'source_dirs': [DATA_PATH],
-                'crop_size': IMAGE_SIZE_CROP,
-                'batch_size': BATCH_SIZE,
-                'file_pattern': 'val*.tfrecords',
-                'n_threads': 4
+    # optimizer_params: use tfutils optimizer,
+    # as mini batch is implemented there
+    optimizer_params = {
+            'optimizer': tf.train.MomentumOptimizer,
+            'momentum': .9,
+            }
+
+    # validation_params: control the validation
+    topn_val_data_param = {
+            'is_train': False,
+            'q_cap': args.batch_size,
+            'batch_size': args.batch_size,
+            }
+    topn_val_data_param.update(data_param_base)
+    val_step_num = int(VALIDATION_LEN / args.batch_size)
+    topn_val_param = {
+        'data_params': topn_val_data_param,
+        'queue_params': None,
+        'targets': {
+            'func': loss_and_in_top_k,
+            'target': 'labels',
             },
-            'targets': {
-                'func': loss_and_in_top_k,
-                'target': 'labels',
-            },
-            'queue_params': {
-                'queue_type': 'fifo',
-                'batch_size': BATCH_SIZE,
-                'capacity': None,
-                'min_after_dequeue': None,
-                'seed': 0,
-            },
-            'num_steps': data.ImageNet.N_VAL // BATCH_SIZE + 1,
-            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
-            'online_agg_func': online_agg
-        },
-        'topn_train': {
-            'data_params': {
-                'func': data.ImageNetTF,
-                'source_dirs': [DATA_PATH],
-                'crop_size': IMAGE_SIZE_CROP,
-                'batch_size': BATCH_SIZE,
-                'file_pattern': 'trainval*.tfrecords',
-                'n_threads': 4
-            },
-            'targets': {
-                'func': loss_and_in_top_k,
-                'target': 'labels',
-            },
-            'queue_params': {
-                'queue_type': 'fifo',
-                'batch_size': BATCH_SIZE,
-                'capacity': None,
-                'min_after_dequeue': None,
-                'seed': 0,
-            },
-            'num_steps': data.ImageNet.N_VAL // BATCH_SIZE + 1,
-            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
-            'online_agg_func': online_agg
+        'num_steps': val_step_num,
+        'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
+        'online_agg_func': online_agg,
         }
-    },
-}
+    validation_params = {
+            'topn': topn_val_param,
+            }
+
+    # Put all parameters together
+    params = {
+            'save_params': save_params,
+            'load_params': load_params,
+            'model_params': model_params,
+            'train_params': train_params,
+            'loss_params': loss_params,
+            'learning_rate_params': learning_rate_params,
+            'optimizer_params': optimizer_params,
+            'validation_params': validation_params,
+            'skip_check': True,
+            }
+    return params
+
+
+def main():
+    # Parse arguments
+    parser = get_parser()
+    args = parser.parse_args()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+
+    # Get params needed, start training
+    params = get_params_from_arg(args)
+    base.train_from_params(**params)
 
 
 if __name__ == '__main__':
-    base.get_params()
-    base.train_from_params(**params)
+    main()
