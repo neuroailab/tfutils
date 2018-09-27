@@ -30,7 +30,6 @@ def get_learning_rate(
             tf.cast(nb_per_epoch, tf.float32))
     drop_times = tf.cast(tf.minimum(curr_epoch / 30, 3), tf.int32)
     drop_times = tf.cast(drop_times, tf.float32)
-    drop_times = tf.Print(drop_times, [drop_times, curr_epoch], message='Drop times')
     curr_lr = init_lr * tf.pow(0.1, drop_times)
     return curr_lr
 
