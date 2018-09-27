@@ -28,9 +28,9 @@ def get_learning_rate(
     curr_epoch = tf.div(
             tf.cast(global_step, tf.float32), 
             tf.cast(nb_per_epoch, tf.float32))
-    curr_epoch = tf.cast(curr_epoch, tf.int32)
-    curr_epoch = tf.cast(curr_epoch, tf.float32)
-    drop_times = tf.minimum(curr_epoch / 30, 3)
+    drop_times = tf.cast(tf.minimum(curr_epoch / 30, 3), tf.int32)
+    drop_times = tf.cast(drop_times, tf.float32)
+    drop_times = tf.Print(drop_times, [drop_times, curr_epoch], message='Drop times')
     curr_lr = init_lr * tf.pow(0.1, drop_times)
     return curr_lr
 
@@ -88,7 +88,7 @@ def get_params_from_arg(args):
     multi_gpu = len(args.gpu.split(','))
     dbname = 'tfutils_tutorial'
     collname = 'example'
-    exp_id = 'alexnet'
+    exp_id = 'alexnet_ctl'
     NUM_BATCHES_PER_EPOCH = DATA_LEN_IMAGENET_FULL // args.batch_size 
 
     # save_params: defining where to save the models
