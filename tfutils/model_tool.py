@@ -75,7 +75,7 @@ class ConvNet(object):
              padding='SAME',
              init='xavier',
              stddev=.01,
-             bias=1,
+             bias=0,
              activation='relu',
              train=True,
              add_bn=False,
@@ -320,14 +320,14 @@ def alexnet(inputs, train=True, norm=True, seed=0, **kwargs):
     conv_kwargs = {
             'add_bn': False,
             'init': 'xavier',
-            'weight_decay': .0005,
+            'weight_decay': .0001,
             }
     pool_kwargs = {
             'pool_type': 'maxpool',
             }
     fc_kwargs = {
             'init': 'trunc_norm',
-            'weight_decay': .0005,
+            'weight_decay': .0001,
             'stddev': .01,
             }
     dropout = .5 if train else None

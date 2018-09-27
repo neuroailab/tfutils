@@ -28,9 +28,25 @@ def get_learning_rate(
     curr_epoch = tf.div(
             tf.cast(global_step, tf.float32), 
             tf.cast(nb_per_epoch, tf.float32))
+    curr_epoch = tf.cast(curr_epoch, tf.int32)
+    curr_epoch = tf.cast(curr_epoch, tf.float32)
     drop_times = tf.minimum(curr_epoch / 30, 3)
     curr_lr = init_lr * tf.pow(0.1, drop_times)
     return curr_lr
+
+
+def rep_loss_func(
+        inputs,
+        output,
+        **kwargs
+        ):
+    return {
+            'loss_pure': tf.reduce_mean(
+                tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=output, 
+                    labels=inputs['labels'])
+                ),
+            }
 
 
 def loss_and_in_top_k(inputs, outputs, target):
@@ -66,12 +82,12 @@ def get_parser():
 
 
 def get_params_from_arg(args):
-    '''
+    """
     This function gets parameters needed for tfutils.train_from_params()
-    '''
+    """
     multi_gpu = len(args.gpu.split(','))
     dbname = 'tfutils_tutorial'
-    collname = 'control'
+    collname = 'example'
     exp_id = 'alexnet'
     NUM_BATCHES_PER_EPOCH = DATA_LEN_IMAGENET_FULL // args.batch_size 
 
@@ -124,11 +140,15 @@ def get_params_from_arg(args):
             }
     train_data_param.update(data_param_base)
     train_params = {
-            'validate_first': False,
+            'validate_first': True, # You may want to turn this off at debugging 
             'data_params': train_data_param,
             'queue_params': None,
             'thres_loss': float('Inf'),
             'num_steps': 120 * NUM_BATCHES_PER_EPOCH,
+            }
+    ## Add other loss reports (loss_model, loss_noise)
+    train_params['targets'] = {
+            'func': rep_loss_func,
             }
 
     # loss_params: parameters to build the loss
@@ -154,16 +174,9 @@ def get_params_from_arg(args):
             }
 
     # validation_params: control the validation
-    topn_val_data_param = {
-            'is_train': False,
-            'q_cap': args.batch_size,
-            'batch_size': args.batch_size,
-            }
-    topn_val_data_param.update(data_param_base)
+    ## Basic parameters for both validation on train and val
     val_step_num = int(VALIDATION_LEN / args.batch_size)
-    topn_val_param = {
-        'data_params': topn_val_data_param,
-        'queue_params': None,
+    val_param_base = {
         'targets': {
             'func': loss_and_in_top_k,
             'target': 'labels',
@@ -172,8 +185,34 @@ def get_params_from_arg(args):
         'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
         'online_agg_func': online_agg,
         }
+    val_data_param_base = {
+            'is_train': False,
+            'q_cap': args.batch_size,
+            'batch_size': args.batch_size,
+            }
+    ## Validation on validation set
+    topn_val_data_param = {
+            'file_pattern': 'validation-*',
+            }
+    topn_val_data_param.update(data_param_base)
+    topn_val_data_param.update(val_data_param_base)
+    topn_val_param = {
+        'data_params': topn_val_data_param,
+        }
+    topn_val_param.update(val_param_base)
+    ## Validation on training set
+    topn_train_data_param = {
+            'file_pattern': 'train-*',
+            }
+    topn_train_data_param.update(data_param_base)
+    topn_train_data_param.update(val_data_param_base)
+    topn_train_param = {
+        'data_params': topn_train_data_param,
+        }
+    topn_train_param.update(val_param_base)
     validation_params = {
-            'topn': topn_val_param,
+            'topn_val': topn_val_param,
+            'topn_train': topn_train_param,
             }
 
     # Put all parameters together

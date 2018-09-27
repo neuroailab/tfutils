@@ -212,14 +212,14 @@ def preprocessing(
     return image
 
 
-def dataset_func(image_dir, is_train, batch_size, q_cap=51200):
+def dataset_func(
+        image_dir, is_train, batch_size, 
+        q_cap=51200, file_pattern='train-*'):
     """
     Build the dataset, get the elements
     """
     # First get tfrecords names
-    tfr_params = {}
-    if not is_train:
-        tfr_params['file_pattern'] = 'validation-*'
+    tfr_params = {'file_pattern': file_pattern}
     tfr_list = get_tfr_filenames(image_dir, **tfr_params)
 
     # Build list_file dataset from tfrecord files
