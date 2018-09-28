@@ -1373,9 +1373,6 @@ def train_from_params(save_params,
         data_params = _params[0]['train_params']['data_params']
         queue_params = _params[0]['train_params']['queue_params']
 
-        (_params[0]['train_params']['data_params'],
-         queues, inputs) = get_data(queue_params=queue_params, **data_params)
-
         # Build a graph for each distinct model.
         for param, trarg in zip(_params, _trargs):
             with tf.variable_scope(param['model_params']['prefix']):
@@ -1408,7 +1405,6 @@ def train_from_params(save_params,
             #operation_timeout_in_ms=2000, 
             #intra_op_parallelism_threads=8
             ))
-
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
         init_op_local = tf.local_variables_initializer()
@@ -1431,6 +1427,7 @@ def train_from_params(save_params,
                                                load_params=param['load_params'])
             trarg['dbinterface'].initialize()
             trarg['queues'] = queues
+            trarg['data_provider'] = get_data(**data_params)
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]
@@ -1522,27 +1519,42 @@ def get_validation_target(vinputs, voutputs,
 
 
 def get_data(func, queue_params=None, **data_params):
-    data_provider = func(**data_params)
-    input_ops = data_provider.init_ops()
-    assert len(input_ops) == data_params['n_threads'], (len(input_ops), data_params['n_threads'])
-    assert len(input_ops) > 0, len(input_ops)
-    batch_size = data_params['batch_size']
-    data_params['func'] = func
-    enqueue_ops = []
-    queue = get_queue(input_ops[0], shape_flag=batch_size!=1, **queue_params)
-    for input_op in input_ops:
-        # enqueue_ops.append(queue.enqueue_many(input_op))
-        if batch_size == 1:
-            enqueue_ops.append(queue.enqueue(input_op))
+    if queue_params:
+        # Using old queue params
+        data_provider = func(**data_params)
+        input_ops = data_provider.init_ops()
+
+        assert len(input_ops) == data_params['n_threads'], \
+                "Need to build %i loading ops! But only %i!" \
+                    %(data_params['n_threads'], len(input_ops))
+        assert len(input_ops) > 0, "No loading ops returned!"
+
+        batch_size = data_params['batch_size']
+        data_params['func'] = func
+        enqueue_ops = []
+        queue = get_queue(input_ops[0], 
+                          shape_flag=batch_size!=1, 
+                          **queue_params)
+        for input_op in input_ops:
+            # enqueue_ops.append(queue.enqueue_many(input_op))
+            if batch_size == 1:
+                enqueue_ops.append(queue.enqueue(input_op))
+            else:
+                enqueue_ops.append(queue.enqueue_many(input_op))
+        tf.train.queue_runner.add_queue_runner(
+                tf.train.queue_runner.QueueRunner(
+                    queue,
+                    enqueue_ops))
+        if queue_params['batch_size'] == 1:
+            inputs = queue.dequeue()
         else:
-            enqueue_ops.append(queue.enqueue_many(input_op))
-    tf.train.queue_runner.add_queue_runner(tf.train.queue_runner.QueueRunner(queue,
-                                                                             enqueue_ops))
-    if queue_params['batch_size'] == 1:
-        inputs = queue.dequeue()
+            inputs = queue.dequeue_many(queue_params['batch_size'])
+        return data_params, [queue], inputs
     else:
-        inputs = queue.dequeue_many(queue_params['batch_size'])
-    return data_params, [queue], inputs
+        inputs = func(**data_params)
+        data_params['func'] = func
+        return data_params, [], inputs
+
 
 
 def split_input(inputs, num_gpus=1):
