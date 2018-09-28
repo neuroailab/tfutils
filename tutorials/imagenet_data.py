@@ -66,8 +66,6 @@ class ImageNet(object):
         self.file_pattern = None
         self.is_train = None
 
-        assert prep_type in ['resnet', 'alexnet'], "Unsupported prep_type"
-
     def get_tfr_filenames(self):
         """
         Get list of tfrecord filenames
@@ -187,14 +185,31 @@ class ImageNet(object):
         cp_width = tf.cast(self.crop_size / scale, tf.int32)
 
         # Randomly sample begin x and y
+        x_range = [0, shape[0] - cp_height + 1]
+        y_range = [0, shape[1] - cp_width + 1]
+        if self.prep_type == 'alex_center':
+            min_shape = tf.minimum(shape[0], shape[1])
+            x_range = [
+                    tf.cast(0 + (shape[0] - min_shape) / 2, tf.int32), 
+                    tf.cast(
+                        shape[0] - cp_height + 1 - (shape[0] - min_shape) / 2, 
+                        tf.int32), 
+                    ]
+            y_range = [
+                    tf.cast(0 + (shape[1] - min_shape) / 2, tf.int32), 
+                    tf.cast(
+                        shape[1] - cp_width + 1 - (shape[1] - min_shape) / 2, 
+                        tf.int32), 
+                    ]
+
         cp_begin_x = tf.random_uniform(
                 shape=[],
-                minval=0, maxval=shape[0] - cp_height + 1,
+                minval=x_range[0], maxval=x_range[1],
                 dtype=tf.int32
                 )
         cp_begin_y = tf.random_uniform(
                 shape=[],
-                minval=0, maxval=shape[1] - cp_width + 1,
+                minval=y_range[0], maxval=y_range[1],
                 dtype=tf.int32
                 )
         bbox = tf.stack([

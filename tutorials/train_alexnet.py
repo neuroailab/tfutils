@@ -84,7 +84,8 @@ def get_params_from_arg(args):
     dbname = 'tfutils_tutorial'
     collname = 'example'
     #exp_id = 'alexnet_ctl'
-    exp_id = 'alexnet_ctl_w_alex_prep'
+    #exp_id = 'alexnet_ctl_w_alex_prep'
+    exp_id = 'alexnet_ctl_w_alex_prep_center'
     NUM_BATCHES_PER_EPOCH = ImageNet.TRAIN_LEN // args.batch_size 
 
     # save_params: defining where to save the models
@@ -128,7 +129,8 @@ def get_params_from_arg(args):
     # train_params: parameters about training data
     data_provider_class = ImageNet(
             image_dir=args.image_dir,
-            prep_type='alexnet',
+            #prep_type='alexnet',
+            prep_type='alexnet_center',
             )
     data_param_base = {
             'func': data_provider_class.dataset_func,
