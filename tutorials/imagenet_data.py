@@ -187,19 +187,22 @@ class ImageNet(object):
         # Randomly sample begin x and y
         x_range = [0, shape[0] - cp_height + 1]
         y_range = [0, shape[1] - cp_width + 1]
-        if self.prep_type == 'alex_center':
+        if self.prep_type in ['alex_center', 'alex_center_re']:
+            # Original AlexNet preprocessing uses center 256*256 to crop 
             min_shape = tf.minimum(shape[0], shape[1])
             x_range = [
-                    tf.cast(0 + (shape[0] - min_shape) / 2, tf.int32), 
-                    tf.cast(
-                        shape[0] - cp_height + 1 - (shape[0] - min_shape) / 2, 
-                        tf.int32), 
+                    tf.cast((shape[0] - min_shape) / 2, tf.int32), 
+                    shape[0] - cp_height + 1 - \
+                            tf.cast(
+                                (shape[0] - min_shape) / 2, 
+                                tf.int32), 
                     ]
             y_range = [
-                    tf.cast(0 + (shape[1] - min_shape) / 2, tf.int32), 
-                    tf.cast(
-                        shape[1] - cp_width + 1 - (shape[1] - min_shape) / 2, 
-                        tf.int32), 
+                    tf.cast((shape[1] - min_shape) / 2, tf.int32), 
+                    shape[1] - cp_width + 1 - \
+                            tf.cast(
+                                (shape[1] - min_shape) / 2, 
+                                tf.int32), 
                     ]
 
         cp_begin_x = tf.random_uniform(
@@ -212,6 +215,22 @@ class ImageNet(object):
                 minval=y_range[0], maxval=y_range[1],
                 dtype=tf.int32
                 )
+
+        if self.prep_type == 'alex_center_re':
+            # Original AlexNet preprocessing first resize to 256 shortest edge
+            def _first_resize_crop(cp_begin):
+                cp_begin = tf.cast(
+                        tf.cast(
+                            tf.cast(
+                                tf.cast(cp_begin, tf.float32) * scale, 
+                                tf.int32), 
+                            tf.float32) / scale,
+                        tf.int32)
+                return cp_begin
+
+            cp_begin_x = _first_resize_crop(cp_begin_x)
+            cp_begin_y = _first_resize_crop(cp_begin_y)
+
         bbox = tf.stack([
                 cp_begin_x, cp_begin_y, \
                 cp_height, cp_width])
