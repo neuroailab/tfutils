@@ -10,7 +10,7 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 from tfutils import base, optimizer, model_tool
 from tfutils.utils import online_agg
-from imagenet_data import ImageNet 
+from tfutils.imagenet_data import ImageNet 
 
 
 def get_learning_rate(
