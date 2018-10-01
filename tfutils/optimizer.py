@@ -23,14 +23,27 @@ log.setLevel('DEBUG')
 
 
 class ClipOptimizer(object):
-    """
-    This is a wrapper for general optimizers. 
+    """A wrapper for general optimizers. 
+
     This class supports:
-        1. Clipping the gradients. (controlled by clip parameter)
-        2. Train part of trainable parameters (controlled by trainable_names)
+
+    - Clipping the gradients. (controlled by clip parameter)
+    - Train part of trainable parameters (controlled by trainable_names)
+
+    Args:
+        optimizer_class: Returned value of this function should have `compute_gradients` and `apply_gradients` methods.
+        clip (bool, optional): Default is True, clipping by `[-1, 1]`.
+        trainable_names (list of strings, or string, optional): Default is None. Scope names for variables to avoid training.
+
     """
     def __init__(self, optimizer_class, clip=True, trainable_names=None, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
+        # The optimizer needs to have these required methods
+        required_methods = ['compute_gradients', 'apply_gradients']
+        for required_method in required_methods:
+            assert required_method in dir(self._optimizer), \
+                    "Your optimizer needs to have method %s!" % required_method
+
         self.clip = clip
         self.var_list = None
         if not isinstance(trainable_names, list) and trainable_names is not None:
@@ -38,6 +51,16 @@ class ClipOptimizer(object):
         self.trainable_names = trainable_names
 
     def compute_gradients(self, loss, *args, **kwargs):
+        """Compute gradients to model variables from loss.
+
+        Args:
+            loss (tf.Tensor): Tensorflow loss to optimize.
+
+        Returns:
+            (tf.Operation): Compute gradient update to model followed by a
+            clipping operation if `self.clip` is True.
+
+        """
         train_vars = None
         if self.trainable_names is not None:
             log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
@@ -82,11 +105,11 @@ class ClipOptimizer(object):
 
 
 class MinibatchOptimizer(object):
-    """
-    This is a wrapper used by tfutils for general optimizers. 
+    """A wrapper used by tfutils for general optimizers. 
+
     This class supports:
-        1. Minibatch, only apply gradients after several steps.
-            By default, apply gradients after each step
+
+    - Minibatch, only apply gradients after several steps. By default, apply gradients after each step
     """
 
     def __init__(self, optimizer, *optimizer_args, **optimizer_kwargs):
@@ -190,7 +213,7 @@ class MinibatchOptimizer(object):
 
         Returns:
             (tf.Operation): Applies gradient update to model followed by an
-                internal gradient zeroing operation to `self.grads_and_vars`.
+            internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
         # Set back mini_flag as apply_gradients is only called at the end of of batch

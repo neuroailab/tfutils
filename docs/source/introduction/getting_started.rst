@@ -101,7 +101,8 @@ With this in mind, let us specify our ``save_params``:
 
 .. code-block:: python
 
-    from tfutils import model, data, utils
+    from tfutils import model, utils
+    from tfutils.tests import mnist_data as data
 
     host = 'localhost'
     port = 27017  # default mongoDB port
@@ -134,12 +135,9 @@ Defining a Model
     params['optimizer_params'] = {'optimizer_class': tf.train.MomentumOptimizer,
                                   'momentum': 0.9})
 
-    params['train_params'] = {'data_params': {'func': data.MNIST,
+    params['train_params'] = {'data_params': {'func': data.build_data,
                                               'batch_size': 100,
-                                              'group': 'train',
-                                              'n_threads': 4},
-                              'queue_params': {'queue_type': 'fifo',
-                                               'batch_size': 100},
+                                              'group': 'train'},
                               'num_steps': 500
                               }
     params['learning_rate_params'] = {'learning_rate': 0.05,
@@ -152,12 +150,9 @@ Including Validation
 
 .. code-block:: python
 
-    params['validation_params'] = {'valid0': {'data_params': {'func': data.MNIST,
+    params['validation_params'] = {'valid0': {'data_params': {'func': data.build_data,
                                                               'batch_size': 100,
-                                                              'group': 'test',
-                                                              'n_threads': 4},
-                                              'queue_params': {'queue_type': 'fifo',
-                                                               'batch_size': 100},
+                                                              'group': 'test'},
                                               'num_steps': 10,
                                               'agg_func': utils.mean_dict}}
 

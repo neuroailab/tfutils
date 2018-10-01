@@ -40,8 +40,9 @@ def train_from_params(
 
     Args:
         save_params (dict): 
-            Describing the parameters need to construct the save database, and
+            Describing the parameters used to construct the save database, and
             control saving. These include:
+
             - host (str)
                 Hostname where database connection lives
             - port (int)
@@ -55,21 +56,24 @@ def train_from_params(
                 NOTE: the variables host/port/dbname/coll/exp_id control
                 the location of the saved data for the run, in order of
                 increasing specificity.  When choosing these, note that:
-                    1.  If a given host/port/dbname/coll/exp_id already has saved checkpoints,
-                        then any new call to start training with these same location variables
-                        will start to train from the most recent saved checkpoint.  If you mistakenly
-                        try to start training a new model with different variable names, or structure,
-                        from that existing checkpoint, an error will be raised, as the model will be
-                        incompatiable with the saved variables.
-                    2.  When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb
-                        queries only operate over a single collection.  So if you want to analyze
-                        results from a bunch of experiments together using mongod queries, you should
-                        put them all in the same collection, but with different exp_ids.  If, on the
-                        other hand, you never expect to analyze data from two experiments together,
-                        you can put them in different collections or different databases.  Choosing
-                        between putting two experiments in two collections in the same database
-                        or in two totally different databases will depend on how you want to organize
-                        your results and is really a matter of preference.
+
+                - If a given host/port/dbname/coll/exp_id already has saved checkpoints,\
+                then any new call to start training with these same location variables\
+                will start to train from the most recent saved checkpoint.  If you mistakenly\
+                try to start training a new model with different variable names, or structure,\
+                from that existing checkpoint, an error will be raised, as the model will be\
+                incompatiable with the saved variables.
+
+                - When choosing what dbname, coll, and exp_id, to use, keep in mind that mongodb\
+                queries only operate over a single collection.  So if you want to analyze\
+                results from a bunch of experiments together using mongod queries, you should\
+                put them all in the same collection, but with different exp_ids. If, on the\
+                other hand, you never expect to analyze data from two experiments together,\
+                you can put them in different collections or different databases. Choosing\
+                between putting two experiments in two collections in the same database\
+                or in two totally different databases will depend on how you want to organize\
+                your results and is really a matter of preference.
+
             - do_save (bool, default: True)
                 Whether to save to database
             - save_initial_filters (bool, default: True)
@@ -91,127 +95,158 @@ def train_from_params(
                 ~/.tfutils/<host:post>/<dbname>/<collname>/<exp_id>.
 
         model_params (dict): Containing function that produces model and arguments to that function.
-            - model_params['func'] is the function producing the model.
+
+            - model_params['func'] 
+                The function producing the model.
 
                 The function's signature is:
-                ::
 
-                    inputs: data object
-                    - ``train`` -- boolean if training is happening
-                    - ``seed`` -- seed for use in random generation of final config
+                Args:
+
+                - ``inputs``: data object
+                - ``train`` (boolean): if in training or testing 
+                - ``seed`` (int): seed for use in random generation
 
                 Returns:
-                - outputs (tf.Operations): train output tensorflow nodes
+
+                - ``outputs`` (tf.Operations): train output tensorflow nodes
                 - Additional configurations you want to store in database
 
             - Remaining items in model_params are dictionary of arguments passed to func.
 
         train_params (dict): Containing params for data sources and targets in training.
 
-            - ``train_params['data_params']`` contains params for the data
+            - train_params['data_params'] 
+                This contains params for the data
+
                 - ``train_params['data_params']['func']`` is the function that constructs the data:
 
                     The function's signature is:
-                    ::
 
-                        inputs: 
-                        - ``batch_size`` -- Batch size for input data
+                    Args:
+
+                    - ``batch_size``: Batch size for input data
 
                     Returns:
-                    A dictionary of tensors that will be sent to model function
+
+                    - ``inputs``: A dictionary of tensors that will be sent to model function
 
                 - ``train_params['data_params']['batch_size']`` batch size of the data, will be sent to func
 
                 - Remainder of ``train_params['data_params']`` are kwargs passed to func
 
-            - ``train_params['targets']`` (optional) contains params for additional train targets
+            - train_params['targets'] (optional) 
+                contains params for additional train targets
 
-                - ``train_params['targets']['func']`` is a function that produces
-                  tensorflow nodes as training targets:
+                - ``train_params['targets']['func']`` is a function that produces tensorflow nodes as training targets:
 
                     The function's signature is:
-                    ::
 
-                        inputs: 
-                        - ``inputs`` -- returned values of ``train_params['data_params']['func']``
-                        - ``output`` -- first returned value of ``train_params['model_params']['func']``
+                    Args:
+
+                    - ``inputs``: returned values of ``train_params['data_params']['func']``
+                    - ``output``: first returned value of ``train_params['model_params']['func']``
 
                     Returns:
+
                     A dictionary of tensors that will be computed and stored in the database
 
                 - Remainder of ``train_parms['targets']`` are arguments to func.
 
-            - ``train_params['validate_first']`` (optional, bool, default is True):
+            - train_params['validate_first'] (optional, bool, default is True):
                 controls whether validating before training
 
-            - ``train_params['thres_loss']`` (optional, float, default: 100): 
+            - train_params['thres_loss'] (optional, float, default: 100): 
                 If loss exceeds this during training, HiLossError is thrown
 
-            - ``train_params['num_steps']`` (int or None, default: None): 
+            - train_params['num_steps'] (int or None, default: None): 
                 How many total steps of the optimization are run.
                 If None, train is run until process is cancelled.
 
-        loss_params (dict): Parameters for to helper.get_loss_base function for specifying loss.
+        loss_params (dict): Parameters for helper.get_loss_base function to build loss.
 
-            - ``loss_params['pred_targets']` is a string or a list of strings,
-              contain the names of inputs nodes that will be sent into the loss function
+            - loss_params['pred_targets'] (a string or a list of strings):
+                contain the names of inputs nodes that will be sent into the loss function
 
-            - ``loss_params['loss_func']`` is the function used to calculate the loss. Must be provided.
+            - loss_params['loss_func']:
+                the function used to calculate the loss. Must be provided.
 
-            - ``loss_params['loss_func_kwargs']``. Keyword parameters sent to loss_params['loss_func']. Default is {}.
+            - loss_params['loss_func_kwargs'] (dict):
+                Keyword parameters sent to ``loss_params['loss_func']``. Default is {}.
 
-            - ``loss_params['agg_func']`` is the aggregate function, default is None
+            - loss_params['agg_func']:
+                The aggregate function, default is None.
 
-            - ``loss_params['agg_func_kwargs']`. Keyword parameters sent to ``loss_params['agg_func']. Default is {}.
+            - loss_params['agg_func_kwargs']: 
+                Keyword parameters sent to ``loss_params['agg_func']``. Default is {}.
 
-            - (Deprecated) ``loss_params['loss_per_case_func']`` deprecated parameter, the same as ``loss_params['loss_func']``.
-            - (Deprecated) ``loss_params['targets']`` deprecated parameter, the same as ``loss_params['targets']``.
+            - loss_params['loss_per_case_func'] (Deprecated):
+                Deprecated parameter, the same as ``loss_params['loss_func']``.
+
+            - loss_params['targets'] (Deprecated):
+                Deprecated parameter, the same as ``loss_params['targets']``.
 
         learning_rate_params (dict): Parameters for specifying learning_rate.
-                - :obj:`learning_rate_params['func']` is a function producing
-                  tensorflow node acting as learning rate. This function must accept argument "global_step".
-                - remainder of learning_rate_params are arguments to func.
+
+            - learning_rate_params['func']:
+                The function producing tensorflow node acting as learning rate. 
+                This function must accept argument ``global_step``.
+
+            - remainder of learning_rate_params are arguments to func.
 
         optimizer_params (dict): Parameters for creating optimizer.
-            - optimizer_params['optimizer'] is a class producing an optimizer object, 
-                which should have function compute_gradients and apply_gradients. 
+
+            - optimizer_params['optimizer']:
+                A class producing an optimizer object, 
+                which should have function ``compute_gradients`` and ``apply_gradients``. 
                 The signatures of these two functions are similar as tensorflow basic optimizer classes.
 
-            - (Deprecated) ``optimizer_params['func']`` deprecated parameter, the same as ``optimizer_params['optimizer']``.
+                Must accept:
 
-            Must accept:
-            - "learning_rate" -- the result of the learning_rate_func call
+                - "learning_rate" -- the result of the learning_rate_func call
 
-            - Remainder of optimizer_params (aside form "optimizer") are arguments
-              to the optimizer func
+                - Remainder of optimizer_params (aside form "optimizer") are arguments
+                  to the optimizer func
+
+            - optimizer_params['func'] (Deprecated):
+                Deprecated parameter, the same as ``optimizer_params['optimizer']``.
 
         validation_params (dict): Dictionary of validation sources. The structure if this dictionary is:
 
             {
                 <validation_target_name_1>: {
-                    'data': {
+                    data: {
                         'func': (callable) data source function for this validation,
+
                         <kwarg1>: <value1> for 'func',
+
                         ...
                         },
-                    'targets': {
+                    targets: {
                         'func': (callable) returning targets,
+
                         <kwarg1>: <value1> for 'func',
+
                         ...
-                        }
-                    'num_steps': (int) number of batches of validation source to compute
-                    'agg_func': (optional, callable) how to aggregate validation results
-                            across batches after computation. Signature is:
-                                - one input argument: the list of validation batch results
-                                - one output: aggregated version
-                            Default is utils.identity_func
-                    'online_agg_func': (optional, callable) how to aggregate validation results
-                            on a per-batch basis. Siganture is:
-                                - three input arguments: (current aggregate, new result, step)
-                                - one output: new aggregated result
-                            One first step, current aggregate passed in is None.
-                            The final result is passed to the "agg_func".
-                            Default is utils.append_and_return
+                        },
+                    num_steps (int): 
+                        number of batches of validation source to compute,
+                    agg_func (optional, callable):  
+                        how to aggregate validation results
+                        across batches after computation. Signature is:
+
+                            - one input argument: the list of validation batch results
+                            - one output: aggregated version
+                        Default is ``utils.identity_func``
+                    online_agg_func (optional, callable):  
+                        how to aggregate validation results
+                        on a per-batch basis. Siganture is:
+
+                            - three input arguments: (current aggregate, new result, step)
+                            - one output: new aggregated result
+                        On first step, current aggregate passed in is None.
+                        The final result is passed to the "agg_func".
+                        Default is ``utils.append_and_return``
                 },
 
                 <validation_target_name_2>: ...
@@ -225,6 +260,7 @@ def train_from_params(
         load_params (dict):
             Similar to save_params, if you want loading to happen from a different
             location than where saving occurs. Parameters include:
+
             - host (str)
                 Hostname where database connection lives
             - port (int)
@@ -249,12 +285,14 @@ def train_from_params(
                 from the checkpoint, and the values are the names of the variables of the model
                 that you want to restore with the value of the corresponding checkpoint variable.
 
-        log_device_placement (bool, default: False): Whether to log device placement in tensorflow session
-        dont_run (bool, default: False): Whether returning everything, not actually training 
-        skip_check (bool, default: False): Whether skipping github check, could be useful when working in detached head
+        log_device_placement (bool, default is False): 
+            Advanced parameter. Whether to log device placement in tensorflow session
 
-    Returns:
-        TYPE: Description.
+        dont_run (bool, default is False): 
+            Advanced parameter. Whether returning everything, not actually training 
+
+        skip_check (bool, default is False): 
+            Advanced parameter. Whether skipping github check, could be useful when working in detached head
 
     """
     params, train_args = parse_params('train',

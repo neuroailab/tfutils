@@ -6,6 +6,22 @@ tfutils.base
     :undoc-members:
     :show-inheritance:
 
+tfutils.train
+-------------
+
+.. automodule:: tfutils.train
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+tfutils.test
+------------
+
+.. automodule:: tfutils.test
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 tfutils.model
 -------------
 
@@ -18,14 +34,6 @@ tfutils.optimizer
 -----------------
 
 .. automodule:: tfutils.optimizer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-tfutils.utils
--------------
-
-.. automodule:: tfutils.utils
     :members:
     :undoc-members:
     :show-inheritance:

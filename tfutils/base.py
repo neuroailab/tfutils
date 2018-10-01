@@ -1,5 +1,9 @@
 """
 Entrance of tfutils
+
+Check `tfutils.train` for function `train_from_params`.
+
+Check `tfutils.test` for function `test_from_params`.
 """
 
 # Main function for training
