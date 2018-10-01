@@ -1029,7 +1029,7 @@ def test_from_params(load_params,
         return res
 
 
-def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
+def train_loop(sess, train_targets, data_providers, placeholders, num_minibatches=1, **loop_params):
     """Define default minibatch training loop.
 
     A training loop that performs minibatching with ``num_minibatches``
@@ -1057,7 +1057,11 @@ def train_loop(sess, train_targets, num_minibatches=1, **loop_params):
     range_len = (int)(num_minibatches)
     for minibatch in range(range_len - 1):
         # Accumulate gradient for each minibatch
-        sess.run([target['__grads__'] for target in train_targets])
+        batches = [dp.dequeue_batch() for dp in data_providers]
+        feed_dict = {}
+        for holders, batch in zip(placeholders, batches):
+            feed_dict.update({holders[k_] : batch[k_] for k_ in holders})
+        sess.run([target['__grads__'] for target in train_targets], feed_dict = feed_dict)
 
     # Compute final targets (includes zeroing gradient accumulator variable)
 
@@ -1069,6 +1073,8 @@ def train(sess,
           queues,
           dbinterface,
           train_loop,
+          data_providers,
+          placeholders,
           train_targets,
           global_step,
           num_minibatches=1,
@@ -1104,6 +1110,8 @@ def train(sess,
         'num_steps': num_steps,
         'thres_loss': thres_loss,
         'train_loop': train_loop,
+        'data_providers' : data_providers,
+        'placeholders' : placeholders,
         'global_step': global_step,
         'dbinterface': dbinterface,
         'train_targets': train_targets,
@@ -1142,7 +1150,7 @@ def train(sess,
     while any(step < num_step for (step, num_step) in zip(steps, num_steps)):
 
         start_time_step = time.time()
-        train_results = train_loop(sess, train_targets, num_minibatches=trarg['num_minibatches'])
+        train_results = train_loop(sess, train_targets, data_providers, placeholders, num_minibatches=trarg['num_minibatches'])
 
         for (step, trarg, train_res) in zip(steps, trargs, train_results):
 
@@ -1381,7 +1389,7 @@ def train_from_params(save_params,
                                                        dtype=tf.int64, trainable=False,
                                                        initializer=tf.constant_initializer(0))
 
-                _, _, param, trarg = get_model(inputs,
+                _, _, param, trarg = get_model({},
                                                param['model_params'],
                                                param=param,
                                                trarg=trarg)
@@ -1391,7 +1399,7 @@ def train_from_params(save_params,
                 (trarg['validation_targets'],
                  vqueue) = get_valid_targets_dict(queue_params=queue_params,
                                                   **param)
-                queues.extend(vqueue)
+                #queues.extend(vqueue)
 
         # Create session.
 
@@ -1426,7 +1434,7 @@ def train_from_params(save_params,
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])
             trarg['dbinterface'].initialize()
-            trarg['queues'] = queues
+            #trarg['queues'] = queues
             trarg['data_provider'] = get_data(**data_params)
 
         # Convert back to a dictionary of lists
@@ -1578,7 +1586,7 @@ def split_input(inputs, num_gpus=1):
 def get_model_base(input, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
-    outputs, cfg_final = func(inputs=input,
+    outputs, cfg_final, holders = func(inputs=input,
                               **model_params)
     model_params['func'] = func
     model_params['cfg_final'] = cfg_final
@@ -1621,12 +1629,15 @@ def get_model(inputs, model_params, param=None, trarg=None):
              optimizer_base) = get_optimizer_base(learning_rate,
                                                   param['optimizer_params'])
 
+        placeholders = []
+
         # Distribute graph across desired devices.
         for device, input in zip(devices, inputs):
             with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
 
-                model_params, output = get_model_base(input, **model_params)
+                model_params, output, holders = get_model_base(input, **model_params)
                 tower_outputs.append(output)
+                placeholders.append(holders)
 
                 tf.get_variable_scope().reuse_variables()
 
@@ -1675,6 +1686,7 @@ def get_model(inputs, model_params, param=None, trarg=None):
             trarg['train_targets']['optimizer'] = optimizer
         if 'learning_rate' not in trarg['train_targets']:
             trarg['train_targets']['learning_rate'] = learning_rate
+        trarg['placeholders'] = placeholders
 
         param['model_params'] = model_params
         return param['model_params'], output, param, trarg
