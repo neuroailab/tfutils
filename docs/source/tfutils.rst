@@ -6,22 +6,6 @@ tfutils.base
     :undoc-members:
     :show-inheritance:
 
-tfutils.data
-------------
-
-.. automodule:: tfutils.data
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-tfutils.error
--------------
-
-.. automodule:: tfutils.error
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 tfutils.model
 -------------
 
