@@ -10,11 +10,7 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 from tfutils import base, optimizer, model_tool
 from tfutils.utils import online_agg
-from imagenet_data import dataset_func
-
-
-DATA_LEN_IMAGENET_FULL = 1281167
-VALIDATION_LEN = 50000
+from imagenet_data import ImageNet 
 
 
 def get_learning_rate(
@@ -87,8 +83,11 @@ def get_params_from_arg(args):
     multi_gpu = len(args.gpu.split(','))
     dbname = 'tfutils_tutorial'
     collname = 'example'
-    exp_id = 'alexnet_ctl'
-    NUM_BATCHES_PER_EPOCH = DATA_LEN_IMAGENET_FULL // args.batch_size 
+    #exp_id = 'alexnet_ctl'
+    #exp_id = 'alexnet_ctl_w_alex_prep'
+    exp_id = 'alexnet_ctl_w_ap_cntr'
+    #exp_id = 'alexnet_ctl_w_ap_cntr_re'
+    NUM_BATCHES_PER_EPOCH = ImageNet.TRAIN_LEN // args.batch_size 
 
     # save_params: defining where to save the models
     save_params = {
@@ -129,9 +128,14 @@ def get_params_from_arg(args):
                 ['/gpu:%i' % idx for idx in range(multi_gpu)]
 
     # train_params: parameters about training data
+    data_provider_class = ImageNet(
+            image_dir=args.image_dir,
+            #prep_type='alexnet',
+            prep_type='alex_center',
+            #prep_type='alex_center_re',
+            )
     data_param_base = {
-            'func': dataset_func,
-            'image_dir': args.image_dir,
+            'func': data_provider_class.dataset_func,
             }
     train_data_param = {
             'is_train': True,
@@ -174,7 +178,7 @@ def get_params_from_arg(args):
 
     # validation_params: control the validation
     ## Basic parameters for both validation on train and val
-    val_step_num = int(VALIDATION_LEN / args.batch_size)
+    val_step_num = int(ImageNet.VAL_LEN / args.batch_size)
     val_param_base = {
         'targets': {
             'func': loss_and_in_top_k,
