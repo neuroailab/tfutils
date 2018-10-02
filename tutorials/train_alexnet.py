@@ -89,7 +89,7 @@ def get_params_from_arg(args):
     # save_params: defining where to save the models
     save_params = {
             'host': 'localhost',
-            'port': 27009,
+            'port': 29101,
             'dbname': dbname,
             'collname': collname,
             'exp_id': exp_id,
@@ -104,7 +104,7 @@ def get_params_from_arg(args):
     # load_params: defining where to load, if needed
     load_params = {
             'host': 'localhost',
-            'port': 27009,
+            'port': 29101,
             'dbname': dbname,
             'collname': collname,
             'exp_id': exp_id,
