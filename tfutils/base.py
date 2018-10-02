@@ -1053,20 +1053,23 @@ def train_loop(sess, train_targets, data_providers, placeholders, num_minibatche
     assert all([required in targets for targets in train_targets
                 for required in ['__grads__', 'optimizer']])
 
+    #TODO: this breaks minibatching, I do believe,should  straightene out if we want it
+    batches = [dp.dequeue_batch() for dp in data_providers]
+    feed_dict = {}
+    for holders, batch in zip(placeholders, batches):
+        feed_dict.update({holders[0][k_] : batch[k_] for k_ in holders[0]})
+
+
     # Perform minibatching
     range_len = (int)(num_minibatches)
     for minibatch in range(range_len - 1):
         # Accumulate gradient for each minibatch
-        batches = [dp.dequeue_batch() for dp in data_providers]
-        feed_dict = {}
-        for holders, batch in zip(placeholders, batches):
-            feed_dict.update({holders[k_] : batch[k_] for k_ in holders})
         sess.run([target['__grads__'] for target in train_targets], feed_dict = feed_dict)
 
     # Compute final targets (includes zeroing gradient accumulator variable)
 
     run_options = tf.RunOptions(report_tensor_allocations_upon_oom = True)
-    return sess.run(train_targets, options=run_options)
+    return sess.run(train_targets, options=run_options, feed_dict = feed_dict)
 
 
 def train(sess,
@@ -1435,7 +1438,8 @@ def train_from_params(save_params,
                                                load_params=param['load_params'])
             trarg['dbinterface'].initialize()
             #trarg['queues'] = queues
-            trarg['data_provider'] = get_data(**data_params)
+            _ , _ , dp = get_data(sess, **data_params)
+            trarg['data_providers'] = dp
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]
@@ -1526,7 +1530,7 @@ def get_validation_target(vinputs, voutputs,
     return validation_params, valid_targets
 
 
-def get_data(func, queue_params=None, **data_params):
+def get_data(sess, func, queue_params=None, **data_params):
     if queue_params:
         # Using old queue params
         data_provider = func(**data_params)
@@ -1559,7 +1563,7 @@ def get_data(func, queue_params=None, **data_params):
             inputs = queue.dequeue_many(queue_params['batch_size'])
         return data_params, [queue], inputs
     else:
-        inputs = func(**data_params)
+        inputs = func(sess, **data_params)
         data_params['func'] = func
         return data_params, [], inputs
 
@@ -1590,7 +1594,7 @@ def get_model_base(input, func, seed=0, train=False, **model_params):
                               **model_params)
     model_params['func'] = func
     model_params['cfg_final'] = cfg_final
-    return model_params, outputs
+    return model_params, outputs, holders
 
 
 def get_model(inputs, model_params, param=None, trarg=None):
