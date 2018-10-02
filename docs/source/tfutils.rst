@@ -6,18 +6,18 @@ tfutils.base
     :undoc-members:
     :show-inheritance:
 
-tfutils.data
-------------
+tfutils.train
+-------------
 
-.. automodule:: tfutils.data
+.. automodule:: tfutils.train
     :members:
     :undoc-members:
     :show-inheritance:
 
-tfutils.error
--------------
+tfutils.test
+------------
 
-.. automodule:: tfutils.error
+.. automodule:: tfutils.test
     :members:
     :undoc-members:
     :show-inheritance:
@@ -34,14 +34,6 @@ tfutils.optimizer
 -----------------
 
 .. automodule:: tfutils.optimizer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-tfutils.utils
--------------
-
-.. automodule:: tfutils.utils
     :members:
     :undoc-members:
     :show-inheritance:

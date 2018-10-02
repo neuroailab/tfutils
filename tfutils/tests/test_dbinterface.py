@@ -11,13 +11,15 @@ import pymongo
 import unittest
 
 import tensorflow as tf
+import mnist_data as data
 
 sys.path.insert(0, "..")
 
 import tfutils.base as base
-import tfutils.data as data
 import tfutils.model as model
-import tfutils.utils as utils
+import tfutils.optimizer as optimizer
+from tfutils.db_interface import TFUTILS_HOME
+from tfutils.db_interface import DBInterface
 
 
 # def logPoint(context):
@@ -76,13 +78,13 @@ class TestDBInterface(unittest.TestCase):
                 allow_soft_placement=True,
                 gpu_options=tf.GPUOptions(allow_growth=True),
                 log_device_placement=self.params['log_device_placement'],
-                inter_op_parallelism_threads=self.params['inter_op_parallelism_threads']))
+                ))
 
         # TODO: Determine whether this should be called here or
         # in dbinterface.initialize()
         self.sess.run(tf.global_variables_initializer())
 
-        self.dbinterface = base.DBInterface(sess=self.sess,
+        self.dbinterface = DBInterface(sess=self.sess,
                                             params=self.params,
                                             cache_dir=self.CACHE_DIR,
                                             save_params=self.save_params,
@@ -281,7 +283,7 @@ class TestDBInterface(unittest.TestCase):
 
     @classmethod
     def setup_params(cls):
-        cls.model_params = {'func': model.mnist_tfutils,
+        cls.model_params = {'func': model.mnist_tfutils_new,
                             'devices': ['/gpu:0', '/gpu:1'],
                             'prefix': 'model_0'}
 
@@ -295,13 +297,12 @@ class TestDBInterface(unittest.TestCase):
             'save_filters_freq': 200,
             'cache_filters_freq': 100}
 
-        cls.train_params = {'data_params': {'func': data.MNIST,
-                                            'batch_size': 100,
-                                            'group': 'train',
-                                            'n_threads': 4},
-                            'queue_params': {'queue_type': 'fifo',
-                                             'batch_size': 100},
-                            'num_steps': 500}
+        cls.train_params = {
+                'data_params': {'func': data.build_data,
+                    'batch_size': 100,
+                    'group': 'train',
+                    'directory': TFUTILS_HOME},
+                'num_steps': 500}
 
         cls.loss_params = {'targets': ['labels'],
                            'agg_func': tf.reduce_mean,
@@ -325,7 +326,6 @@ class TestDBInterface(unittest.TestCase):
             'train_params': cls.train_params,
             'validation_params': {},
             'log_device_placement': False,
-            'inter_op_parallelism_threads': 40,
             'save_params': cls.save_params,
             'load_params': cls.load_params,
             'loss_params': cls.loss_params,

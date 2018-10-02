@@ -1,10 +1,11 @@
+"""
+This scripts contains some functions that are usually short, easy to understand.
+"""
 import sys
 import collections
 import logging
 import json
-import datetime
 import inspect
-import threading
 import pkg_resources
 import os
 import re
@@ -15,50 +16,7 @@ from bson.objectid import ObjectId
 import git
 
 import tensorflow as tf
-from tensorflow.python import DType
 from tensorflow.python.client import device_lib
-# from tfutils.error import RepoIsDirtyError
-
-if 'TFUTILS_LOGFILE' in os.environ:
-    logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
-    print ("USING LOGFILE: %s" % os.environ['TFUTILS_LOGFILE'])
-else:
-    logging.basicConfig()
-log = logging.getLogger('tfutils')
-
-
-class CoordinatedThread(threading.Thread):
-    """A thread class coordinated by tf.train.Coordinator."""
-
-    def __init__(self, coord=None, group=None, target=None, name=None, args=(), kwargs={}):
-        # threading.Thread.__init__(
-            # self, group=group, target=target, name=name, args=args,
-            # kwargs=kwargs)
-        super(CoordinatedThread, self).__init__(
-            group=None, target=target, name=name, args=args, kwargs=kwargs)
-        self._coord = coord
-        self._target = target
-        self._args = args
-        self._kwargs = kwargs
-
-    def run(self):
-        """Run the thread's main activity.
-
-        You may override this method in a subclass. The standard run() method
-        invokes the callable object passed to the object's constructor as the
-        target argument, if any, with sequential and keyword arguments taken
-        from the args and kwargs arguments, respectively.
-
-        """
-        try:
-            if self._target:
-                self._target(*self._args, **self._kwargs)
-        except Exception as error:
-            self._coord.request_stop(error)
-        finally:
-            # Avoid a refcycle if the thread is running a function with
-            # an argument that has a member that points to the thread.
-            del self._target, self._args, self._kwargs
 
 
 def isstring(x):
@@ -96,29 +54,6 @@ def version_info(module):
             version = info.version
 
     return {'version': version}
-
-
-def version_check_and_info(module):
-    """Return either git info or standard module version if not a git repo.
-
-    Args:
-        module (module): python module object to get info for.
-
-    Returns:
-        dict: dictionary of info
-
-    """
-    srcpath = inspect.getsourcefile(module)
-    try:
-        repo = git.Repo(srcpath, search_parent_directories=True)
-    except git.InvalidGitRepositoryError:
-        log.info('module %s not in a git repo, checking package version' %
-                 module.__name__)
-        info = version_info(module)
-    else:
-        info = git_info(repo)
-    info['source_path'] = srcpath
-    return info
 
 
 def git_info(repo):
@@ -167,101 +102,6 @@ def git_info(repo):
             'active_branch_in_origin': active_branch_in_origin,
             'commit_in_log': commit_in_log}
     return info
-
-
-def make_mongo_safe(_d):
-    """Make a json-izable actually safe for insertion into Mongo.
-
-    Args:
-        _d (dict): a dictionary to make safe for Mongo.
-
-    """
-    klist = _d.keys()[:]
-    for _k in klist:
-        if hasattr(_d[_k], 'keys'):
-            make_mongo_safe(_d[_k])
-        if not isinstance(_k, str):
-            _d[str(_k)] = _d.pop(_k)
-        _k = str(_k)
-        if '.' in _k:
-            _d[_k.replace('.', '___')] = _d.pop(_k)
-
-
-def sonify(arg, memo=None, skip=False):
-    """Return version of arg that can be trivally serialized to json format.
-
-    Args:
-        arg (object): an argument to sonify.
-        memo (dict, optional): A dictionary to contain args. Defaults to None.
-        skip (bool, optional): Skip git repo info check. Defaults to False.
-
-    Returns:
-        Sonified return argument.
-
-    Raises:
-        TypeError: Cannot sonify argument type.
-
-    """
-    if memo is None:
-        memo = {}
-    if id(arg) in memo:
-        rval = memo[id(arg)]
-
-    if isinstance(arg, ObjectId):
-        rval = arg
-    elif isinstance(arg, datetime.datetime):
-        rval = arg
-    elif isinstance(arg, DType):
-        rval = arg
-    elif isinstance(arg, np.floating):
-        rval = float(arg)
-    elif isinstance(arg, np.integer):
-        rval = int(arg)
-    elif isinstance(arg, (list, tuple)):
-        rval = type(arg)([sonify(ai, memo, skip) for ai in arg])
-    elif isinstance(arg, collections.OrderedDict):
-        rval = collections.OrderedDict([(sonify(k, memo, skip),
-                                         sonify(v, memo, skip))
-                                        for k, v in arg.items()])
-    elif isinstance(arg, dict):
-        rval = dict([(sonify(k, memo, skip), sonify(v, memo, skip))
-                     for k, v in arg.items()])
-    elif isinstance(arg, (basestring, float, int, type(None))):
-        rval = arg
-    elif isinstance(arg, np.ndarray):
-        if arg.ndim == 0:
-            rval = sonify(arg.sum(), skip=skip)
-        else:
-            rval = map(sonify, arg)  # N.B. memo None
-    # -- put this after ndarray because ndarray not hashable
-    elif arg in (True, False):
-        rval = int(arg)
-    elif callable(arg):
-        mod = inspect.getmodule(arg)
-        modname = mod.__name__
-        objname = arg.__name__
-        if not skip:
-            rval = version_check_and_info(mod)
-        else:
-            rval = {}
-        rval.update({'objname': objname,
-                     'modname': modname})
-        rval = sonify(rval, skip=skip)
-    else:
-        raise TypeError('sonify', arg)
-
-    memo[id(rval)] = rval
-    return rval
-
-
-def jsonize(x):
-    """Return version of x that can be serialized trivally to json format."""
-    try:
-        json.dumps(x)
-    except TypeError:
-        return sonify(x)
-    else:
-        return x
 
 
 def get_available_gpus():
@@ -374,6 +214,10 @@ def aggregate_outputs(tower_outputs):
     elif isinstance(tower_outputs[0], tf.Tensor):
         return tf.concat(tower_outputs, axis=0)
 
+    # Tensorflow variables are not processed.
+    elif isinstance(tower_outputs[0], tf.Variable):
+        return tower_outputs
+
     # Dict values are aggregated by key.
     elif isinstance(tower_outputs[0], collections.Mapping):
         return {key: aggregate_outputs([out[key] for out in tower_outputs])
@@ -386,106 +230,6 @@ def aggregate_outputs(tower_outputs):
     # All other types are not supported.
     raise TypeError('Aggregation not supported for type: {}'.
                     format(type(tower_outputs[0])))
-
-
-def get_loss(inputs,
-             outputs,
-             targets,
-             loss_per_case_func,
-             loss_per_case_func_params={'_outputs': 'logits', '_targets_$all': 'labels'},
-             agg_func=None,
-             loss_func_kwargs=None,
-             agg_func_kwargs=None,
-             **loss_params):
-    if loss_func_kwargs is None:
-        loss_func_kwargs = {}
-    else:
-        loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
-    if not isinstance(targets, (list, tuple, np.ndarray)):
-        targets = [targets]
-    targets = list(targets)
-    if len(targets) == 1:
-        labels = inputs[targets[0]]
-    else:
-        labels = [inputs[t] for t in targets]
-
-    flag_with_out = True
-    flag_with_tar = True
-    for key_value in loss_per_case_func_params.keys():
-        if key_value == '_outputs':
-            flag_with_out = False
-            loss_func_kwargs[loss_per_case_func_params[key_value]] = outputs
-        elif key_value == '_targets_$all':
-            flag_with_tar = False
-            loss_func_kwargs[loss_per_case_func_params[key_value]] = labels
-        elif key_value.startswith('_targets_'):
-            tmp_key = key_value[len('_targets_'):]
-            if tmp_key in targets:
-                targets.remove(tmp_key)
-                loss_func_kwargs[loss_per_case_func_params[
-                    key_value]] = inputs[tmp_key]
-
-    if len(targets) == 0:
-        flag_with_tar = False
-    elif len(targets) == 1:
-        labels = inputs[targets[0]]
-    else:
-        labels = [inputs[t] for t in targets]
-
-    if not flag_with_tar:
-        labels = []
-    if not isinstance(labels, (list, tuple, np.ndarray)):
-        labels = [labels]
-    if flag_with_out:
-        labels.insert(0, outputs)
-    loss = loss_per_case_func(*labels, **loss_func_kwargs)
-
-    if agg_func is not None:
-        if agg_func_kwargs is None:
-            agg_func_kwargs = {}
-        loss = agg_func(loss, **agg_func_kwargs)
-    return loss
-
-
-def get_loss_dict(*args, **kwargs):
-    kwargs = copy.copy(kwargs)
-    name = kwargs.pop('name', 'loss')
-    return {name: get_loss(*args, **kwargs)}
-
-
-def verify_pb2_v2_files(cache_prefix, ckpt_record):
-    file_data = get_saver_pb2_v2_files(cache_prefix)
-    ndf = file_data['num_data_files']
-    sndf = ckpt_record['_saver_num_data_files']
-    assert ndf == sndf, (ndf, sndf)
-
-
-def get_saver_pb2_v2_files(prefix):
-    dirn, pref = os.path.split(prefix)
-    pref = pref + '.'
-    files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
-                   os.listdir(dirn))
-    indexf = pref + 'index'
-    assert indexf in files, (prefix, indexf, files)
-    notindexfiles = [_f for _f in files if _f != indexf]
-    p = re.compile(pref + 'data-([\d]+)-of-([\d]+)$')
-    total0 = None
-    fns = []
-    for f in notindexfiles:
-        match = p.match(f)
-        assert match, (f, prefix)
-        thisf, total = map(int, match.groups())
-        if total0 is None:
-            total0 = total
-        else:
-            assert total == total0, (f, total, total0)
-        fns.append(thisf)
-    fns = list(set(fns))
-    fns.sort()
-    assert fns == range(total0), (fns, total0)
-    files = [os.path.join(dirn, f) for f in files]
-    file_data = {'files': files, 'num_data_files': total0}
-    return file_data
 
 
 def identity_func(x):
@@ -578,3 +322,23 @@ class frozendict(collections.Mapping):
                 h ^= hash((key, value))
             self._hash = h
         return self._hash
+
+
+def predict(step, results):
+    if not hasattr(results['output'], '__iter__'):
+        outputs = [results['outputs']]
+    else:
+        outputs = results['outputs']
+
+    preds = [tf.argmax(output, 1) for output in outputs]
+
+    return preds
+
+
+# Useful function to average items within one dictionary
+def online_agg(agg_res, res, step):
+    if agg_res is None:
+        agg_res = {k: [] for k in res}
+    for k, v in res.items():
+        agg_res[k].append(np.mean(v))
+    return agg_res

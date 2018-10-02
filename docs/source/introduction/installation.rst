@@ -13,7 +13,6 @@ Requirements
 
    python-pip, pip, Tool to install python dependencies
    python-virtualenv (*), virtualenv (*), Allows creation of isolated environments ((*): This is required only for Python 2.7 installs. With Python3: test for presence of ``venv`` with ``python3 -m venv -h``)
-   libhdf5-dev, h5py, Enables loading of hdf5 formats
    pymongo, pymongo, Python interface to MongoDB.
 
 Installation

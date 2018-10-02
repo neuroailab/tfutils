@@ -9,20 +9,45 @@ import cPickle
 import logging
 import unittest
 from collections import defaultdict
+import copy
 
 import gridfs
 import pymongo
 import tensorflow as tf
+import pdb
+
+import mnist_data as data
 
 sys.path.insert(0, "..")
 
 import tfutils.base as base
-import tfutils.data as data
 import tfutils.model as model
 import tfutils.utils as utils
+from tfutils.db_interface import TFUTILS_HOME
 
 
-num_batches_per_epoch = 10000 // 256
+TRAIN_PARAMS = {
+        'data_params': {'func': data.build_data,
+                        'batch_size': 100,
+                        'group': 'train',
+                        'directory': TFUTILS_HOME},
+        'num_steps': 500}
+VALIDATION_PARAMS = {
+        'valid0': {
+            'data_params': {
+                'func': data.build_data,
+                'batch_size': 100,
+                'group': 'test',
+                'directory': TFUTILS_HOME},
+            'num_steps': 10,
+            'agg_func': utils.mean_dict}}
+NUM_BATCHES_PER_EPOCH = 10000 // 256
+LEARNING_RATE_PARAMS = {
+        'learning_rate': 0.05,
+        'decay_steps': NUM_BATCHES_PER_EPOCH,
+        'decay_rate': 0.95,
+        'staircase': True}
+MODEL_BUILD_FUNC = model.mnist_tfutils_new
 
 
 def setUpModule():
@@ -80,7 +105,9 @@ class TestBase(unittest.TestCase):
 
         params = {}
         params['model_params'] = {
-            'func': model.mnist_tfutils}
+            'func': MODEL_BUILD_FUNC,
+            #'devices': ['/gpu:0', '/gpu:1'],
+            }
 
         params['save_params'] = {
             'host': self.host,
@@ -92,33 +119,11 @@ class TestBase(unittest.TestCase):
             'save_filters_freq': 200,
             'cache_filters_freq': 100}
 
-        params['train_params'] = {
-            'data_params': {'func': data.MNIST,
-                            'batch_size': 100,
-                            'group': 'train',
-                            'n_threads': 4},
-            'queue_params': {'queue_type': 'fifo',
-                             'batch_size': 100},
-            'num_steps': 500}
+        params['train_params'] = copy.deepcopy(TRAIN_PARAMS)
 
-        params['learning_rate_params'] = {
-            'learning_rate': 0.05,
-            'decay_steps': num_batches_per_epoch,
-            'decay_rate': 0.95,
-            'staircase': True}
+        params['learning_rate_params'] = copy.deepcopy(LEARNING_RATE_PARAMS)
 
-        params['validation_params'] = {
-            'valid0': {
-                'data_params': {
-                    'func': data.MNIST,
-                    'batch_size': 100,
-                    'group': 'test',
-                    'n_threads': 4},
-                'queue_params': {
-                    'queue_type': 'fifo',
-                    'batch_size': 100},
-                'num_steps': 10,
-                'agg_func': utils.mean_dict}}
+        params['validation_params'] = copy.deepcopy(VALIDATION_PARAMS)
 
         params['skip_check'] = True
 
@@ -412,35 +417,38 @@ class TestBase(unittest.TestCase):
         assert set(vk) == set(vk1)
 
         assert r['params']['model_params']['seed'] == 0
-        print(r['params']['model_params']['func']['modname'])
-        assert r['params']['model_params']['func']['modname'] == 'tfutils.model'
+        assert r['params']['model_params']['func']['modname'] == 'tfutils.model_tool'
         assert r['params']['model_params']['func']['objname'] == 'mnist_tfutils'
-        assert set(['hidden1', 'hidden2', u'softmax_linear']).difference(
-            r['params']['model_params']['cfg_final'].keys()) == set()
 
         _k = vk[0]
         should_contain = ['agg_func', 'data_params', 'num_steps',
-                          'online_agg_func', 'queue_params', 'targets']
+                          'online_agg_func', 'targets']
         assert set(should_contain).difference(
             r['params']['validation_params'][_k].keys()) == set()
 
         if train:
             assert r['params']['model_params']['train'] is True
-            for k in ['num_steps', 'queue_params']:
-                assert r['params']['train_params'][k] == params['train_params'][k]
+            for k in ['num_steps']:
+                assert r['params']['train_params'][k] \
+                        == params['train_params'][k]
 
             should_contain = ['loss_params', 'optimizer_params',
                               'train_params', 'learning_rate_params']
             assert set(should_contain).difference(r['params'].keys()) == set()
-            assert r['params']['train_params']['thres_loss'] == 100
-            assert r['params']['train_params']['data_params']['func']['modname'] == 'tfutils.data'
-            assert r['params']['train_params']['data_params']['func']['objname'] == 'MNIST'
+            r_train_params = r['params']['train_params']
+            assert r_train_params['thres_loss'] == 100
+            assert r_train_params['data_params']['func']['modname'] \
+                    == 'mnist_data', \
+                    r_train_params['data_params']['func']['modname']
+            assert r_train_params['data_params']['func']['objname'] \
+                    == 'build_data',\
+                    r_train_params['data_params']['func']['objname']
 
             assert r['params']['loss_params']['agg_func']['modname'] == 'tensorflow.python.ops.math_ops'
             assert r['params']['loss_params']['agg_func']['objname'] == 'reduce_mean'
-            assert r['params']['loss_params']['loss_per_case_func']['modname'] == 'tensorflow.python.ops.nn_ops'
-            assert r['params']['loss_params']['loss_per_case_func']['objname'] == 'sparse_softmax_cross_entropy_with_logits'
-            assert r['params']['loss_params']['targets'] == ['labels']
+            assert r['params']['loss_params']['loss_func']['modname'] == 'tensorflow.python.ops.nn_ops'
+            assert r['params']['loss_params']['loss_func']['objname'] == 'sparse_softmax_cross_entropy_with_logits'
+            assert r['params']['loss_params']['pred_targets'] == ['labels']
         else:
             assert not r['params']['model_params']['train']
             assert 'train_params' not in r['params']
@@ -452,7 +460,7 @@ class TestDistributedModel(TestBase):
 
         params = {}
         params['model_params'] = {
-            'func': model.mnist_tfutils,
+            'func': MODEL_BUILD_FUNC,
             'devices': ['/gpu:0', '/gpu:1']}
 
         params['save_params'] = {
@@ -465,35 +473,11 @@ class TestDistributedModel(TestBase):
             'save_filters_freq': 200,
             'cache_filters_freq': 100}
 
-        params['train_params'] = {
-            'data_params': {
-                'func': data.MNIST,
-                'batch_size': 100,
-                'group': 'train',
-                'n_threads': 4},
-            'queue_params': {
-                'queue_type': 'fifo',
-                'batch_size': 100},
-            'num_steps': 500}
+        params['train_params'] = copy.deepcopy(TRAIN_PARAMS)
 
-        params['learning_rate_params'] = {
-            'learning_rate': 0.05,
-            'decay_steps': num_batches_per_epoch,
-            'decay_rate': 0.95,
-            'staircase': True}
+        params['learning_rate_params'] = copy.deepcopy(LEARNING_RATE_PARAMS)
 
-        params['validation_params'] = {
-            'valid0': {
-                'data_params': {
-                    'func': data.MNIST,
-                    'batch_size': 100,
-                    'group': 'test',
-                    'n_threads': 4},
-                'queue_params': {
-                    'queue_type': 'fifo',
-                    'batch_size': 100},
-                'num_steps': 10,
-                'agg_func': utils.mean_dict}}
+        params['validation_params'] = copy.deepcopy(VALIDATION_PARAMS)
 
         params['skip_check'] = True
 
@@ -506,8 +490,8 @@ class TestMultiModel(TestBase):
 
         params = {}
         params['model_params'] = [
-            {'func': model.mnist_tfutils},
-            {'func': model.mnist_tfutils}]
+            {'func': MODEL_BUILD_FUNC},
+            {'func': MODEL_BUILD_FUNC}]
 
         params['save_params'] = {
             'host': self.host,
@@ -519,33 +503,11 @@ class TestMultiModel(TestBase):
             'save_filters_freq': 200,
             'cache_filters_freq': 100}
 
-        params['train_params'] = {
-            'data_params': {'func': data.MNIST,
-                            'batch_size': 100,
-                            'group': 'train',
-                            'n_threads': 4},
-            'queue_params': {'queue_type': 'fifo',
-                             'batch_size': 100},
-            'num_steps': 500}
+        params['train_params'] = copy.deepcopy(TRAIN_PARAMS)
 
-        params['learning_rate_params'] = {
-            'learning_rate': 0.05,
-            'decay_steps': num_batches_per_epoch,
-            'decay_rate': 0.95,
-            'staircase': True}
+        params['learning_rate_params'] = copy.deepcopy(LEARNING_RATE_PARAMS)
 
-        params['validation_params'] = {
-            'valid0': {
-                'data_params': {
-                    'func': data.MNIST,
-                    'batch_size': 100,
-                    'group': 'test',
-                    'n_threads': 4},
-                'queue_params': {
-                    'queue_type': 'fifo',
-                    'batch_size': 100},
-                'num_steps': 10,
-                'agg_func': utils.mean_dict}}
+        params['validation_params'] = copy.deepcopy(VALIDATION_PARAMS)
 
         params['skip_check'] = True
 
@@ -670,9 +632,9 @@ class TestDistributedMulti(TestMultiModel):
 
         params = {}
         params['model_params'] = [
-            {'func': model.mnist_tfutils,
+            {'func': MODEL_BUILD_FUNC,
              'devices': ['/gpu:0', '/gpu:1']},
-            {'func': model.mnist_tfutils,
+            {'func': MODEL_BUILD_FUNC,
              'devices': ['/gpu:2', '/gpu:3']}]
 
         params['save_params'] = {
@@ -685,38 +647,15 @@ class TestDistributedMulti(TestMultiModel):
             'save_filters_freq': 200,
             'cache_filters_freq': 100}
 
-        params['train_params'] = {
-            'data_params': {'func': data.MNIST,
-                            'batch_size': 100,
-                            'group': 'train',
-                            'n_threads': 4},
-            'queue_params': {'queue_type': 'fifo',
-                             'batch_size': 100},
-            'num_steps': 500}
+        params['train_params'] = copy.deepcopy(TRAIN_PARAMS)
 
-        params['learning_rate_params'] = {
-            'learning_rate': 0.05,
-            'decay_steps': num_batches_per_epoch,
-            'decay_rate': 0.95,
-            'staircase': True}
+        params['learning_rate_params'] = copy.deepcopy(LEARNING_RATE_PARAMS)
 
-        params['validation_params'] = {
-            'valid0': {
-                'data_params': {
-                    'func': data.MNIST,
-                    'batch_size': 100,
-                    'group': 'test',
-                    'n_threads': 4},
-                'queue_params': {
-                    'queue_type': 'fifo',
-                    'batch_size': 100},
-                'num_steps': 10,
-                'agg_func': utils.mean_dict}}
+        params['validation_params'] = copy.deepcopy(VALIDATION_PARAMS)
 
         params['skip_check'] = True
 
         return params
-
 
 if __name__ == '__main__':
     unittest.main()
