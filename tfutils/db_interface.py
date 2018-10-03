@@ -20,7 +20,7 @@ import threading
 
 from tfutils.utils import strip_prefix_from_name, strip_prefix
 from tfutils.helper import log
-from tfutils.helper import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
+from tfutils.defaults import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
 
 if 'TFUTILS_HOME' in os.environ:
     TFUTILS_HOME = os.environ['TFUTILS_HOME']

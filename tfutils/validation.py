@@ -2,10 +2,11 @@ from collections import OrderedDict
 import tqdm
 from tfutils.helper import \
         get_model, get_data, \
-        DEFAULT_PARAMS, DEFAULT_LOOP_PARAMS, get_loss_dict
+        get_loss_dict
 import tfutils.utils as utils
 import copy
 import tensorflow as tf
+from tfutils.defaults import DEFAULT_PARAMS, DEFAULT_LOOP_PARAMS
 
 
 def get_validation_target(vinputs, voutputs,

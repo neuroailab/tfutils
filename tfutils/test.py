@@ -1,10 +1,11 @@
 from tfutils.db_interface import DBInterface
-from tfutils.helper import parse_params, log, DEFAULT_HOST
+from tfutils.helper import parse_params, log
 from tfutils.validation import run_all_validations, get_valid_targets_dict
 import tensorflow as tf
 from tfutils.utils import strip_prefix
 from tensorflow.python.ops import variables
 import time
+from tfutils.defaults import DEFAULT_HOST
 
 
 def test(sess,

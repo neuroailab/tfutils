@@ -16,10 +16,12 @@ from tfutils.utils import strip_prefix
 from tfutils.db_interface import DBInterface
 from tfutils.helper import \
         parse_params, get_params, \
-        get_data, get_model, get_loss, DEFAULT_HOST, \
-        DEFAULT_PARAMS, DEFAULT_TRAIN_THRES_LOSS, \
-        split_input, log, get_model, DEFAULT_LOOP_PARAMS
+        get_data, get_model, get_loss, \
+        split_input, log, get_model
 from tfutils.validation import run_all_validations, get_valid_targets_dict
+from tfutils.defaults import \
+        DEFAULT_HOST, DEFAULT_LOOP_PARAMS, \
+        DEFAULT_TRAIN_THRES_LOSS, DEFAULT_PARAMS
 
 
 def train_from_params(

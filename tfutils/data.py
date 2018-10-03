@@ -1,4 +1,4 @@
-from tfutils.helper import BRANCH_QUEUE_NAME
+from tfutils.defaults import BRANCH_QUEUE_NAME
 
 raise TypeError(\
         'Functions and classes in data.py is no longer supported! '\
