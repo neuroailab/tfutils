@@ -29,7 +29,7 @@ TFUtils is compatible with: **Python 2.7**.
 .. toctree::
    :hidden:
    :maxdepth: 2
-   :caption: Fundamentals
+   :caption: Advanced 
 
    fundamentals/multigpu.rst
    fundamentals/multimodel.rst

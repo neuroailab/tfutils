@@ -62,7 +62,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'TFUtils'
-copyright = u'2017, NeuroAILab'
+copyright = u'2018, NeuroAILab'
 author = u'NeuroAILab'
 
 # The version info for the project you're documenting, acts as replacement for
