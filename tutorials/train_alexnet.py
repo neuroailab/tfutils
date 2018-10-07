@@ -83,8 +83,7 @@ def get_params_from_arg(args):
     multi_gpu = len(args.gpu.split(','))
     dbname = 'tfutils_tutorial'
     collname = 'example'
-    #exp_id = 'alexnet_ctl_w_ap_cntr'
-    exp_id = 'alexnet_ctl_test_bs'
+    exp_id = 'alexnet_ctl_w_ap_cntr'
     NUM_BATCHES_PER_EPOCH = ImageNet.TRAIN_LEN // args.batch_size 
 
     # save_params: defining where to save the models
