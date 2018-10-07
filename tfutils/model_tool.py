@@ -166,9 +166,7 @@ class ConvNet(object):
 
         if in_layer is None:
             in_layer = self.output
-        resh = tf.reshape(in_layer,
-                          [in_layer.get_shape().as_list()[0], -1],
-                          name='reshape')
+        resh = tf.layers.Flatten()(in_layer) # keep the batch size dim
         in_shape = resh.get_shape().as_list()[-1]
 
         # Define variable

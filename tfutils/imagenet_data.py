@@ -304,8 +304,7 @@ class ImageNet(object):
                 num_parallel_calls=48)
 
         # Batch the dataset and make iteratior
-        dataset = dataset.apply(
-            tf.contrib.data.batch_and_drop_remainder(batch_size))
+        dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(4)
         next_element = dataset.make_one_shot_iterator().get_next()
         return next_element
