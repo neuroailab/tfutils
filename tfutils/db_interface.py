@@ -589,6 +589,13 @@ class DBInterface(object):
         if len(train_res) > 0:
             # TODO: also include error rate of the train set to monitor overfitting
             message = 'Step {} ({:.0f} ms) -- '.format(step, 1000 * duration)
+
+            # If ndarray found, get the mean of it
+            for k, v in train_res.items():
+                if k not in ['optimizer', '__grads__'] and \
+                        isinstance(v, np.ndarray) and len(v) > 1:
+                    train_res[k] = np.mean(v)
+
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
                     if k not in ['optimizer', '__grads__'] and k not in self.save_to_gfs]
             message += ', '.join(msg2)
