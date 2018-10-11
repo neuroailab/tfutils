@@ -10,6 +10,7 @@ import pkg_resources
 import os
 import re
 import copy
+import pdb
 
 import numpy as np
 from bson.objectid import ObjectId
@@ -212,6 +213,9 @@ def aggregate_outputs(tower_outputs):
 
     # Tensorflow tensors are concatenated along axis 0.
     elif isinstance(tower_outputs[0], tf.Tensor):
+        if tower_outputs[0].shape.ndims == 0:
+            for i, output in enumerate(tower_outputs):
+                tower_outputs[i] = tf.expand_dims(output, axis=0)
         return tf.concat(tower_outputs, axis=0)
 
     # Tensorflow variables are not processed.
@@ -224,12 +228,12 @@ def aggregate_outputs(tower_outputs):
                 for key in tower_outputs[0]}
 
     # List elements are aggregated by index.
-    elif isinstance(tower_outputs[0], collections.Iterable):
-        return [aggregate_outputs(out) for out in zip(*tower_outputs)]
+    elif isinstance(tower_outputs[0], list):
+        return [aggregate_outputs(out) for out in tower_outputs]
 
-    # All other types are not supported.
-    raise TypeError('Aggregation not supported for type: {}'.
-                    format(type(tower_outputs[0])))
+    # Simply return all other types
+    else:
+        return tower_outputs
 
 
 def identity_func(x):
