@@ -63,14 +63,18 @@ class ClipOptimizer(object):
         """
         train_vars = None
         if self.trainable_names is not None:
-            log.info('All trainable vars:\n'+str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
+            log.info('All trainable vars:\n' \
+                    + str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
             train_vars = []
             for scope_name in self.trainable_names:
-                new_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope_name)
+                new_vars = tf.get_collection(
+                        tf.GraphKeys.TRAINABLE_VARIABLES, 
+                        scope=scope_name)
                 if len(new_vars) == 0:
                     raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
                 train_vars.extend(new_vars)
-            log.info('Variables to be trained:\n'+str([var.name for var in train_vars]))
+            log.info('Variables to be trained:\n' \
+                    + str([var.name for var in train_vars]))
         if train_vars is not None:
             self.var_list = train_vars
 
@@ -182,7 +186,7 @@ class MinibatchOptimizer(object):
                     tf.less(self.mini_flag[0], 0.5), 
                     lambda: _set_op(gv[0], mgv[0]), 
                     lambda: _add_op(gv[0], mgv[0])) \
-                            if mgv[0] is not None else None \
+                if mgv[0] is not None else None \
                 for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
         only_grads_without_None = []
         for curr_value in only_grads:
