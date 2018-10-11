@@ -84,7 +84,7 @@ def train_from_params(
                 How often to store train results to database
             - save_valid_freq (int, default: 3000)
                 How often to calculate and store validation results
-                                        to database
+                to database
             - save_filters_freq (int, default: 30000)
                 How often to save filter values to database
             - cache_filters_freq (int, default: 3000)
@@ -275,7 +275,7 @@ def train_from_params(
                 Experiment id descriptor
             - do_restore (bool, default: True)
                 Whether to restore from saved model
-            - load_query (dict)
+            - query (dict)
                 mongodb query describing how to load from loading database
             - from_ckpt (string)
                 Path to load from a TensorFlow checkpoint (instead of from the db)
