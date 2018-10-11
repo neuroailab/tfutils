@@ -107,9 +107,13 @@ def test_from_params(load_params,
             if not 'cache_dir' in load_params:
                 temp_cache_dir = save_params.get('cache_dir', None)
                 load_params['cache_dir'] = temp_cache_dir
-                log.info('cache_dir not found in load_params, using cache_dir ({}) from save_params'.format(temp_cache_dir))
+                log.info('cache_dir not found in load_params, '\
+                        + 'using cache_dir ({}) from save_params'.format(
+                            temp_cache_dir))
 
-            ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
+            ttarg['dbinterface'] = DBInterface(
+                    params=param, 
+                    load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
             ld = ttarg['dbinterface'].load_data
             assert ld is not None, "No load data found for query, aborting"
@@ -119,8 +123,8 @@ def test_from_params(load_params,
             param['model_params']['seed'] = ld['params']['model_params']['seed']
             cfg_final = ld['params']['model_params']['cfg_final']
 
-            ttarg['validation_targets'] = \
-                    get_valid_targets_dict(
+            ttarg['validation_targets'] \
+                    = get_valid_targets_dict(
                         loss_params=None,
                         cfg_final=cfg_final,
                         **param)
@@ -140,7 +144,8 @@ def test_from_params(load_params,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize(no_scratch=True)
-            ttarg['save_intermediate_freq'] = param['save_params'].get('save_intermediate_freq')
+            ttarg['save_intermediate_freq'] \
+                    = param['save_params'].get('save_intermediate_freq')
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]

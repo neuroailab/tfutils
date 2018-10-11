@@ -230,11 +230,17 @@ class DBInterface(object):
             setattr(self, 'load_' + _k, lv)
         self.sameloc = all([getattr(self, _k) == getattr(
             self, 'load_' + _k) for _k in location_variables])
-        if 'query' in load_params and not load_params['query'] is None and 'exp_id' in load_params['query']:
-            self.sameloc = self.sameloc & (load_params['query']['exp_id'] == self.exp_id)
+        if 'query' in load_params \
+                and not load_params['query'] is None \
+                and 'exp_id' in load_params['query']:
+            self.sameloc = \
+                    self.sameloc \
+                    & (load_params['query']['exp_id'] == self.exp_id)
 
-        for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq', 'cache_max_num',
-                   'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
+        for _k in [\
+                'do_save', 'save_metrics_freq', \
+                'save_valid_freq', 'cache_filters_freq', 'cache_max_num', \
+                'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
         for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
@@ -712,15 +718,17 @@ class DBInterface(object):
 
             if not save_filters_permanent:
                 recent_gridfs_files = self.collfs_recent._GridFS__files
-                recent_query_result = recent_gridfs_files.find({'saved_filters': True}, sort=[('uploadDate', 1)])
+                recent_query_result = recent_gridfs_files.find(
+                        {'saved_filters': True}, sort=[('uploadDate', 1)])
                 num_cached_filters = recent_query_result.count()
                 cache_max_num = self.cache_max_num
                 if num_cached_filters > cache_max_num:
                     log.info('Cleaning up cached filters')
-                    fsbucket = gridfs.GridFSBucket(recent_gridfs_files._Collection__database, bucket_name=recent_gridfs_files.name.split('.')[0])
+                    fsbucket = gridfs.GridFSBucket(
+                            recent_gridfs_files._Collection__database, 
+                            bucket_name=recent_gridfs_files.name.split('.')[0])
 
                     for del_indx in xrange(0, num_cached_filters - cache_max_num):
-                        #log.info(recent_query_result[del_indx]['uploadDate'])
                         fsbucket.delete(recent_query_result[del_indx]['_id'])
 
         if not save_filters_permanent:
