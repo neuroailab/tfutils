@@ -123,13 +123,11 @@ def test_from_params(load_params,
             param['model_params']['seed'] = ld['params']['model_params']['seed']
             cfg_final = ld['params']['model_params']['cfg_final']
 
-            ttarg['validation_targets'] \
+            ttarg['validation_targets'], variable_m \
                     = get_valid_targets_dict(
                         loss_params=None,
                         cfg_final=cfg_final,
                         **param)
-
-            # tf.get_variable_scope().reuse_variables()
 
             param['load_params']['do_restore'] = True
             param['model_params']['cfg_final'] = cfg_final
@@ -138,12 +136,15 @@ def test_from_params(load_params,
             all_vars = variables._all_saveable_objects()
             var_list = strip_prefix(prefix, all_vars)
 
+            # Build database interface class, loading model 
             ttarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
                                                var_list=var_list,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize(no_scratch=True)
+            sess.run(tf.group(*variable_m.get_post_init_ops()))
+
             ttarg['save_intermediate_freq'] \
                     = param['save_params'].get('save_intermediate_freq')
 

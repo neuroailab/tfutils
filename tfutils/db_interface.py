@@ -395,7 +395,9 @@ class DBInterface(object):
         log.info('Saved Vars:\n' + str(var_shapes.keys()))
 
         var_shapes = {  # Strip the prefix off saved var names.
-            strip_prefix_from_name(self.params['model_params']['prefix'], name): shape
+            strip_prefix_from_name(
+                self.params['model_params']['prefix'], 
+                name): shape
             for name, shape in var_shapes.items()}
 
         # Map old vars from checkpoint to new vars via load_param_dict.

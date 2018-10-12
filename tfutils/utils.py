@@ -174,6 +174,13 @@ def strip_prefix_from_name(prefix, name):
     return name
 
 
+def get_var_list_wo_prefix(param, variable_m):
+    all_vars = variable_m.savable_variables()
+    prefix = os.path.join(param['model_params']['prefix'], 'v0')
+    var_list = strip_prefix(prefix, all_vars)
+    return var_list
+
+
 def aggregate_outputs(tower_outputs):
     """Return aggregated model replicate outputs.
 

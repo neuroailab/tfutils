@@ -43,7 +43,7 @@ def get_model_base(inputs, func, seed=0, train=False, **model_params):
     return model_params, outputs
 
 
-def get_model(inputs, model_params, param=None, trarg=None):
+def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
     """Return model and any other targets (loss + optimizer) specified.
 
     Args:
@@ -58,29 +58,37 @@ def get_model(inputs, model_params, param=None, trarg=None):
         tuple: Description.
 
     """
-    with tf.variable_scope(tf.get_variable_scope()):
+    devices = model_params['devices']
+    num_gpus = model_params['num_gpus']
 
+    # variable_m is used for variable management in multiple gpu training 
+    if not variable_m:
+        variable_m = variable_mgr.VariableMgrLocalReplicated(devices)
+
+    with tf.variable_scope(tf.get_variable_scope()):
         tower_outputs = []
-        devices = model_params['devices']
-        num_gpus = model_params['num_gpus']
         multi_gpu_inputs = split_input(inputs, num_gpus)
+
         # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
             assert param and trarg is not None
 
+            # Lists that will include things from each gpu
             tower_losses = []
             tower_grads = []
+            tower_opts = []
 
             (param['learning_rate_params'],
              learning_rate) = get_learning_rate(trarg['global_step'],
                                                 **param['learning_rate_params'])
-            (param['optimizer_params'],
-             optimizer_base) = get_optimizer(learning_rate,
-                                             param['optimizer_params'])
 
         # Distribute graph across desired devices.
-        for device, each_input in zip(devices, multi_gpu_inputs):
-            with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
+        update_ops = None
+        for which_gpu, (device, each_input) \
+                in enumerate(zip(devices, multi_gpu_inputs)):
+            with variable_m.create_outer_variable_scope(which_gpu),\
+                 tf.device(device), \
+                 tf.name_scope('__GPU__' + str(which_gpu)) as name_scope:
 
                 model_params, output = get_model_base(each_input, **model_params)
                 tower_outputs.append(output)
@@ -89,15 +97,35 @@ def get_model(inputs, model_params, param=None, trarg=None):
 
                 # Get loss and optimizer if training
                 if model_params['train']:
+                    ## Build optimizer on each gpu
+                    param['optimizer_params'], optimizer_base \
+                            = get_optimizer(
+                                    learning_rate,
+                                    param['optimizer_params'])
                     param['loss_params'], loss = get_loss(
                             each_input, output, 
                             **param['loss_params'])
+                    
+                    if which_gpu==0:
+                        update_ops = tf.get_collection(
+                                tf.GraphKeys.UPDATE_OPS, 
+                                name_scope)
 
                     tf.get_variable_scope().reuse_variables()
 
-                    grad = optimizer_base.compute_gradients(loss)
+                    ## Get gradients for trainable vars on this gpu
+                    trainable_params \
+                            = variable_m.trainable_variables_on_device(
+                                    which_gpu)
+                    aggmeth = tf.AggregationMethod.DEFAULT
+                    grad = optimizer_base.compute_gradients(
+                            loss,
+                            var_list=trainable_params,
+                            aggregation_method=aggmeth)
+
                     tower_losses.append(loss)
                     tower_grads.append(grad)
+                    tower_opts.append(optimizer_base)
 
     # Gather and aggregate outputs on the host (CPU).
     output = aggregate_outputs(tower_outputs)
@@ -110,35 +138,49 @@ def get_model(inputs, model_params, param=None, trarg=None):
             ttargs_func = ttargs.pop('func')
             ttarg = ttargs_func(inputs, output, **ttargs)
             trarg['train_targets'].update(ttarg)
+        reserved_keys = ['loss', '__grads__', 'optimizer', 'learning_rate']
+        for each_key in reserved_keys:
+            assert each_key not in trarg['train_targets'], \
+                    "Please avoid using reserved key %s in your targets!" \
+                        % each_key
 
         # Aggregate loss.
         loss = tf.reduce_mean(tf.stack(tower_losses))
 
         # Aggregate and accumulate gradients.
-        minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        mini_flag, grads = optimizer_base.accumulate_gradients(
-                minibatch_grads, 
-                trarg['num_minibatches'])
-        #grads = minibatch_grads
+        apply_gradient_devices, gradient_state = (
+                variable_m.preprocess_device_grads(tower_grads))
+        # mini_act_list is ops doing one minibatch, which includes update_ops
+        mini_act_list = []
+        gstep_update_op = tf.assign(
+                trarg['global_step'], 
+                trarg['global_step']+1)
+        # final_acts contains ops for applying gradients and global step updates
+        final_acts = [gstep_update_op]
+        for d, device in enumerate(apply_gradient_devices):
+            with tf.device(device):
+                avg_grads = variable_m.get_gradients_to_apply(
+                        d, gradient_state)
+                mini_flag, optimizer = optimizer_base.accu_and_apply_grads(
+                        avg_grads,
+                        trarg['num_minibatches'],
+                        trarg['global_step'],
+                        )
 
-        # Apply accumulated gradients.
-        optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
+                mini_act_list.append(mini_flag)
+                final_acts.append(optimizer)
+        mini_act_list = tf.group(*(mini_act_list + update_ops))
 
         # Prepare train_targets
-        if 'loss' not in trarg['train_targets']:
-            trarg['train_targets']['loss'] = loss
-        if '__grads__' not in trarg['train_targets']:
-            trarg['train_targets']['__grads__'] = mini_flag
-            pass
-        if 'optimizer' not in trarg['train_targets']:
-            trarg['train_targets']['optimizer'] = optimizer
-        if 'learning_rate' not in trarg['train_targets']:
-            trarg['train_targets']['learning_rate'] = learning_rate
+        trarg['train_targets']['loss'] = loss
+        trarg['train_targets']['__grads__'] = mini_act_list
+        trarg['train_targets']['optimizer'] = final_acts
+        trarg['train_targets']['learning_rate'] = learning_rate
 
         param['model_params'] = model_params
-        return param['model_params'], output, param, trarg
+        return model_params, output, param, trarg, variable_m
     else:
-        return model_params, output
+        return model_params, output, variable_m
 
 
 def get_learning_rate(global_step,

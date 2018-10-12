@@ -66,27 +66,6 @@ class VariableMgr(object):
     del device_num, gradient_state  # unused by this implementation
     assert False, 'Must be implemented in subclass'
 
-  def append_apply_gradients_ops(
-      self, gradient_state, 
-      opt, grads, training_ops):
-    """Adds training ops for grads to 'training_ops'.
-
-
-
-    Args:
-      gradient_state: from previous call to apply_gradients_devices.
-      opt: the underlying optimizer
-      grads: [(grad, var)] to apply
-      training_ops: list to which to add ops
-    """
-    del gradient_state  # unused by this implementation
-
-    def get_apply_gradients_ops_func():
-      """Returns the apply_gradients op."""
-      return [opt.apply_gradients(grads)]
-
-    training_ops.extend(get_apply_gradients_ops_func())
-
   def get_post_init_ops(self):
     """Returns ops that should run post-initialization."""
     return []

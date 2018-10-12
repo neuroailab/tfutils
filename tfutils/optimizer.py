@@ -1,9 +1,13 @@
 """Default Optimizer to be used with tfutils.
 
-The ClipOptimizer class adds support for gradient clipping, gradient
-aggregation across devices and gradient accumulation useful for
-performing minibatching (accumulating and aggregating
-gradients for multiple batches before applying a gradient update).
+The ClipOptimizer class adds support for gradient clipping, self-defined 
+trainable parameters. This optimizer is just a tool provided by TFUtils, 
+but not what tfutils must use.
+
+The MinibatchOptimizer adds support for gradient aggregation gradient 
+accumulation useful for performing minibatching (accumulating and aggregating
+gradients for multiple batches before applying a gradient update). 
+This optimizer is what tfutils must use.
 
 """
 import os
@@ -45,12 +49,11 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
-        self.var_list = None
         if not isinstance(trainable_names, list) and trainable_names is not None:
             trainable_names = [trainable_names]
         self.trainable_names = trainable_names
 
-    def compute_gradients(self, loss, *args, **kwargs):
+    def compute_gradients(self, loss, var_list=None, *args, **kwargs):
         """Compute gradients to model variables from loss.
 
         Args:
@@ -61,22 +64,24 @@ class ClipOptimizer(object):
             clipping operation if `self.clip` is True.
 
         """
-        train_vars = None
+        train_vars = var_list
         if self.trainable_names is not None:
-            log.info('All trainable vars:\n' \
-                    + str([var.name for var in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)]))
-            train_vars = []
-            for scope_name in self.trainable_names:
-                new_vars = tf.get_collection(
-                        tf.GraphKeys.TRAINABLE_VARIABLES, 
-                        scope=scope_name)
-                if len(new_vars) == 0:
-                    raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
-                train_vars.extend(new_vars)
-            log.info('Variables to be trained:\n' \
-                    + str([var.name for var in train_vars]))
-        if train_vars is not None:
-            self.var_list = train_vars
+            if train_vars:
+                log.info('Ignoring specified trainable_names!')
+            else:
+                train_key = tf.GraphKeys.TRAINABLE_VARIABLES
+                log.info('All trainable vars:\n' \
+                        + str([var.name for var in tf.get_collection(train_key)]))
+                train_vars = []
+                for scope_name in self.trainable_names:
+                    new_vars = tf.get_collection(
+                            train_key, 
+                            scope=scope_name)
+                    if len(new_vars) == 0:
+                        raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
+                    train_vars.extend(new_vars)
+                log.info('Variables to be trained:\n' \
+                        + str([var.name for var in train_vars]))
 
         gvs = self._optimizer.compute_gradients(loss,
                                                 var_list=train_vars,
@@ -126,7 +131,6 @@ class MinibatchOptimizer(object):
 
         self.grads_and_vars = None
         self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
-        #self.var_list = None
 
     def compute_gradients(self, loss, *args, **kwargs):
         gvs = self._optimizer.compute_gradients(
@@ -221,11 +225,20 @@ class MinibatchOptimizer(object):
 
         """
         # Set back mini_flag as apply_gradients is only called at the end of of batch
-        # Also do UPDATE_OPS here for batch normalization related updates
-        self.mini_flag = tf.assign(
-                self.mini_flag, tf.constant([0], dtype = tf.float32))
-        extra_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies([self.mini_flag] + extra_ops):
+        with tf.control_dependencies([self.mini_flag]):
             optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                        global_step=global_step)
         return optimize
+
+    def accu_and_apply_grads(
+            self, minibatch_grads, 
+            num_minibatch, global_step):
+        # Aggregate and accumulate gradients.
+        mini_flag, grads = self.accumulate_gradients(
+                minibatch_grads, 
+                num_minibatch)
+
+        # Apply accumulated gradients.
+        optimizer = optimizer_base.apply_gradients(grads, global_step)
+
+        return mini_flag, optimizer
