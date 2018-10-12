@@ -229,7 +229,7 @@ def aggregate_outputs(tower_outputs):
 
     # List elements are aggregated by index.
     elif isinstance(tower_outputs[0], list):
-        return [aggregate_outputs(out) for out in tower_outputs]
+        return [aggregate_outputs(out) for out in zip(*tower_outputs)]
 
     # Simply return all other types
     else:
