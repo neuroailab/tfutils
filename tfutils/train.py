@@ -378,7 +378,8 @@ def train_from_params(
                                                load_params=param['load_params'])
             ## Model will be restored from saved database here
             trarg['dbinterface'].initialize()
-            sess.run(tf.group(*variable_m.get_post_init_ops()))
+            post_init_ops = variable_m.get_post_init_ops()
+            sess.run(tf.group(*post_init_ops))
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]
