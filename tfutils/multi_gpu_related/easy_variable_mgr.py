@@ -140,7 +140,8 @@ class VariableMgrLocalReplicated(VariableMgr):
 
   def is_real_tensor(self, tensor):
     split_name = tensor.name.split('/')
-    if split_name[1] == 'v0' or not tensor.name.startswith('%s/v' % self.prefix):
+    if not tensor.name.startswith('%s/v' % self.prefix) \
+            or split_name[1] == 'v0':
       return True
     return False
 

@@ -364,8 +364,8 @@ class DBInterface(object):
             if ckpt_filename is not None:
                 # Determine which vars should be restored from the specified checkpoint.
                 restore_vars = self.get_restore_vars(ckpt_filename)
-                restore_stripped = strip_prefix(self.params['model_params']['prefix'], list(restore_vars.values()))
-                restore_names =  [name for name, var in restore_stripped.items()]
+                restore_names = [name for name, var in restore_vars.items()]
+
                 # Actually load the vars.
                 log.info('Restored Vars:\n' + str(restore_names))
                 tf_saver_restore = tf.train.Saver(restore_vars)
@@ -373,8 +373,8 @@ class DBInterface(object):
                 log.info('... done restoring.')
 
                 # Reinitialize all other, unrestored vars.
-                unrestored_vars = [var for name, var in self.all_vars.items() if name not in restore_names]
-                unrestored_var_names = [name for name, var in self.all_vars.items() if name not in restore_names]
+                unrestored_vars = [var for name, var in self.var_list.items() if name not in restore_names]
+                unrestored_var_names = [name for name, var in self.var_list.items() if name not in restore_names]
                 log.info('Unrestored Vars:\n' + str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
@@ -409,18 +409,6 @@ class DBInterface(object):
         reader = tf.train.NewCheckpointReader(save_file)
         var_shapes = reader.get_variable_to_shape_map()
 
-        # Strip the prefix off saved var names.
-        # Normally this should not happen, as we already strip the prefix 
-        # away during saving, but just in case
-        var_shapes = {  
-            strip_prefix_from_name(
-                self.params['model_params']['prefix'], 
-                name): shape
-            for name, shape in var_shapes.items()}
-        var_shapes = {  
-            strip_prefix_from_name('v0', name): shape
-            for name, shape in var_shapes.items()}
-
         # Map old vars from checkpoint to new vars via load_param_dict.
         log.info('Saved vars and shapes:\n' + str(var_shapes))
 
@@ -446,6 +434,10 @@ class DBInterface(object):
             var_shape = var.get_shape().as_list()
             if var_shape == var_shapes[name]:
                 var_list[name] = var
+            else:
+                print('Shape mismatch for %s' % name, 
+                      var_shape, 
+                      var_shapes[name])
         return var_list
 
     def filter_var_list(self, var_list):
@@ -473,6 +465,7 @@ class DBInterface(object):
     def tf_saver(self):
         if not hasattr(self, '_tf_saver'):
             self._tf_saver = tf.train.Saver(
+                var_list=self.var_list,
                 *self.tfsaver_args, **self.tfsaver_kwargs)
         return self._tf_saver
 

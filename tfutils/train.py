@@ -327,26 +327,18 @@ def train_from_params(
         # Build a graph for each distinct model.
         variable_m_list = []
         for param, trarg in zip(_params, _trargs):
-            with tf.variable_scope(param['model_params']['prefix']):
-                # Build global step
-                trarg['global_step'] = tf.get_variable(
-                        'global_step', [],
-                        dtype=tf.int64, trainable=False,
-                        initializer=tf.constant_initializer(0))
+            _, _, param, trarg, variable_m \
+                    = get_model(inputs,
+                            param['model_params'],
+                            param=param,
+                            trarg=trarg)
+            tf.get_variable_scope().reuse_variables()
 
-                _, _, param, trarg, variable_m \
-                        = get_model(inputs,
-                                param['model_params'],
-                                param=param,
-                                trarg=trarg)
-
-                tf.get_variable_scope().reuse_variables()
-
-                trarg['validation_targets'], variable_m = \
-                        get_valid_targets_dict(
-                                variable_m=variable_m,
-                                **param)
-                variable_m_list.append(variable_m)
+            trarg['validation_targets'], variable_m = \
+                    get_valid_targets_dict(
+                            variable_m=variable_m,
+                            **param)
+            variable_m_list.append(variable_m)
 
         # Create session.
         gpu_options = tf.GPUOptions(allow_growth=True)

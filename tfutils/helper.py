@@ -68,22 +68,41 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
         variable_m \
                 = variable_mgr.VariableMgrLocalReplicated(model_prefix, devices)
 
-    with tf.variable_scope(tf.get_variable_scope()):
+    with tf.variable_scope(model_prefix):
         tower_outputs = []
         multi_gpu_inputs = split_input(inputs, num_gpus)
 
         # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
-            assert param and trarg is not None
+            assert param and trarg
+
+            # Build global step
+            trarg['global_step'] = tf.get_variable(
+                    'global_step', [],
+                    dtype=tf.int64, trainable=False,
+                    initializer=tf.constant_initializer(0))
 
             # Lists that will include things from each gpu
             tower_losses = []
             tower_grads = []
             tower_opts = []
 
-            (param['learning_rate_params'],
-             learning_rate) = get_learning_rate(trarg['global_step'],
-                                                **param['learning_rate_params'])
+            param['learning_rate_params'], learning_rate \
+                    = get_learning_rate(
+                            trarg['global_step'],
+                            **param['learning_rate_params'])
+
+        # Make optimizers first, to avoid naming problems in optimizer
+        for which_gpu, (device, each_input) \
+                in enumerate(zip(devices, multi_gpu_inputs)):
+            with tf.device(device):
+                if model_params['train']:
+                    ## Build optimizer on each gpu
+                    param['optimizer_params'], optimizer_base \
+                            = get_optimizer(
+                                    learning_rate,
+                                    param['optimizer_params'])
+                    tower_opts.append(optimizer_base)
 
         # Distribute graph across desired devices.
         update_ops = None
@@ -102,11 +121,6 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
 
                 # Get loss and optimizer if training
                 if model_params['train']:
-                    ## Build optimizer on each gpu
-                    param['optimizer_params'], optimizer_base \
-                            = get_optimizer(
-                                    learning_rate,
-                                    param['optimizer_params'])
                     param['loss_params'], loss = get_loss(
                             each_input, output, 
                             **param['loss_params'])
@@ -123,7 +137,7 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                             = variable_m.trainable_variables_on_device(
                                     which_gpu)
                     aggmeth = tf.AggregationMethod.DEFAULT
-                    grad = optimizer_base.compute_gradients(
+                    grad = tower_opts[which_gpu].compute_gradients(
                             loss,
                             var_list=trainable_params,
                             aggregation_method=aggmeth,
@@ -131,7 +145,6 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
 
                     tower_losses.append(loss)
                     tower_grads.append(grad)
-                    tower_opts.append(optimizer_base)
 
     # Gather and aggregate outputs on the host (CPU).
     output = aggregate_outputs(tower_outputs)
