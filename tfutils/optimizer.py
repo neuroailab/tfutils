@@ -225,6 +225,9 @@ class MinibatchOptimizer(object):
 
         """
         # Set back mini_flag as apply_gradients is only called at the end of of batch
+        self.mini_flag = tf.assign(
+                self.mini_flag, 
+                tf.constant([0], dtype = tf.float32))
         with tf.control_dependencies([self.mini_flag]):
             optimize = self._optimizer.apply_gradients(grads_and_vars,
                                                        global_step=global_step)

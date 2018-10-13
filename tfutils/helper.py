@@ -93,7 +93,9 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                  tf.device(device), \
                  tf.name_scope('__GPU__' + str(which_gpu)) as name_scope:
 
-                model_params, output = get_model_base(each_input, **model_params)
+                model_params, output = get_model_base(
+                        each_input, 
+                        **model_params)
                 tower_outputs.append(output)
 
                 tf.get_variable_scope().reuse_variables()
@@ -124,7 +126,8 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                     grad = optimizer_base.compute_gradients(
                             loss,
                             var_list=trainable_params,
-                            aggregation_method=aggmeth)
+                            aggregation_method=aggmeth,
+                            )
 
                     tower_losses.append(loss)
                     tower_grads.append(grad)
@@ -164,10 +167,10 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
             with tf.device(device):
                 avg_grads = variable_m.get_gradients_to_apply(
                         d, gradient_state)
-                mini_flag, optimizer = optimizer_base.accu_and_apply_grads(
+                mini_flag, optimizer = tower_opts[d].accu_and_apply_grads(
                         avg_grads,
                         trarg['num_minibatches'],
-                        trarg['global_step'],
+                        None,
                         )
 
                 mini_act_list.append(mini_flag)
