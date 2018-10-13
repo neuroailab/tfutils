@@ -52,7 +52,6 @@ def get_valid_targets_dict(validation_params,
     """
     valid_targets_dict = OrderedDict()
     model_params = copy.deepcopy(model_params)
-    # model_params.pop('train', None)  # hackety-hack
     model_params['train'] = False
     prefix = model_params['prefix']
     if cfg_final is None:

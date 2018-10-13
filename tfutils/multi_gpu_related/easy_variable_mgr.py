@@ -18,9 +18,10 @@ class VariableMgr(object):
     managed, and how gradients are computed and applied.
   """
 
-  def __init__(self, devices):
+  def __init__(self, prefix, devices):
     self.devices = devices
     self.staging_delta_ops = []
+    self.prefix = prefix
 
     # A variable for automatic loss scaling.
     self.grad_has_inf_nan = None
@@ -92,7 +93,7 @@ class VariableMgr(object):
     if self.each_tower_has_variables():
       params = [
           v for v in tf.trainable_variables()
-          if v.name.startswith('v%s/' % abs_device_num)
+          if v.name.startswith('%s/v%s/' % (self.prefix, abs_device_num))
       ]
     else:
       params = tf.trainable_variables()
@@ -137,19 +138,26 @@ class VariableMgrLocalReplicated(VariableMgr):
     device_grads = gradient_state
     return device_grads[device_num]
 
+  def is_real_tensor(self, tensor):
+    split_name = tensor.name.split('/')
+    if split_name[1] == 'v0' or not tensor.name.startswith('%s/v' % self.prefix):
+      return True
+    return False
+
   def get_post_init_ops(self):
     # Copy initialized values for variables on GPU 0 to other GPUs.
     global_vars = tf.global_variables()
     var_by_name = dict([(v.name, v) for v in global_vars])
     post_init_ops = []
     for v in global_vars:
-      split_name = v.name.split('/')
       # TODO(b/62630508): use more specific prefix than v or v0.
-      if split_name[0] == 'v0' or not v.name.startswith('v'):
+      if self.is_real_tensor(v):
         continue
-      split_name[0] = 'v0'
+      split_name = v.name.split('/')
+      split_name[1] = 'v0'
       copy_from = var_by_name['/'.join(split_name)]
       post_init_ops.append(v.assign(copy_from.read_value()))
+
     post_init_ops += self._warmup_ops
     return post_init_ops
 
@@ -157,8 +165,7 @@ class VariableMgrLocalReplicated(VariableMgr):
     """Return the set of variables used for saving/loading the model."""
     params = []
     for v in tf.global_variables():
-      split_name = v.name.split('/')
-      if split_name[0] == 'v0' or not v.name.startswith('v'):
+      if self.is_real_tensor(v):
         params.append(v)
     return params
 

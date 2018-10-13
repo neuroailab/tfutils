@@ -239,6 +239,6 @@ class MinibatchOptimizer(object):
                 num_minibatch)
 
         # Apply accumulated gradients.
-        optimizer = optimizer_base.apply_gradients(grads, global_step)
+        optimizer = self.apply_gradients(grads, global_step)
 
         return mini_flag, optimizer

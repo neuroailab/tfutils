@@ -17,6 +17,7 @@ from tfutils.defaults import \
         DEFAULT_LEARNING_RATE_PARAMS, DEFAULT_LOSS_PARAMS, \
         DEFAULT_OPTIMIZER_PARAMS, DEFAULT_SAVE_PARAMS, DEFAULT_PARAMS, \
         train_loop
+from tfutils.multi_gpu_related import easy_variable_mgr as variable_mgr
          
 
 if 'TFUTILS_LOGFILE' in os.environ:
@@ -60,10 +61,12 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
     """
     devices = model_params['devices']
     num_gpus = model_params['num_gpus']
+    model_prefix = model_params['prefix']
 
     # variable_m is used for variable management in multiple gpu training 
     if not variable_m:
-        variable_m = variable_mgr.VariableMgrLocalReplicated(devices)
+        variable_m \
+                = variable_mgr.VariableMgrLocalReplicated(model_prefix, devices)
 
     with tf.variable_scope(tf.get_variable_scope()):
         tower_outputs = []
