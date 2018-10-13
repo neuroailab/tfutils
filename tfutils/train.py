@@ -368,7 +368,7 @@ def train_from_params(
         # This interface class will handle the records saving, model saving, and 
         # model restoring.
         for param, trarg, variable_m in zip(_params, _trargs, variable_m_list):
-            var_list = get_var_list_wo_prefix(param, variable_m)
+            var_list = utils.get_var_list_wo_prefix(param, variable_m)
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,

@@ -132,9 +132,7 @@ def test_from_params(load_params,
             param['load_params']['do_restore'] = True
             param['model_params']['cfg_final'] = cfg_final
 
-            prefix = param['model_params']['prefix'] + '/'
-            all_vars = variables._all_saveable_objects()
-            var_list = strip_prefix(prefix, all_vars)
+            var_list = utils.get_var_list_wo_prefix(param, variable_m)
 
             # Build database interface class, loading model 
             ttarg['dbinterface'] = DBInterface(sess=sess,
