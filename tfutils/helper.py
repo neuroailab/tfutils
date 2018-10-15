@@ -141,13 +141,18 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                     if which_gpu == len(devices)-1:
                         l2_loss = tf.add_n(
                                 [tf.nn.l2_loss(v) for v in trainable_params])
-                        assert 'weight_decay' in param['loss_params'], \
-                                "You should set weight_decay parameter in "\
-                                + "loss_params to allow tfutils to control it"
+                        if 'weight_decay' not in param['loss_params']:
+                            log.info(
+                                    "You should set weight_decay parameter in "\
+                                    + "loss_params to allow tfutils to "\
+                                    + "control it. Otherwise, your "\
+                                    + "weight_decay should be "\
+                                    + "(1+num_gpus)/2 times smaller")
                         weight_decay = param['loss_params'].get(
                                 'weight_decay', 0)
-                        l2_loss *= weight_decay
-                        loss += l2_loss * (which_gpu+1)
+                        if weight_decay > 0:
+                            l2_loss *= weight_decay
+                            loss += l2_loss * (which_gpu+1)
                         
                     aggmeth = tf.AggregationMethod.DEFAULT
                     grad = tower_opts[which_gpu].compute_gradients(
