@@ -230,7 +230,7 @@ def get_optimizer(
             optimizer=optimizer,
             learning_rate=learning_rate,
             **optimizer_params)
-    optimizer_params['optimizer'] = func
+    optimizer_params['optimizer'] = optimizer
     return optimizer_params, optimizer_base
 
 

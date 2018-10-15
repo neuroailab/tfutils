@@ -40,7 +40,9 @@ class ClipOptimizer(object):
         trainable_names (list of strings, or string, optional): Default is None. Scope names for variables to avoid training.
 
     """
-    def __init__(self, optimizer_class, clip=True, trainable_names=None, *optimizer_args, **optimizer_kwargs):
+    def __init__(
+            self, optimizer_class, clip=True, 
+            trainable_names=None, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
         required_methods = ['compute_gradients', 'apply_gradients']
@@ -49,7 +51,8 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
-        if not isinstance(trainable_names, list) and trainable_names is not None:
+        if not isinstance(trainable_names, list) \
+                and trainable_names is not None:
             trainable_names = [trainable_names]
         self.trainable_names = trainable_names
 
@@ -78,7 +81,10 @@ class ClipOptimizer(object):
                             train_key, 
                             scope=scope_name)
                     if len(new_vars) == 0:
-                        raise ValueError('The scope name, {}, you specified does not contain any trainable variables.'.format(scope_name))
+                        raise ValueError(
+                                'The scope name, {}, '.format(scope_name)\
+                                + 'you specified does not contain '\
+                                + 'any trainable variables.')
                     train_vars.extend(new_vars)
                 log.info('Variables to be trained:\n' \
                         + str([var.name for var in train_vars]))
@@ -137,38 +143,20 @@ class MinibatchOptimizer(object):
                 loss,
                 *args, **kwargs)
         # Get the variables to update from results of compute_gradients
+        # filter out the variables with None
+        gvs_wo_none = []
+        for grad, var in gvs:
+            if grad is not None:
+                gvs_wo_none.append([grad, var])
+        gvs = gvs_wo_none
         self.var_list = [each_var for _, each_var in gvs]
         return gvs
 
-    @classmethod
-    def aggregate_gradients(cls, grads_and_vars, method='average'):
-        if method == 'average':
-            return cls.average_gradients(grads_and_vars)
-        else:
-            raise ValueError('Unsupported aggregation method: {}.'.format(method))
-
-    @classmethod
-    def average_gradients(cls, tower_grads):
-        """Average a list of (grads, vars) produced by `compute_gradients`."""
-        average_grads = []
-        for grads_and_vars in zip(*tower_grads):
-            # print(grads_and_vars)
-            if grads_and_vars[0][0] is not None:
-                grads = []
-                for g, _ in grads_and_vars:
-                    grads.append(tf.expand_dims(g, axis=0))
-                grad = tf.concat(grads, axis=0)
-                grad = tf.reduce_mean(grad, axis=0)
-                # all variables are the same so we just use the first gpu variables
-                var = grads_and_vars[0][1]
-                grad_and_var = (grad, var)
-            else:
-                grad_and_var = grads_and_vars[0]
-            average_grads.append(grad_and_var)
-        return average_grads
-
     def accumulate_gradients(self, minibatch_grads, num_minibatches=1):
         """Accumulate gradients for `num_minibatches` minibatches."""
+        if num_minibatches == 1:
+            # No need for accumulating
+            return self.mini_flag, minibatch_grads
 
         if self.grads_and_vars is None:
             self.grads_and_vars = [(
