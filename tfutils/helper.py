@@ -185,15 +185,19 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
         loss = tf.reduce_mean(tf.stack(tower_losses))
 
         # Aggregate and accumulate gradients.
+        ## This is setting the devices where each gradient will be summed across
+        ## all gpus
         apply_gradient_devices, gradient_state = (
                 variable_m.preprocess_device_grads(tower_grads))
-        # mini_act_list is ops doing one minibatch, which includes update_ops
+        ## mini_act_list is ops doing one minibatch, which includes update_ops
         mini_act_list = []
+        ## final_acts contains ops for applying gradients and global step updates
+        final_acts = [gstep_update_op]
         gstep_update_op = tf.assign(
                 trarg['global_step'], 
                 trarg['global_step']+1)
-        # final_acts contains ops for applying gradients and global step updates
-        final_acts = [gstep_update_op]
+
+        ## Apply gradients on each gpu
         for d, device in enumerate(apply_gradient_devices):
             with tf.device(device):
                 avg_grads = variable_m.get_gradients_to_apply(
