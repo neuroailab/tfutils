@@ -198,13 +198,13 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
             with tf.device(device):
                 avg_grads = variable_m.get_gradients_to_apply(
                         d, gradient_state)
-                mini_flag, optimizer = tower_opts[d].accu_and_apply_grads(
+                mini_act, optimizer = tower_opts[d].accu_and_apply_grads(
                         avg_grads,
                         trarg['num_minibatches'],
                         None,
                         )
 
-                mini_act_list.append(mini_flag)
+                mini_act_list.append(mini_act)
                 final_acts.append(optimizer)
         mini_act_list = tf.group(*(mini_act_list + update_ops))
 

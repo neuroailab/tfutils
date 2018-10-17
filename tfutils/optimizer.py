@@ -136,7 +136,6 @@ class MinibatchOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.grads_and_vars = None
-        self.mini_flag = tf.Variable(tf.zeros(1), trainable=False)
 
     def compute_gradients(self, loss, *args, **kwargs):
         gvs = self._optimizer.compute_gradients(
@@ -156,8 +155,16 @@ class MinibatchOptimizer(object):
         """Accumulate gradients for `num_minibatches` minibatches."""
         if num_minibatches == 1:
             # No need for accumulating
-            return self.mini_flag, minibatch_grads
+            return tf.no_op(), minibatch_grads
 
+        # Make sure that the var_list is the same variable list with 
+        # that in minibatch_grads
+        assert len(minibatch_grads) == len(self.var_list), \
+                "Variable list length not matched!"
+        assert all((\
+                var_g.name == var_l.name \
+                for (_, var_g), var_l in zip(minibatch_grads, self.var_list))),\
+                "Variable list should have the same variables!"
         if self.grads_and_vars is None:
             self.grads_and_vars = [(
                 tf.Variable(tf.zeros_like(var.initialized_value()),
@@ -165,37 +172,14 @@ class MinibatchOptimizer(object):
                             trainable=False),
                 var) for var in self.var_list]
 
-        # Add 1/num_minibatches * minibatch_grads to current gradients.
-        def _add_op(gv_tmp, mgv_tmp):
-            return tf.add(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
-        def _set_op(gv_tmp, mgv_tmp):
-            return tf.assign(gv_tmp, tf.divide(mgv_tmp, num_minibatches))
+        mini_ops = []
+        for (grad_v, _), (mini_grad, _) \
+                in zip(self.grads_and_vars, minibatch_grads):
+            mini_ops.append(
+                    tf.assign_add(grad_v, mini_grad / num_minibatches))
+        mini_act = tf.group(*mini_ops)
 
-        # mini_flag indicates whether it's the first minibatch, 
-        # which requires setting up the initial values
-        only_grads = [\
-                tf.cond(
-                    tf.less(self.mini_flag[0], 0.5), 
-                    lambda: _set_op(gv[0], mgv[0]), 
-                    lambda: _add_op(gv[0], mgv[0])) \
-                if mgv[0] is not None else None \
-                for (gv, mgv) in zip(self.grads_and_vars, minibatch_grads)]
-        only_grads_without_None = []
-        for curr_value in only_grads:
-            if curr_value is not None:
-                only_grads_without_None.append(curr_value)
-
-        with tf.control_dependencies(only_grads_without_None):
-            # Set mini_flag to 1, indicates that the initial values are set
-            self.mini_flag = tf.assign(
-                    self.mini_flag, tf.constant([1], dtype = tf.float32))
-
-        # Filter out the None values here
-        grads = []
-        for (gv, only_grad) in zip(self.grads_and_vars, only_grads):
-            if only_grad is not None:
-                grads.append((only_grad, gv[1]))
-        return self.mini_flag, grads
+        return mini_act, self.grads_and_vars
 
     def apply_gradients(self, grads_and_vars, global_step=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
@@ -212,24 +196,30 @@ class MinibatchOptimizer(object):
             internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
-        # Set back mini_flag as apply_gradients is only called at the end of of batch
-        self.mini_flag = tf.assign(
-                self.mini_flag, 
-                tf.constant([0], dtype = tf.float32))
-        with tf.control_dependencies([self.mini_flag]):
-            optimize = self._optimizer.apply_gradients(grads_and_vars,
-                                                       global_step=global_step)
+        optimize = self._optimizer.apply_gradients(
+                grads_and_vars,
+                global_step=global_step)
+
+        # Zero the stored grads if needed
+        if self.grads_and_vars is not None:
+            with tf.control_dependencies([optimize]):
+                reset_ops = []
+                for grad_v, _ in self.grads_and_vars:
+                    reset_ops.append(tf.assign(grad_v, tf.zeros(grad_v.shape)))
+                reset_act = tf.group(*reset_ops)
+            return reset_act
+
         return optimize
 
     def accu_and_apply_grads(
             self, minibatch_grads, 
             num_minibatch, global_step):
         # Aggregate and accumulate gradients.
-        mini_flag, grads = self.accumulate_gradients(
+        mini_act, grads_and_vars = self.accumulate_gradients(
                 minibatch_grads, 
                 num_minibatch)
 
         # Apply accumulated gradients.
-        optimizer = self.apply_gradients(grads, global_step)
+        optimizer = self.apply_gradients(grads_and_vars, global_step)
 
-        return mini_flag, optimizer
+        return mini_act, optimizer
