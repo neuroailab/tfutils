@@ -25,10 +25,33 @@ DEFAULT_LOAD_PARAMS = frozendict(
 
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
+
+# Provide multi-gpu safe regularization loss computation.
+# Used as agg_func in loss_params
+def mean_and_reg_loss(loss, which_device):
+    """
+    if tf.GraphKeys.REGULARIZATION_LOSSES is not empty, will only consider 
+    the losses there that are defined on this gpu. This is useful for L2  
+    loss added by tf.contrib.layers.l2_regularizer
+    """
+    loss = tf.reduce_mean(loss)
+
+    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    if len(reg_losses) > 0:
+        curr_name_scope = '%s%i' % (COPY_NAME_SCOPE, which_device)
+        valid_reg_losses = filter(
+                lambda v: curr_name_scope in v.name, 
+                reg_losses)
+        l2_loss = tf.add_n(valid_reg_losses)
+        loss += l2_loss
+
+    return loss
+
+
 DEFAULT_LOSS_PARAMS = frozendict(
         {'pred_targets': ['labels'],
          'loss_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
-         'agg_func': tf.reduce_mean})
+         'agg_func': mean_and_reg_loss})
 
 DEFAULT_OPTIMIZER_PARAMS = frozendict(
         {'optimizer_class': tf.train.MomentumOptimizer,
@@ -56,6 +79,8 @@ DEFAULT_PARAMS = frozendict({
     'optimizer_params': frozendict(DEFAULT_OPTIMIZER_PARAMS),
     'learning_rate_params': frozendict(DEFAULT_LEARNING_RATE_PARAMS),
 })
+
+from tfutils.multi_gpu_related.easy_variable_mgr import COPY_NAME_SCOPE
 
 
 def train_loop(sess, train_targets, num_minibatches=1, **loop_params):

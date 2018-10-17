@@ -10,6 +10,9 @@ import pdb
 
 import easy_batch_allreduce as batch_allreduce
 
+COPY_NAME_SCOPE = 'var_copy_'
+REAL_NAME_SCOPE = 'var_copy_0'
+
 
 class VariableMgr(object):
   """Abstract superclass for class used by BenchmarkCNN to control variables.
@@ -93,7 +96,8 @@ class VariableMgr(object):
     if self.each_tower_has_variables():
       params = [
           v for v in tf.trainable_variables()
-          if v.name.startswith('%s/v%s/' % (self.prefix, abs_device_num))
+          if v.name.startswith('%s/%s%s/' \
+                  % (self.prefix, COPY_NAME_SCOPE, abs_device_num))
       ]
     else:
       params = tf.trainable_variables()
@@ -121,14 +125,16 @@ class VariableMgrLocalReplicated(VariableMgr):
     return True
 
   def create_outer_variable_scope(self, device_num):
-    return tf.variable_scope('v%s' % device_num, use_resource=False)
+    return tf.variable_scope(
+        '%s%s' % (COPY_NAME_SCOPE, device_num), 
+        use_resource=False)
 
   def preprocess_device_grads(self, device_grads):
 
     grads_to_reduce = [[g for g, _ in grad_vars] for grad_vars in device_grads]
     algorithm = batch_allreduce.algorithm_from_params(self.devices)
     reduced_grads, self._warmup_ops \
-            = algorithm.batch_all_reduce(grads_to_reduce)
+        = algorithm.batch_all_reduce(grads_to_reduce)
     reduced_device_grads = [[
         (g, v) for g, (_, v) in zip(grads, grad_vars)
         ] for grads, grad_vars in zip(reduced_grads, device_grads)]
@@ -140,8 +146,8 @@ class VariableMgrLocalReplicated(VariableMgr):
 
   def is_real_tensor(self, tensor):
     split_name = tensor.name.split('/')
-    if not tensor.name.startswith('%s/v' % self.prefix) \
-            or split_name[1] == 'v0':
+    if not tensor.name.startswith('%s/%s' % (self.prefix, COPY_NAME_SCOPE)) \
+        or split_name[1] == REAL_NAME_SCOPE:
       return True
     return False
 
@@ -151,11 +157,10 @@ class VariableMgrLocalReplicated(VariableMgr):
     var_by_name = dict([(v.name, v) for v in global_vars])
     post_init_ops = []
     for v in global_vars:
-      # TODO(b/62630508): use more specific prefix than v or v0.
       if self.is_real_tensor(v):
         continue
       split_name = v.name.split('/')
-      split_name[1] = 'v0'
+      split_name[1] = REAL_NAME_SCOPE
       copy_from = var_by_name['/'.join(split_name)]
       post_init_ops.append(v.assign(copy_from.read_value()))
 

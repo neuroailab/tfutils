@@ -25,6 +25,8 @@ else:
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 
+NON_SAVE_SUFFIX = 'tfutils_minibatch'
+
 
 class ClipOptimizer(object):
     """A wrapper for general optimizers. 
@@ -167,9 +169,12 @@ class MinibatchOptimizer(object):
                 "Variable list should have the same variables!"
         if self.grads_and_vars is None:
             self.grads_and_vars = [(
-                tf.Variable(tf.zeros_like(var.initialized_value()),
-                            dtype=tf.float32,
-                            trainable=False),
+                tf.Variable(
+                    tf.zeros_like(var.initialized_value()),
+                    dtype=tf.float32,
+                    trainable=False,
+                    name=NON_SAVE_SUFFIX,
+                    ),
                 var) for var in self.var_list]
 
         mini_ops = []

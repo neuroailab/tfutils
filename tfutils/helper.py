@@ -16,7 +16,7 @@ from tfutils.defaults import \
         DEFAULT_TRAIN_THRES_LOSS, DEFAULT_LOAD_PARAMS, \
         DEFAULT_LEARNING_RATE_PARAMS, DEFAULT_LOSS_PARAMS, \
         DEFAULT_OPTIMIZER_PARAMS, DEFAULT_SAVE_PARAMS, DEFAULT_PARAMS, \
-        train_loop
+        train_loop, mean_and_reg_loss
 from tfutils.multi_gpu_related import easy_variable_mgr as variable_mgr
          
 
@@ -121,6 +121,7 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
 
                 # Get loss and optimizer if training
                 if model_params['train']:
+                    param['loss_params']['which_device'] = which_gpu
                     param['loss_params'], loss = get_loss(
                             each_input, output, 
                             **param['loss_params'])
@@ -136,23 +137,6 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                     trainable_params \
                             = variable_m.trainable_variables_on_device(
                                     which_gpu)
-
-                    ## Add weight_decay on last gpu
-                    if which_gpu == len(devices)-1:
-                        l2_loss = tf.add_n(
-                                [tf.nn.l2_loss(v) for v in trainable_params])
-                        if 'weight_decay' not in param['loss_params']:
-                            log.info(
-                                    "You should set weight_decay parameter in "\
-                                    + "loss_params to allow tfutils to "\
-                                    + "control it. Otherwise, your "\
-                                    + "weight_decay should be "\
-                                    + "(1+num_gpus)/2 times smaller")
-                        weight_decay = param['loss_params'].get(
-                                'weight_decay', 0)
-                        if weight_decay > 0:
-                            l2_loss *= weight_decay
-                            loss += l2_loss * (which_gpu+1)
                         
                     aggmeth = tf.AggregationMethod.DEFAULT
                     grad = tower_opts[which_gpu].compute_gradients(
@@ -192,10 +176,10 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
         ## mini_act_list is ops doing one minibatch, which includes update_ops
         mini_act_list = []
         ## final_acts contains ops for applying gradients and global step updates
-        final_acts = [gstep_update_op]
         gstep_update_op = tf.assign(
                 trarg['global_step'], 
                 trarg['global_step']+1)
+        final_acts = [gstep_update_op]
 
         ## Apply gradients on each gpu
         for d, device in enumerate(apply_gradient_devices):
@@ -295,8 +279,9 @@ def get_loss_base(
         pred_targets,
         loss_func,
         loss_func_kwargs={},
-        agg_func=None,
+        agg_func=DEFAULT_PARAMS['loss_params']['agg_func'],
         agg_func_kwargs={},
+        which_device=0,
         **loss_params):
     # Process some parameters
     loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
@@ -328,8 +313,13 @@ def get_loss_base(
             log.info('Errors in loss_func!')
             loss = loss_func(outputs, *labels, **loss_func_kwargs)
 
+    if not agg_func==mean_and_reg_loss:
+        log.info('You are not using function mean_and_reg_loss provided in '\
+                + 'tfutils.defaults, if you are using multi-gpu training, '\
+                + 'please check that function to make sure your '\
+                + 'regularization loss is multi-gpu safe!')
     if agg_func:
-        loss = agg_func(loss, **agg_func_kwargs)
+        loss = agg_func(loss, which_device=which_device, **agg_func_kwargs)
     return loss
 
 

@@ -18,6 +18,8 @@ import git
 
 import tensorflow as tf
 from tensorflow.python.client import device_lib
+from tfutils.multi_gpu_related.easy_variable_mgr import REAL_NAME_SCOPE
+from tfutils.optimizer import NON_SAVE_SUFFIX
 
 
 def isstring(x):
@@ -171,9 +173,16 @@ def strip_prefix(prefix, all_vars):
 
 
 def get_var_list_wo_prefix(param, variable_m):
+    """
+    Get all savable variables, strip prefixes
+    """
     all_vars = variable_m.savable_variables()
+    # Remove all minibatch related unuseful parameters
+    all_vars = filter(lambda x: NON_SAVE_SUFFIX not in x.name, all_vars)
+
+    # Strip prefixes added by tfutils
     var_list = strip_prefix(param['model_params']['prefix'], all_vars)
-    var_list = strip_prefix('v0', var_list)
+    var_list = strip_prefix(REAL_NAME_SCOPE, var_list)
     return var_list
 
 
