@@ -112,6 +112,7 @@ def test_from_params(load_params,
                             temp_cache_dir))
 
             ttarg['dbinterface'] = DBInterface(
+                    variable_m=None,
                     params=param, 
                     load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
@@ -132,16 +133,13 @@ def test_from_params(load_params,
             param['load_params']['do_restore'] = True
             param['model_params']['cfg_final'] = cfg_final
 
-            var_list = utils.get_var_list_wo_prefix(param, variable_m)
-
             # Build database interface class, loading model 
             ttarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
-                                               var_list=var_list,
+                                               variable_m=variable_m,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
-            ttarg['dbinterface'].initialize(no_scratch=True)
-            sess.run(tf.group(*variable_m.get_post_init_ops()))
+            ttarg['dbinterface'].initialize()
 
             ttarg['save_intermediate_freq'] \
                     = param['save_params'].get('save_intermediate_freq')

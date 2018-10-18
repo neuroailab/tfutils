@@ -67,7 +67,6 @@ def get_valid_targets_dict(validation_params,
                     vinputs, model_params,
                     variable_m=variable_m,
                     )
-            tf.get_variable_scope().reuse_variables()
         validation_params[vtarg], valid_targets_dict[vtarg] = \
                 get_validation_target(
                         vinputs, voutputs,

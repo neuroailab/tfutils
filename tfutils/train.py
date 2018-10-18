@@ -332,7 +332,6 @@ def train_from_params(
                             param['model_params'],
                             param=param,
                             trarg=trarg)
-            tf.get_variable_scope().reuse_variables()
 
             trarg['validation_targets'], variable_m = \
                     get_valid_targets_dict(
@@ -360,18 +359,15 @@ def train_from_params(
         # This interface class will handle the records saving, model saving, and 
         # model restoring.
         for param, trarg, variable_m in zip(_params, _trargs, variable_m_list):
-            var_list = utils.get_var_list_wo_prefix(param, variable_m)
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
-                                               var_list=var_list,
+                                               variable_m=variable_m,
                                                global_step=trarg['global_step'],
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])
             ## Model will be restored from saved database here
             trarg['dbinterface'].initialize()
-            post_init_ops = variable_m.get_post_init_ops()
-            sess.run(tf.group(*post_init_ops))
 
         # Convert back to a dictionary of lists
         params = {key: [param[key] for param in _params]

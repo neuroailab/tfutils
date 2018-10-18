@@ -147,6 +147,7 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
 
                     tower_losses.append(loss)
                     tower_grads.append(grad)
+        tf.get_variable_scope().reuse_variables()
 
     # Gather and aggregate outputs on the host (CPU).
     output = aggregate_outputs(tower_outputs)

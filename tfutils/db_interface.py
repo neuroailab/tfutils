@@ -20,7 +20,7 @@ import threading
 import git
 
 from tfutils.utils import strip_prefix_from_name, \
-        strip_prefix
+        strip_prefix, get_var_list_wo_prefix
 from tfutils.helper import log
 from tfutils.defaults import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
 
@@ -252,7 +252,7 @@ def sonify(arg, memo=None, skip=False):
 class DBInterface(object):
 
     def __init__(self,
-                 var_list,
+                 variable_m=None,
                  params=None,
                  save_params=None,
                  load_params=None,
@@ -289,7 +289,12 @@ class DBInterface(object):
         self.global_step = global_step
         self.tfsaver_args = tfsaver_args
         self.tfsaver_kwargs = tfsaver_kwargs
-        self.var_list = var_list
+        self.variable_m = variable_m
+        if self.variable_m:
+            self.var_list = get_var_list_wo_prefix(params, variable_m)
+        else:
+            all_train_vars = tf.trainable_variables()
+            self.var_list = {v.name: v for v in all_train_vars}
 
         # Set save_params and load_params:
         #   And set these parameters as attributes in this instance
@@ -419,7 +424,7 @@ class DBInterface(object):
                                 'record was found with the given spec.')
         self.load_data = load
 
-    def initialize(self, no_scratch=False):
+    def initialize(self):
         """Fetch record then uses tf's saver.restore."""
         if self.do_restore:
             # First, determine which checkpoint to use.
@@ -450,6 +455,11 @@ class DBInterface(object):
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
 
+                # Run post init_ops if needed
+                if self.variable_m:
+                    self.sess.run(
+                            tf.group(*self.variable_m.get_post_init_ops()))
+
                 # Reinitialize all other, unrestored vars.
                 unrestored_vars = [var for name, var in self.var_list.items() if name not in restore_names]
                 unrestored_var_names = [name for name, var in self.var_list.items() if name not in restore_names]
@@ -464,6 +474,8 @@ class DBInterface(object):
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
+            if self.variable_m:
+                self.sess.run(tf.group(*self.variable_m.get_post_init_ops()))
 
     def get_restore_vars(self, save_file):
         """Create the `var_list` init argument to tf.Saver from save_file.
@@ -658,8 +670,10 @@ class DBInterface(object):
 
             # If ndarray found, get the mean of it
             for k, v in train_res.items():
-                if k not in ['optimizer', '__grads__'] and \
-                        isinstance(v, np.ndarray) and len(v) > 1:
+                if k not in ['optimizer', '__grads__'] \
+                        and isinstance(v, np.ndarray) \
+                        and len(v) > 1 \
+                        and k not in self.save_to_gfs:
                     train_res[k] = np.mean(v)
 
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
