@@ -127,6 +127,7 @@ class VariableMgrLocalReplicated(VariableMgr):
   def create_outer_variable_scope(self, device_num):
     return tf.variable_scope(
         '%s%s' % (COPY_NAME_SCOPE, device_num), 
+        reuse=tf.AUTO_REUSE,
         use_resource=False)
 
   def preprocess_device_grads(self, device_grads):
