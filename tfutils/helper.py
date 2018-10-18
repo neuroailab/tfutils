@@ -105,7 +105,7 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                     tower_opts.append(optimizer_base)
 
         # Distribute graph across desired devices.
-        update_ops = None
+        update_ops = []
         for which_gpu, (device, each_input) \
                 in enumerate(zip(devices, multi_gpu_inputs)):
             with variable_m.create_outer_variable_scope(which_gpu),\
@@ -126,10 +126,10 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
                             each_input, output, 
                             **param['loss_params'])
                     
-                    if which_gpu==0:
-                        update_ops = tf.get_collection(
+                    update_ops.extend(
+                            tf.get_collection(
                                 tf.GraphKeys.UPDATE_OPS, 
-                                name_scope)
+                                name_scope))
 
                     tf.get_variable_scope().reuse_variables()
 
