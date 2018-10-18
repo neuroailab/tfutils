@@ -17,8 +17,10 @@ from tensorflow.core.protobuf import saver_pb2
 import re
 import sys
 import threading
+import git
 
-from tfutils.utils import strip_prefix_from_name, strip_prefix
+from tfutils.utils import strip_prefix_from_name, \
+        strip_prefix
 from tfutils.helper import log
 from tfutils.defaults import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
 
@@ -26,6 +28,82 @@ if 'TFUTILS_HOME' in os.environ:
     TFUTILS_HOME = os.environ['TFUTILS_HOME']
 else:
     TFUTILS_HOME = os.path.join(os.environ['HOME'], '.tfutils')
+
+
+def version_info(module):
+    """Get version of a standard python module.
+
+    Args:
+        module (module): python module object to get version info for.
+
+    Returns:
+        dict: dictionary of version info.
+
+    """
+    if hasattr(module, '__version__'):
+        version = module.__version__
+    elif hasattr(module, 'VERSION'):
+        version = module.VERSION
+    else:
+        pkgname = module.__name__.split('.')[0]
+        try:
+            info = pkg_resources.get_distribution(pkgname)
+        except (pkg_resources.DistributionNotFound, pkg_resources.RequirementParseError):
+            version = None
+            log.warning(
+                'version information not found for %s -- what package is this from?' % module.__name__)
+        else:
+            version = info.version
+
+    return {'version': version}
+
+
+def git_info(repo):
+    """Return information about a git repo.
+
+    Args:
+        repo (git.Repo): The git repo to be investigated.
+
+    Returns:
+        dict: Git repo information
+
+    """
+    if repo.is_dirty():
+        log.warning('repo %s is dirty -- having committment issues?' %
+                    repo.git_dir)
+        clean = False
+    else:
+        clean = True
+    branchname = repo.active_branch.name
+    commit = repo.active_branch.commit.hexsha
+    origin = repo.remote('origin')
+    urls = map(str, list(origin.urls))
+    remote_ref = [_r for _r in origin.refs if _r.name ==
+                  'origin/' + branchname]
+    if not len(remote_ref) > 0:
+        log.warning('Active branch %s not in origin ref' % branchname)
+        active_branch_in_origin = False
+        commit_in_log = False
+    else:
+        active_branch_in_origin = True
+        remote_ref = remote_ref[0]
+        gitlog = remote_ref.log()
+        shas = [_r.oldhexsha for _r in gitlog] + \
+            [_r.newhexsha for _r in gitlog]
+        if commit not in shas:
+            log.warning('Commit %s not in remote origin log for branch %s' % (commit,
+                                                                              branchname))
+            commit_in_log = False
+        else:
+            commit_in_log = True
+    info = {'git_dir': repo.git_dir,
+            'active_branch': branchname,
+            'commit': commit,
+            'remote_urls': urls,
+            'clean': clean,
+            'active_branch_in_origin': active_branch_in_origin,
+            'commit_in_log': commit_in_log}
+    return info
 
 
 def verify_pb2_v2_files(cache_prefix, ckpt_record):
