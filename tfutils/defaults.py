@@ -5,6 +5,8 @@ All default values used in tfutils
 from tfutils.utils import frozendict
 import tensorflow as tf
 
+from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
+
 BRANCH_QUEUE_NAME = 'master_w_queue'
 
 DEFAULT_HOST = '/cpu:0'
@@ -79,8 +81,6 @@ DEFAULT_PARAMS = frozendict({
     'optimizer_params': frozendict(DEFAULT_OPTIMIZER_PARAMS),
     'learning_rate_params': frozendict(DEFAULT_LEARNING_RATE_PARAMS),
 })
-
-from tfutils.multi_gpu_related.easy_variable_mgr import COPY_NAME_SCOPE
 
 
 def train_loop(sess, train_targets, num_minibatches=1, **loop_params):

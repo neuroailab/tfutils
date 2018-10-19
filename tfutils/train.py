@@ -325,19 +325,19 @@ def train_from_params(
                 = get_data(**data_params)
 
         # Build a graph for each distinct model.
-        variable_m_list = []
+        var_manager_list = []
         for param, trarg in zip(_params, _trargs):
-            _, _, param, trarg, variable_m \
+            _, _, param, trarg, var_manager \
                     = get_model(inputs,
                             param['model_params'],
                             param=param,
                             trarg=trarg)
 
-            trarg['validation_targets'], variable_m = \
+            trarg['validation_targets'], _ = \
                     get_valid_targets_dict(
-                            variable_m=variable_m,
+                            var_manager=var_manager,
                             **param)
-            variable_m_list.append(variable_m)
+            var_manager_list.append(var_manager)
 
         # Create session.
         gpu_options = tf.GPUOptions(allow_growth=True)
@@ -358,11 +358,11 @@ def train_from_params(
         # Build database interface for each model
         # This interface class will handle the records saving, model saving, and 
         # model restoring.
-        for param, trarg, variable_m in zip(_params, _trargs, variable_m_list):
+        for param, trarg, var_manager in zip(_params, _trargs, var_manager_list):
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
-                                               variable_m=variable_m,
+                                               var_manager=var_manager,
                                                global_step=trarg['global_step'],
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])

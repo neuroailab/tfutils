@@ -43,7 +43,7 @@ def get_valid_targets_dict(validation_params,
                            model_params,
                            loss_params,
                            cfg_final=None,
-                           variable_m=None,
+                           var_manager=None,
                            **params):
     """Helper function for creating validation target operations.
 
@@ -63,16 +63,16 @@ def get_valid_targets_dict(validation_params,
         # scope_name = 'validation/%s' % vtarg
         scope_name = '{}/validation/{}'.format(prefix, vtarg)
         with tf.name_scope(scope_name):
-            _mp, voutputs, variable_m = get_model(
+            _mp, voutputs, var_manager = get_model(
                     vinputs, model_params,
-                    variable_m=variable_m,
+                    var_manager=var_manager,
                     )
         validation_params[vtarg], valid_targets_dict[vtarg] = \
                 get_validation_target(
                         vinputs, voutputs,
                         **validation_params[vtarg])
 
-    return valid_targets_dict, variable_m
+    return valid_targets_dict, var_manager
 
 
 def run_all_validations(

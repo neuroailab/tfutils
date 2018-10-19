@@ -252,7 +252,7 @@ def sonify(arg, memo=None, skip=False):
 class DBInterface(object):
 
     def __init__(self,
-                 variable_m=None,
+                 var_manager=None,
                  params=None,
                  save_params=None,
                  load_params=None,
@@ -289,9 +289,9 @@ class DBInterface(object):
         self.global_step = global_step
         self.tfsaver_args = tfsaver_args
         self.tfsaver_kwargs = tfsaver_kwargs
-        self.variable_m = variable_m
-        if self.variable_m:
-            self.var_list = get_var_list_wo_prefix(params, variable_m)
+        self.var_manager = var_manager
+        if self.var_manager:
+            self.var_list = get_var_list_wo_prefix(params, var_manager)
         else:
             all_train_vars = tf.trainable_variables()
             self.var_list = {v.name: v for v in all_train_vars}
@@ -456,9 +456,9 @@ class DBInterface(object):
                 log.info('... done restoring.')
 
                 # Run post init_ops if needed
-                if self.variable_m:
+                if self.var_manager:
                     self.sess.run(
-                            tf.group(*self.variable_m.get_post_init_ops()))
+                            tf.group(*self.var_manager.get_post_init_ops()))
 
                 # Reinitialize all other, unrestored vars.
                 unrestored_vars = [var for name, var in self.var_list.items() if name not in restore_names]
@@ -474,8 +474,8 @@ class DBInterface(object):
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
-            if self.variable_m:
-                self.sess.run(tf.group(*self.variable_m.get_post_init_ops()))
+            if self.var_manager:
+                self.sess.run(tf.group(*self.var_manager.get_post_init_ops()))
 
     def get_restore_vars(self, save_file):
         """Create the `var_list` init argument to tf.Saver from save_file.

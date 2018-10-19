@@ -18,7 +18,7 @@ import git
 
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-from tfutils.multi_gpu_related.easy_variable_mgr import REAL_NAME_SCOPE
+from tfutils.multi_gpu.easy_variable_mgr import REAL_NAME_SCOPE
 from tfutils.optimizer import NON_SAVE_SUFFIX
 
 
@@ -96,11 +96,11 @@ def strip_prefix(prefix, all_vars):
     return var_list
 
 
-def get_var_list_wo_prefix(param, variable_m):
+def get_var_list_wo_prefix(param, var_manager):
     """
     Get all savable variables, strip prefixes
     """
-    all_vars = variable_m.savable_variables()
+    all_vars = var_manager.savable_variables()
     # Remove all minibatch related unuseful parameters
     all_vars = filter(lambda x: NON_SAVE_SUFFIX not in x.name, all_vars)
 

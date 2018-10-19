@@ -25,7 +25,7 @@ else:
 log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 
-NON_SAVE_SUFFIX = 'tfutils_minibatch'
+NON_SAVE_SUFFIX = '__tfutils_minibatch__'
 
 
 class ClipOptimizer(object):
@@ -182,9 +182,9 @@ class MinibatchOptimizer(object):
                 in zip(self.grads_and_vars, minibatch_grads):
             mini_ops.append(
                     tf.assign_add(grad_v, mini_grad / num_minibatches))
-        mini_act = tf.group(*mini_ops)
+        mnb_accu_grad = tf.group(*mini_ops)
 
-        return mini_act, self.grads_and_vars
+        return mnb_accu_grad, self.grads_and_vars
 
     def apply_gradients(self, grads_and_vars, global_step=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
@@ -220,11 +220,11 @@ class MinibatchOptimizer(object):
             self, minibatch_grads, 
             num_minibatch, global_step):
         # Aggregate and accumulate gradients.
-        mini_act, grads_and_vars = self.accumulate_gradients(
+        mnb_accu_grad, grads_and_vars = self.accumulate_gradients(
                 minibatch_grads, 
                 num_minibatch)
 
         # Apply accumulated gradients.
         optimizer = self.apply_gradients(grads_and_vars, global_step)
 
-        return mini_act, optimizer
+        return mnb_accu_grad, optimizer

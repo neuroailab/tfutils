@@ -373,7 +373,7 @@ class TestBase(unittest.TestCase):
         names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
         names = [y for x in names for y in x]
 
-        r = re.compile(r'__GPU__\d/')
+        r = re.compile(r'__GPU\d__/')
         _targets = defaultdict(list)
 
         for name in names:

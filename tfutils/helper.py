@@ -17,7 +17,7 @@ from tfutils.defaults import \
         DEFAULT_LEARNING_RATE_PARAMS, DEFAULT_LOSS_PARAMS, \
         DEFAULT_OPTIMIZER_PARAMS, DEFAULT_SAVE_PARAMS, DEFAULT_PARAMS, \
         train_loop, mean_and_reg_loss
-from tfutils.multi_gpu_related import easy_variable_mgr as variable_mgr
+from tfutils.multi_gpu import easy_variable_mgr as variable_mgr
          
 
 if 'TFUTILS_LOGFILE' in os.environ:
@@ -44,7 +44,7 @@ def get_model_base(inputs, func, seed=0, train=False, **model_params):
     return model_params, outputs
 
 
-def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
+def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
     """Return model and any other targets (loss + optimizer) specified.
 
     Args:
@@ -63,10 +63,10 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
     num_gpus = model_params['num_gpus']
     model_prefix = model_params['prefix']
 
-    # variable_m is used for variable management in multiple gpu training 
-    if not variable_m:
-        variable_m \
-                = variable_mgr.VariableMgrLocalReplicated(model_prefix, devices)
+    # var_manager is used for variable management in multiple gpu training 
+    if not var_manager:
+        var_manager = variable_mgr.VariableMgrLocalReplicated(
+                model_prefix, devices)
 
     with tf.variable_scope(model_prefix):
         tower_outputs = []
@@ -108,9 +108,9 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
         update_ops = []
         for which_gpu, (device, each_input) \
                 in enumerate(zip(devices, multi_gpu_inputs)):
-            with variable_m.create_outer_variable_scope(which_gpu),\
+            with var_manager.create_outer_variable_scope(which_gpu),\
                  tf.device(device), \
-                 tf.name_scope('__GPU__' + str(which_gpu)) as name_scope:
+                 tf.name_scope('__GPU%i__' % (which_gpu)) as name_scope:
 
                 model_params, output = get_model_base(
                         each_input, 
@@ -135,7 +135,7 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
 
                     ## Get gradients for trainable vars on this gpu
                     trainable_params \
-                            = variable_m.trainable_variables_on_device(
+                            = var_manager.trainable_variables_on_device(
                                     which_gpu)
                         
                     aggmeth = tf.AggregationMethod.DEFAULT
@@ -152,7 +152,7 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
     # Gather and aggregate outputs on the host (CPU).
     output = aggregate_outputs(tower_outputs)
 
-    # DEFAULT: Accumulate and average gradients on the host (CPU).
+    # DEFAULT: Accumulate and average gradients on GPUs.
     if model_params['train']:
 
         if param['train_params'].get('targets'):
@@ -173,40 +173,46 @@ def get_model(inputs, model_params, variable_m=None, param=None, trarg=None):
         ## This is setting the devices where each gradient will be summed across
         ## all gpus
         apply_gradient_devices, gradient_state = (
-                variable_m.preprocess_device_grads(tower_grads))
-        ## mini_act_list is ops doing one minibatch, which includes update_ops
-        mini_act_list = []
-        ## final_acts contains ops for applying gradients and global step updates
+                var_manager.preprocess_device_grads(tower_grads))
+
+        ## mnb_accu_updt_list includes ops doing one minibatch, 
+        ## which includes accumulating gradients for this minibatch and 
+        ## also update_ops for this minibatch, which is usually for batch
+        ## normalization
+        mnb_accu_updt_list = []
+
+        ## optimizer_list contains ops for applying gradients 
+        ## and global step updates
         gstep_update_op = tf.assign(
                 trarg['global_step'], 
                 trarg['global_step']+1)
-        final_acts = [gstep_update_op]
+        optimizer_list = [gstep_update_op]
 
         ## Apply gradients on each gpu
         for d, device in enumerate(apply_gradient_devices):
             with tf.device(device):
-                avg_grads = variable_m.get_gradients_to_apply(
+                avg_grads = var_manager.get_gradients_to_apply(
                         d, gradient_state)
-                mini_act, optimizer = tower_opts[d].accu_and_apply_grads(
+                mnb_accu_grad, optimizer = tower_opts[d].accu_and_apply_grads(
                         avg_grads,
                         trarg['num_minibatches'],
                         None,
                         )
 
-                mini_act_list.append(mini_act)
-                final_acts.append(optimizer)
-        mini_act_list = tf.group(*(mini_act_list + update_ops))
+                mnb_accu_updt_list.append(mnb_accu_grad)
+                optimizer_list.append(optimizer)
+        mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
         # Prepare train_targets
         trarg['train_targets']['loss'] = loss
-        trarg['train_targets']['__grads__'] = mini_act_list
-        trarg['train_targets']['optimizer'] = final_acts
+        trarg['train_targets']['__grads__'] = mnb_accu_updt_list
+        trarg['train_targets']['optimizer'] = optimizer_list
         trarg['train_targets']['learning_rate'] = learning_rate
 
         param['model_params'] = model_params
-        return model_params, output, param, trarg, variable_m
+        return model_params, output, param, trarg, var_manager
     else:
-        return model_params, output, variable_m
+        return model_params, output, var_manager
 
 
 def get_learning_rate(global_step,

@@ -10,8 +10,8 @@ import pdb
 
 import easy_batch_allreduce as batch_allreduce
 
-COPY_NAME_SCOPE = 'var_copy_'
-REAL_NAME_SCOPE = 'var_copy_0'
+COPY_NAME_SCOPE = '__var_copy_'
+REAL_NAME_SCOPE = '__var_copy_0'
 
 
 class VariableMgr(object):

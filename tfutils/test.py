@@ -112,7 +112,7 @@ def test_from_params(load_params,
                             temp_cache_dir))
 
             ttarg['dbinterface'] = DBInterface(
-                    variable_m=None,
+                    var_manager=None,
                     params=param, 
                     load_params=param['load_params'])
             ttarg['dbinterface'].load_rec()
@@ -124,7 +124,7 @@ def test_from_params(load_params,
             param['model_params']['seed'] = ld['params']['model_params']['seed']
             cfg_final = ld['params']['model_params']['cfg_final']
 
-            ttarg['validation_targets'], variable_m \
+            ttarg['validation_targets'], var_manager \
                     = get_valid_targets_dict(
                         loss_params=None,
                         cfg_final=cfg_final,
@@ -136,7 +136,7 @@ def test_from_params(load_params,
             # Build database interface class, loading model 
             ttarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
-                                               variable_m=variable_m,
+                                               var_manager=var_manager,
                                                load_params=param['load_params'],
                                                save_params=param['save_params'])
             ttarg['dbinterface'].initialize()
