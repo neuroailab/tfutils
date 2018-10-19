@@ -92,11 +92,10 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                             trarg['global_step'],
                             **param['learning_rate_params'])
 
-        # Make optimizers first, to avoid naming problems in optimizer
-        for which_gpu, (device, each_input) \
-                in enumerate(zip(devices, multi_gpu_inputs)):
-            with tf.device(device):
-                if model_params['train']:
+            # Make optimizers first, to avoid naming problems in optimizer
+            for which_gpu, (device, each_input) \
+                    in enumerate(zip(devices, multi_gpu_inputs)):
+                with tf.device(device):
                     ## Build optimizer on each gpu
                     param['optimizer_params'], optimizer_base \
                             = get_optimizer(
@@ -119,34 +118,16 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
 
                 tf.get_variable_scope().reuse_variables()
 
-                # Get loss and optimizer if training
+                # Get loss and gradients, collect update_ops if training
                 if model_params['train']:
-                    param['loss_params']['which_device'] = which_gpu
-                    param['loss_params'], loss = get_loss(
-                            each_input, output, 
-                            **param['loss_params'])
-                    
-                    update_ops.extend(
-                            tf.get_collection(
-                                tf.GraphKeys.UPDATE_OPS, 
-                                name_scope))
-
-                    tf.get_variable_scope().reuse_variables()
-
-                    ## Get gradients for trainable vars on this gpu
-                    trainable_params \
-                            = var_manager.trainable_variables_on_device(
-                                    which_gpu)
-                        
-                    aggmeth = tf.AggregationMethod.DEFAULT
-                    grad = tower_opts[which_gpu].compute_gradients(
-                            loss,
-                            var_list=trainable_params,
-                            aggregation_method=aggmeth,
-                            )
-
+                    loss, grad, update_ops, param = get_loss_grad_updt(
+                            param, each_input, 
+                            output, which_gpu,
+                            update_ops, var_manager, 
+                            name_scope, tower_opts[which_gpu])
                     tower_losses.append(loss)
                     tower_grads.append(grad)
+
         tf.get_variable_scope().reuse_variables()
 
     # Gather and aggregate outputs on the host (CPU).
@@ -155,16 +136,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
     # DEFAULT: Accumulate and average gradients on GPUs.
     if model_params['train']:
 
-        if param['train_params'].get('targets'):
-            ttargs = copy.deepcopy(param['train_params']['targets'])
-            ttargs_func = ttargs.pop('func')
-            ttarg = ttargs_func(inputs, output, **ttargs)
-            trarg['train_targets'].update(ttarg)
-        reserved_keys = ['loss', '__grads__', 'optimizer', 'learning_rate']
-        for each_key in reserved_keys:
-            assert each_key not in trarg['train_targets'], \
-                    "Please avoid using reserved key %s in your targets!" \
-                        % each_key
+        trarg = get_train_targets(param, inputs, output, trarg)
 
         # Aggregate loss.
         loss = tf.reduce_mean(tf.stack(tower_losses))
@@ -278,6 +250,48 @@ def get_loss(train_inputs,
     loss_params['loss_func'] = loss_func
     loss = get_loss_base(train_inputs, train_outputs, **loss_params)
     return loss_params, loss
+
+
+def get_train_targets(param, inputs, output, trarg):
+    if param['train_params'].get('targets'):
+        train_targts_args = copy.deepcopy(param['train_params']['targets'])
+        train_targts_func = train_targts_args.pop('func')
+        train_targets = train_targts_func(inputs, output, **train_targts_args)
+        trarg['train_targets'].update(train_targets)
+    reserved_keys = ['loss', '__grads__', 'optimizer', 'learning_rate']
+    for each_key in reserved_keys:
+        assert each_key not in trarg['train_targets'], \
+                "Please avoid using reserved key %s in your targets!" \
+                    % each_key
+    return trarg
+
+
+def get_loss_grad_updt(
+        param, each_input, output, which_gpu,
+        update_ops, var_manager, 
+        name_scope, curr_opt):
+    param['loss_params']['which_device'] = which_gpu
+    param['loss_params'], loss = get_loss(
+            each_input, output, 
+            **param['loss_params'])
+    
+    update_ops.extend(
+            tf.get_collection(
+                tf.GraphKeys.UPDATE_OPS, 
+                name_scope))
+
+    tf.get_variable_scope().reuse_variables()
+
+    ## Get gradients for trainable vars on this gpu
+    trainable_params = var_manager.trainable_variables_on_device(which_gpu)
+        
+    aggmeth = tf.AggregationMethod.DEFAULT
+    grad = curr_opt.compute_gradients(
+            loss,
+            var_list=trainable_params,
+            aggregation_method=aggmeth,
+            )
+    return loss, grad, update_ops, param
 
 
 def get_loss_base(
