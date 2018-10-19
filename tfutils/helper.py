@@ -135,44 +135,12 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
 
     # DEFAULT: Accumulate and average gradients on GPUs.
     if model_params['train']:
-
         trarg = get_train_targets(param, inputs, output, trarg)
 
-        # Aggregate loss.
         loss = tf.reduce_mean(tf.stack(tower_losses))
-
-        # Aggregate and accumulate gradients.
-        ## This is setting the devices where each gradient will be summed across
-        ## all gpus
-        apply_gradient_devices, gradient_state = (
-                var_manager.preprocess_device_grads(tower_grads))
-
-        ## mnb_accu_updt_list includes ops doing one minibatch, 
-        ## which includes accumulating gradients for this minibatch and 
-        ## also update_ops for this minibatch, which is usually for batch
-        ## normalization
-        mnb_accu_updt_list = []
-
-        ## optimizer_list contains ops for applying gradients 
-        ## and global step updates
-        gstep_update_op = tf.assign(
-                trarg['global_step'], 
-                trarg['global_step']+1)
-        optimizer_list = [gstep_update_op]
-
-        ## Apply gradients on each gpu
-        for d, device in enumerate(apply_gradient_devices):
-            with tf.device(device):
-                avg_grads = var_manager.get_gradients_to_apply(
-                        d, gradient_state)
-                mnb_accu_grad, optimizer = tower_opts[d].accu_and_apply_grads(
-                        avg_grads,
-                        trarg['num_minibatches'],
-                        None,
-                        )
-
-                mnb_accu_updt_list.append(mnb_accu_grad)
-                optimizer_list.append(optimizer)
+        mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
+                var_manager, trarg, 
+                tower_grads, tower_opts)
         mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
         # Prepare train_targets
@@ -292,6 +260,42 @@ def get_loss_grad_updt(
             aggregation_method=aggmeth,
             )
     return loss, grad, update_ops, param
+
+
+def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
+    # Aggregate and accumulate gradients.
+    ## This is setting the devices where each gradient will be summed across
+    ## all gpus
+    apply_gradient_devices, gradient_state = (
+            var_manager.preprocess_device_grads(tower_grads))
+
+    ## mnb_accu_updt_list includes ops doing one minibatch, 
+    ## which includes accumulating gradients for this minibatch and 
+    ## also update_ops for this minibatch, which is usually for batch
+    ## normalization
+    mnb_accu_updt_list = []
+
+    ## optimizer_list contains ops for applying gradients 
+    ## and global step updates
+    gstep_update_op = tf.assign(
+            trarg['global_step'], 
+            trarg['global_step']+1)
+    optimizer_list = [gstep_update_op]
+
+    ## Apply gradients on each gpu
+    for d, device in enumerate(apply_gradient_devices):
+        with tf.device(device):
+            avg_grads = var_manager.get_gradients_to_apply(
+                    d, gradient_state)
+            mnb_accu_grad, optimizer = tower_opts[d].accu_and_apply_grads(
+                    avg_grads,
+                    trarg['num_minibatches'],
+                    None,
+                    )
+
+            mnb_accu_updt_list.append(mnb_accu_grad)
+            optimizer_list.append(optimizer)
+    return mnb_accu_updt_list, optimizer_list
 
 
 def get_loss_base(
