@@ -152,9 +152,18 @@ class VariableMgrLocalReplicated(VariableMgr):
       return True
     return False
 
+  def get_variables_w_prefix(self):
+    global_vars = tf.global_variables()
+    vars_w_prefix = []
+
+    for v in global_vars:
+      if v.name.startswith(self.prefix):
+        vars_w_prefix.append(v)
+    return vars_w_prefix
+
   def get_post_init_ops(self):
     # Copy initialized values for variables on GPU 0 to other GPUs.
-    global_vars = tf.global_variables()
+    global_vars = self.get_variables_w_prefix()
     var_by_name = dict([(v.name, v) for v in global_vars])
     post_init_ops = []
     for v in global_vars:
@@ -171,7 +180,7 @@ class VariableMgrLocalReplicated(VariableMgr):
   def savable_variables(self):
     """Return the set of variables used for saving/loading the model."""
     params = []
-    for v in tf.global_variables():
+    for v in self.get_variables_w_prefix():
       if self.is_real_tensor(v):
         params.append(v)
     return params
