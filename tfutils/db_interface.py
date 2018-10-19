@@ -18,6 +18,7 @@ import re
 import sys
 import threading
 import git
+import pdb
 
 from tfutils.utils import strip_prefix_from_name, \
         strip_prefix, get_var_list_wo_prefix
@@ -293,8 +294,8 @@ class DBInterface(object):
         if self.var_manager:
             self.var_list = get_var_list_wo_prefix(params, var_manager)
         else:
-            all_train_vars = tf.trainable_variables()
-            self.var_list = {v.name: v for v in all_train_vars}
+            all_vars = tf.global_variables()
+            self.var_list = {v.op.name: v for v in all_vars}
 
         # Set save_params and load_params:
         #   And set these parameters as attributes in this instance
@@ -520,14 +521,15 @@ class DBInterface(object):
 
         # Ensure the vars to restored have the correct shape.
         var_list = {}
+
         for name, var in restore_vars.items():
             var_shape = var.get_shape().as_list()
             if var_shape == var_shapes[name]:
                 var_list[name] = var
             else:
-                print('Shape mismatch for %s' % name, 
-                      var_shape, 
-                      var_shapes[name])
+                log.info('Shape mismatch for %s' % name \
+                      + str(var_shape) \
+                      + str(var_shapes[name]))
         return var_list
 
     def filter_var_list(self, var_list):

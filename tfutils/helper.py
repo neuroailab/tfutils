@@ -9,6 +9,7 @@ from tfutils.optimizer import ClipOptimizer, MinibatchOptimizer
 import tfutils.utils as utils
 from tfutils.utils import aggregate_outputs
 import pdb
+import inspect
 from tfutils.defaults import \
         BRANCH_QUEUE_NAME, DEFAULT_HOST, \
         DEFAULT_DEVICES, DEFAULT_MODEL_SEED, DEFAULT_DONT_RUN, \
@@ -317,26 +318,21 @@ def get_loss_base(
 
     # Get the labels to predict from inputs
     labels = [inputs[t] for t in pred_targets]
-    try:
+    loss_func_args = loss_func.__code__.co_varnames
+    if '_sentinel' not in loss_func_args:
         # Usual way to call the loss function: 
         #   outputs will be sent as first parameter, labels will be unpacked
         loss = loss_func(outputs, *labels, **loss_func_kwargs)
-    except:
+    else:
         # Very special situation for 
         #   tf.nn.sparse_softmax_cross_entropy_with_logits,
         # which only accepts named parameters rather than positional parameters
-        log.info('Error in directly calling loss_func, trying softmax way!')
-        try:
-            assert len(labels)==1, \
-                    'Should only have one thing to predict!'
-            loss = loss_func(
-                    logits=outputs, 
-                    labels=labels[0], 
-                    **loss_func_kwargs)
-        except:
-            # If still fails, then original loss_func is wrong, show the error
-            log.info('Errors in loss_func!')
-            loss = loss_func(outputs, *labels, **loss_func_kwargs)
+        assert len(labels)==1, \
+                'Should only have one thing to predict!'
+        loss = loss_func(
+                logits=outputs, 
+                labels=labels[0], 
+                **loss_func_kwargs)
 
     if not agg_func==mean_and_reg_loss:
         log.info('You are not using function mean_and_reg_loss provided in '\
@@ -344,7 +340,17 @@ def get_loss_base(
                 + 'please check that function to make sure your '\
                 + 'regularization loss is multi-gpu safe!')
     if agg_func:
-        loss = agg_func(loss, which_device=which_device, **agg_func_kwargs)
+        # Check whether which_device is required for agg_func
+        agg_func_args = agg_func.__code__.co_varnames
+        if 'which_device' in agg_func_args:
+            loss = agg_func(loss, which_device=which_device, **agg_func_kwargs)
+        else:
+            log.info('You are not requiring which_device parameter in your '\
+                    + 'agg_func, if you are using multi-gpu training, '\
+                    + 'please check function mean_and_reg_loss in '\
+                    + 'tfutils.defaults to make sure your '\
+                    + 'regularization loss is multi-gpu safe!')
+            loss = agg_func(loss, **agg_func_kwargs)
     return loss
 
 

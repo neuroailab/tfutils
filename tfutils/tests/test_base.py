@@ -45,7 +45,7 @@ VALIDATION_PARAMS = {
             'agg_func': utils.mean_dict}}
 NUM_BATCHES_PER_EPOCH = 10000 // 256
 LEARNING_RATE_PARAMS = {
-        'learning_rate': 0.05,
+        'learning_rate': 0.01,
         'decay_steps': NUM_BATCHES_PER_EPOCH,
         'decay_rate': 0.95,
         'staircase': True}

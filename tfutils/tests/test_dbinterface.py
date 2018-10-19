@@ -9,6 +9,7 @@ import shutil
 import logging
 import pymongo
 import unittest
+import pdb
 
 import tensorflow as tf
 import mnist_data as data
@@ -84,11 +85,12 @@ class TestDBInterface(unittest.TestCase):
         # in dbinterface.initialize()
         self.sess.run(tf.global_variables_initializer())
 
-        self.dbinterface = DBInterface(sess=self.sess,
-                                            params=self.params,
-                                            cache_dir=self.CACHE_DIR,
-                                            save_params=self.save_params,
-                                            load_params=self.load_params)
+        self.dbinterface = DBInterface(
+                sess=self.sess,
+                params=self.params,
+                cache_dir=self.CACHE_DIR,
+                save_params=self.save_params,
+                load_params=self.load_params)
 
         self.step = 0
 
@@ -118,6 +120,10 @@ class TestDBInterface(unittest.TestCase):
         # Create a new model with different variable names.
         self.setup_model(weights_name='Filters')
 
+        # Reset var_list in DBInterface
+        self.dbinterface.var_list = {
+                var.op.name: var for var in tf.global_variables()}
+
         # Restore first checkpoint vars.
         mapping = {'Weights': 'Filters'}
         self.dbinterface.load_param_dict = mapping
@@ -126,6 +132,7 @@ class TestDBInterface(unittest.TestCase):
         self.log.info('restore_vars:')
         for name, var in restore_vars.items():
             self.log.info('(name, var.name): ({}, {})'.format(name, var.name))
+            self.assertEqual(var.op.name, mapping[name])
 
     def test_filter_var_list(self):
 
@@ -137,41 +144,23 @@ class TestDBInterface(unittest.TestCase):
         self.assertEqual(filtered_var_list, var_list)
 
         # Test list of strings
-        self.dbinterface.to_restore = ['model_0/Weights']
+        self.dbinterface.to_restore = ['Weights']
         filtered_var_list = self.dbinterface.filter_var_list(var_list)
         for name, var in filtered_var_list.items():
-            self.assertIn(name, ['model_0/Weights'])
-            self.assertNotIn(name, ['model_0/Bias', 'model_0/global_step'])
+            self.assertIn(name, ['Weights'])
+            self.assertNotIn(name, ['Bias', 'global_step'])
 
         # Test regex
-        self.dbinterface.to_restore = re.compile(r'model_0/Bias')
+        self.dbinterface.to_restore = re.compile(r'Bias')
         filtered_var_list = self.dbinterface.filter_var_list(var_list)
         for name, var in filtered_var_list.items():
-            self.assertIn(name, ['model_0/Bias'])
-            self.assertNotIn(name, ['model_0/Weights', 'model_0/global_step'])
+            self.assertIn(name, ['Bias'])
+            self.assertNotIn(name, ['Weights', 'global_step'])
 
         # Test invalid type (should raise TypeError)
         self.dbinterface.to_restore = {'invalid_key': 'invalid_value'}
         with self.assertRaises(TypeError):
             filtered_var_list = self.dbinterface.filter_var_list(var_list)
-
-    def test_remap_var_list(self):
-
-        # Get a test `var_list` {var.name: var}
-        var_list = {var.op.name: var for var in tf.global_variables()}
-
-        # Specify mapping from old var names to new ones.
-        mapping = {'model_0/Weights': 'model_0/Filters'}
-        self.dbinterface.load_param_dict = mapping
-
-        # Perform the mapping.
-        mapped_vars = self.dbinterface.remap_var_list(var_list)
-
-        # Confirm that the mapping has been done correctly.
-        for name, var in mapped_vars.items():
-            self.log.info('{} mapped to {}'.format(name, var.op.name))
-            if name == 'model_0/Filters':
-                self.assertEqual(name, mapping[var.op.name])
 
     @unittest.skip("skipping")
     def test_tf_saver(self):
@@ -204,8 +193,8 @@ class TestDBInterface(unittest.TestCase):
     def train_model(self, num_steps=100):
         x_train = [1, 2, 3, 4]
         y_train = [0, -1, -2, -3]
-        x = tf.get_default_graph().get_tensor_by_name('model_0/x:0')
-        y = tf.get_default_graph().get_tensor_by_name('model_0/y:0')
+        x = tf.get_default_graph().get_tensor_by_name('x:0')
+        y = tf.get_default_graph().get_tensor_by_name('y:0')
         feed_dict = {x: x_train, y: y_train}
 
         pre_global_step = self.sess.run(self.global_step)
@@ -238,29 +227,30 @@ class TestDBInterface(unittest.TestCase):
     def setup_model(self, weights_name='Weights', bias_name='Bias'):
         """Set up simple tensorflow model."""
         tf.reset_default_graph()
-        with tf.variable_scope(self.params['model_params']['prefix']):
-            self.global_step = tf.get_variable('global_step', [],
-                                               dtype=tf.int64, trainable=False,
-                                               initializer=tf.constant_initializer(0))
 
-            # Model parameters and placeholders.
-            x = tf.placeholder(tf.float32, name='x')
-            y = tf.placeholder(tf.float32, name='y')
-            W = tf.Variable([1], dtype=tf.float32, name=weights_name)
-            b = tf.Variable([1], dtype=tf.float32, name=bias_name)
+        self.global_step = tf.get_variable(
+                'global_step', [],
+                dtype=tf.int64, trainable=False,
+                initializer=tf.constant_initializer(0))
 
-            # Model output, loss and optimizer.
-            linear_model = W * x + b
-            loss = tf.reduce_sum(tf.square(linear_model - y))
-            optimizer_base = tf.train.GradientDescentOptimizer(0.01)
+        # Model parameters and placeholders.
+        x = tf.placeholder(tf.float32, name='x')
+        y = tf.placeholder(tf.float32, name='y')
+        W = tf.get_variable(weights_name, [1], dtype=tf.float32)
+        b = tf.get_variable(bias_name, [1], dtype=tf.float32)
 
-            # Model train op.
-            optimizer = optimizer_base.minimize(
-                loss, global_step=self.global_step)
+        # Model output, loss and optimizer.
+        linear_model = W * x + b
+        loss = tf.reduce_sum(tf.square(linear_model - y))
+        optimizer_base = tf.train.GradientDescentOptimizer(0.01)
 
-            # Train targets.
-            self.train_targets = {'loss': loss,
-                                  'optimizer': optimizer}
+        # Model train op.
+        optimizer = optimizer_base.minimize(
+            loss, global_step=self.global_step)
+
+        # Train targets.
+        self.train_targets = {'loss': loss,
+                              'optimizer': optimizer}
 
     @classmethod
     def setup_log(cls):
@@ -304,9 +294,10 @@ class TestDBInterface(unittest.TestCase):
                     'directory': TFUTILS_HOME},
                 'num_steps': 500}
 
-        cls.loss_params = {'targets': ['labels'],
-                           'agg_func': tf.reduce_mean,
-                           'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits}
+        cls.loss_params = {
+                'targets': ['labels'],
+                'agg_func': tf.reduce_mean,
+                'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits}
 
         cls.load_params = {'do_restore': True}
 
