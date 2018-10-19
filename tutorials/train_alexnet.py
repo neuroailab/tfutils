@@ -11,6 +11,7 @@ sys.path.insert(0, '..')
 from tfutils import base, optimizer, model_tool
 from tfutils.utils import online_agg
 from tfutils.imagenet_data import ImageNet 
+from tfutils.defaults import mean_and_reg_loss
 
 
 def get_learning_rate(
@@ -51,11 +52,6 @@ def loss_and_in_top_k(inputs, outputs, target):
                 labels=inputs[target]),
             'top1': tf.nn.in_top_k(outputs, inputs[target], 1),
             'top5': tf.nn.in_top_k(outputs, inputs[target], 5)}
-
-
-def mean_loss_with_reg(loss):
-    return tf.reduce_mean(loss)\
-            + tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
 
 
 def get_parser():
@@ -152,7 +148,7 @@ def get_params_from_arg(args):
     # loss_params: parameters to build the loss
     loss_params = {
             'pred_targets': ['labels'],
-            'agg_func': mean_loss_with_reg,
+            'agg_func': mean_and_reg_loss,
             'loss_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
             }
 
