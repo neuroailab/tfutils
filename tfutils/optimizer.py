@@ -33,7 +33,7 @@ class ClipOptimizer(object):
     Args:
         optimizer_class: Returned value of this function should have `compute_gradients` and `apply_gradients` methods.
         clip (bool, optional): Default is True, clipping by `[-1, 1]`.
-        trainable_names (list of strings, or string, optional): Default is None. Scope names for variables to avoid training.
+        trainable_names (list of strings, or string, optional): Default is None. Scope names for variables to be trained.
 
     """
     def __init__(self, optimizer_class, clip=True, trainable_names=None, *optimizer_args, **optimizer_kwargs):
