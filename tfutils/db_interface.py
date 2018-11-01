@@ -449,6 +449,13 @@ class DBInterface(object):
                 # Determine which vars should be restored from the specified checkpoint.
                 restore_vars = self.get_restore_vars(ckpt_filename)
                 restore_names = [name for name, var in restore_vars.items()]
+                # remap the actually restored names
+                if self.load_param_dict:
+                    new_restore_names = []
+                    for each_old_name in restore_names:
+                        new_restore_names.append(
+                                self.load_param_dict[each_old_name])
+                    restore_names = new_restore_names
 
                 # Actually load the vars.
                 log.info('Restored Vars:\n' + str(restore_names))
@@ -462,8 +469,14 @@ class DBInterface(object):
                             tf.group(*self.var_manager.get_post_init_ops()))
 
                 # Reinitialize all other, unrestored vars.
-                unrestored_vars = [var for name, var in self.var_list.items() if name not in restore_names]
-                unrestored_var_names = [name for name, var in self.var_list.items() if name not in restore_names]
+                unrestored_vars = [\
+                        var \
+                        for name, var in self.var_list.items() \
+                        if name not in restore_names]
+                unrestored_var_names = [\
+                        name \
+                        for name, var in self.var_list.items() \
+                        if name not in restore_names]
                 log.info('Unrestored Vars:\n' + str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
