@@ -150,8 +150,10 @@ def aggregate_outputs(tower_outputs):
     # Tensorflow tensors are concatenated along axis 0.
     elif isinstance(tower_outputs[0], tf.Tensor):
         if tower_outputs[0].shape.ndims == 0:
+            new_outputs = []
             for i, output in enumerate(tower_outputs):
-                tower_outputs[i] = tf.expand_dims(output, axis=0)
+                new_outputs.append(tf.expand_dims(output, axis=0))
+            tower_outputs = new_outputs
         return tf.concat(tower_outputs, axis=0)
 
     # Tensorflow variables are not processed.
@@ -164,7 +166,7 @@ def aggregate_outputs(tower_outputs):
                 for key in tower_outputs[0]}
 
     # List elements are aggregated by index.
-    elif isinstance(tower_outputs[0], list):
+    elif isinstance(tower_outputs[0], collections.Iterable):
         return [aggregate_outputs(out) for out in zip(*tower_outputs)]
 
     # Simply return all other types
