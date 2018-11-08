@@ -12,6 +12,7 @@ import easy_batch_allreduce as batch_allreduce
 
 COPY_NAME_SCOPE = '__var_copy_'
 REAL_NAME_SCOPE = '__var_copy_0'
+OPTIMIZER_NAME_SCOPE = '__tfutils_opt__'
 
 
 class VariableMgr(object):
@@ -147,9 +148,15 @@ class VariableMgrLocalReplicated(VariableMgr):
 
   def is_real_tensor(self, tensor):
     split_name = tensor.name.split('/')
-    if not tensor.name.startswith('%s/%s' % (self.prefix, COPY_NAME_SCOPE)) \
-        or split_name[1] == REAL_NAME_SCOPE:
+    if len(split_name) < 2:
       return True
+    if split_name[1]==OPTIMIZER_NAME_SCOPE:
+      if split_name[2] == REAL_NAME_SCOPE:
+        return True
+    else:
+      if not tensor.name.startswith('%s/%s' % (self.prefix, COPY_NAME_SCOPE)) \
+          or split_name[1] == REAL_NAME_SCOPE:
+        return True
     return False
 
   def get_variables_w_prefix(self):
@@ -170,9 +177,13 @@ class VariableMgrLocalReplicated(VariableMgr):
       if self.is_real_tensor(v):
         continue
       split_name = v.name.split('/')
-      split_name[1] = REAL_NAME_SCOPE
-      if len(split_name) >= 4 and split_name[3].startswith(COPY_NAME_SCOPE):
-          split_name[3] = REAL_NAME_SCOPE
+      if split_name[1] != OPTIMIZER_NAME_SCOPE:
+        split_name[1] = REAL_NAME_SCOPE
+      else:
+        split_name[2] = REAL_NAME_SCOPE
+        if len(split_name) >= 5 and split_name[4].startswith(COPY_NAME_SCOPE):
+          split_name[4] = REAL_NAME_SCOPE
+
       copy_from = var_by_name['/'.join(split_name)]
       post_init_ops.append(v.assign(copy_from.read_value()))
 

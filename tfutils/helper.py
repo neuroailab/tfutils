@@ -131,30 +131,30 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
 
         tf.get_variable_scope().reuse_variables()
 
-    # Gather and aggregate outputs on the host (CPU).
-    output = aggregate_outputs(tower_outputs)
+        # Gather and aggregate outputs on the host (CPU).
+        output = aggregate_outputs(tower_outputs)
 
-    # DEFAULT: Accumulate and average gradients on GPUs.
-    if model_params['train']:
-        trarg = get_train_targets(param, inputs, output, trarg)
+        # DEFAULT: Accumulate and average gradients on GPUs.
+        if model_params['train']:
+            trarg = get_train_targets(param, inputs, output, trarg)
 
-        loss = tf.reduce_mean(tf.stack(tower_losses))
-        with tf.variable_scope(model_prefix):
-            mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
-                    var_manager, trarg, 
-                    tower_grads, tower_opts)
-        mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
+            loss = tf.reduce_mean(tf.stack(tower_losses))
+            with tf.variable_scope(variable_mgr.OPTIMIZER_NAME_SCOPE):
+                mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
+                        var_manager, trarg, 
+                        tower_grads, tower_opts)
+            mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
-        # Prepare train_targets
-        trarg['train_targets']['loss'] = loss
-        trarg['train_targets']['__grads__'] = mnb_accu_updt_list
-        trarg['train_targets']['optimizer'] = optimizer_list
-        trarg['train_targets']['learning_rate'] = learning_rate
+            # Prepare train_targets
+            trarg['train_targets']['loss'] = loss
+            trarg['train_targets']['__grads__'] = mnb_accu_updt_list
+            trarg['train_targets']['optimizer'] = optimizer_list
+            trarg['train_targets']['learning_rate'] = learning_rate
 
-        param['model_params'] = model_params
-        return model_params, output, param, trarg, var_manager
-    else:
-        return model_params, output, var_manager
+            param['model_params'] = model_params
+            return model_params, output, param, trarg, var_manager
+        else:
+            return model_params, output, var_manager
 
 
 def get_learning_rate(global_step,
@@ -287,9 +287,7 @@ def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
     ## Apply gradients on each gpu
     for d, device in enumerate(apply_gradient_devices):
         with var_manager.create_outer_variable_scope(d),\
-             tf.device(device), \
-             tf.name_scope('__GPU%i__' % (d)) as name_scope:
-
+             tf.device(device):
             avg_grads = var_manager.get_gradients_to_apply(
                     d, gradient_state)
             mnb_accu_grad, optimizer = tower_opts[d].accu_and_apply_grads(
