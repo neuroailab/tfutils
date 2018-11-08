@@ -107,6 +107,9 @@ def get_var_list_wo_prefix(param, var_manager):
     # Strip prefixes added by tfutils
     var_list = strip_prefix(param['model_params']['prefix'], all_vars)
     var_list = strip_prefix(REAL_NAME_SCOPE, var_list)
+    # Strip two times for optimizer parameters
+    var_list = strip_prefix(param['model_params']['prefix'], var_list)
+    var_list = strip_prefix(REAL_NAME_SCOPE, var_list)
     return var_list
 
 

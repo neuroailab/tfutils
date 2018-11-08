@@ -139,9 +139,10 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
         trarg = get_train_targets(param, inputs, output, trarg)
 
         loss = tf.reduce_mean(tf.stack(tower_losses))
-        mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
-                var_manager, trarg, 
-                tower_grads, tower_opts)
+        with tf.variable_scope(model_prefix):
+            mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
+                    var_manager, trarg, 
+                    tower_grads, tower_opts)
         mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
         # Prepare train_targets
@@ -285,7 +286,10 @@ def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
 
     ## Apply gradients on each gpu
     for d, device in enumerate(apply_gradient_devices):
-        with tf.device(device):
+        with var_manager.create_outer_variable_scope(d),\
+             tf.device(device), \
+             tf.name_scope('__GPU%i__' % (d)) as name_scope:
+
             avg_grads = var_manager.get_gradients_to_apply(
                     d, gradient_state)
             mnb_accu_grad, optimizer = tower_opts[d].accu_and_apply_grads(
