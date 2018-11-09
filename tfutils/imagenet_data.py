@@ -30,8 +30,8 @@ def fetch_dataset(filename):
     return dataset
 
 
-def _at_least_x_are_true(a, b, x):
-    """At least `x` of `a` and `b` `Tensors` are true."""
+def _at_least_x_are_equal(a, b, x):
+    """At least `x` of `a` and `b` `Tensors` are equal."""
     match = tf.equal(a, b)
     match = tf.cast(match, tf.int32)
     return tf.greater_equal(tf.reduce_sum(match), x)
@@ -146,7 +146,7 @@ class ImageNet(object):
                 tf.stack([bbox_begin[0], bbox_begin[1], \
                           bbox_size[0], bbox_size[1]]),
                 channels=3)
-        bad = _at_least_x_are_true(shape, tf.shape(random_image), 3)
+        bad = _at_least_x_are_equal(shape, tf.shape(random_image), 3)
 
         # central crop if bad
         min_size = tf.minimum(shape[0], shape[1])
