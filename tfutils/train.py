@@ -321,26 +321,23 @@ def train_from_params(
         # Use a single dataprovider for all models.
         data_params = _params[0]['train_params']['data_params']
 
-        _params[0]['train_params']['data_params'], inputs = get_data(**data_params)
+        _params[0]['train_params']['data_params'], inputs \
+                = get_data(**data_params)
 
         # Build a graph for each distinct model.
+        var_manager_list = []
         for param, trarg in zip(_params, _trargs):
-            with tf.variable_scope(param['model_params']['prefix']):
-                # Build global step
-                trarg['global_step'] = tf.get_variable('global_step', [],
-                                                       dtype=tf.int64, trainable=False,
-                                                       initializer=tf.constant_initializer(0))
+            _, _, param, trarg, var_manager \
+                    = get_model(inputs,
+                            param['model_params'],
+                            param=param,
+                            trarg=trarg)
 
-                _, _, param, trarg = get_model(inputs,
-                                               param['model_params'],
-                                               param=param,
-                                               trarg=trarg)
-
-                tf.get_variable_scope().reuse_variables()
-
-                trarg['validation_targets'] = \
-                        get_valid_targets_dict(
-                                **param)
+            trarg['validation_targets'], _ = \
+                    get_valid_targets_dict(
+                            var_manager=var_manager,
+                            **param)
+            var_manager_list.append(var_manager)
 
         # Create session.
         gpu_options = tf.GPUOptions(allow_growth=True)
@@ -351,26 +348,25 @@ def train_from_params(
                     log_device_placement=log_device_placement,
                     ))
 
+        # Initialize variables here
         init_op_global = tf.global_variables_initializer()
         sess.run(init_op_global)
         init_op_local = tf.local_variables_initializer()
         sess.run(init_op_local)
         log.info('Initialized from scratch first')
 
-        for param, trarg in zip(_params, _trargs):
-
-            prefix = param['model_params']['prefix'] + '/'
-            all_vars = variables._all_saveable_objects()
-            var_list = strip_prefix(prefix, all_vars)
-            for var in var_list:
-                print(var)
+        # Build database interface for each model
+        # This interface class will handle the records saving, model saving, and 
+        # model restoring.
+        for param, trarg, var_manager in zip(_params, _trargs, var_manager_list):
 
             trarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
-                                               var_list=var_list,
+                                               var_manager=var_manager,
                                                global_step=trarg['global_step'],
                                                save_params=param['save_params'],
                                                load_params=param['load_params'])
+            ## Model will be restored from saved database here
             trarg['dbinterface'].initialize()
 
         # Convert back to a dictionary of lists
@@ -459,7 +455,9 @@ def train(sess,
     while any(step < num_step for (step, num_step) in zip(steps, num_steps)):
 
         start_time_step = time.time()
-        train_results = train_loop(sess, train_targets, num_minibatches=trarg['num_minibatches'])
+        train_results = train_loop(
+                sess, train_targets, 
+                num_minibatches=trarg['num_minibatches'])
 
         for (step, trarg, train_res) in zip(steps, trargs, train_results):
 
@@ -467,14 +465,19 @@ def train(sess,
             step = trarg['global_step'].eval(session=sess)
 
             if step <= old_step:
-                raise NoChangeError('Your optimizer should have incremented the global step,'
-                                    ' but did not: old_step=%d, new_step=%d' % (old_step, step))
+                raise NoChangeError(\
+                        'Your optimizer should have incremented the global step,'
+                        ' but did not: old_step=%d, new_step=%d' \
+                                % (old_step, step))
             if train_res['loss'] > trarg['thres_loss']:
-                raise HiLossError('Loss {:.2f} exceeded the threshold {:.2f}'.format(train_res['loss'],
-                                                                                     trarg['thres_loss']))
+                raise HiLossError(\
+                        'Loss {:.2f} exceeded the threshold {:.2f}'.format(
+                            train_res['loss'],
+                            trarg['thres_loss']))
 
             # Validation
-            vtargs = trarg['validation_targets'] if step % trarg['dbinterface'].save_valid_freq == 0 else {}
+            vtargs = trarg['validation_targets'] \
+                    if step % trarg['dbinterface'].save_valid_freq == 0 else {}
             valid_res = run_all_validations(sess, vtargs)
 
             # Save

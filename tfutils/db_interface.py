@@ -18,9 +18,10 @@ import re
 import sys
 import threading
 import git
+import pdb
 
 from tfutils.utils import strip_prefix_from_name, \
-        strip_prefix
+        strip_prefix, get_var_list_wo_prefix
 from tfutils.helper import log
 from tfutils.defaults import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
 
@@ -252,14 +253,15 @@ def sonify(arg, memo=None, skip=False):
 class DBInterface(object):
 
     def __init__(self,
+                 var_manager=None,
                  params=None,
                  save_params=None,
                  load_params=None,
                  sess=None,
                  global_step=None,
                  cache_dir=None,
-                 *tfsaver_args,
-                 **tfsaver_kwargs):
+                 tfsaver_args=[],
+                 tfsaver_kwargs={}):
         """
         :Kwargs:
             - params (dict)
@@ -273,7 +275,7 @@ class DBInterface(object):
             - global_step (tensorflow.Variable)
                 Global step variable, the one that is updated by apply_gradients.  This
                 is required if being using in a training context.
-            - *tfsaver_args, **tsaver_kwargs
+            - tfsaver_args, tsaver_kwargs
                 Additional arguments to be passed onto base Saver class constructor
 
         """
@@ -288,8 +290,15 @@ class DBInterface(object):
         self.global_step = global_step
         self.tfsaver_args = tfsaver_args
         self.tfsaver_kwargs = tfsaver_kwargs
-        self.var_list = tfsaver_kwargs.get('var_list', None)
+        self.var_manager = var_manager
+        if self.var_manager:
+            self.var_list = get_var_list_wo_prefix(params, var_manager)
+        else:
+            all_vars = tf.global_variables()
+            self.var_list = {v.op.name: v for v in all_vars}
 
+        # Set save_params and load_params:
+        #   And set these parameters as attributes in this instance
         if save_params is None:
             save_params = {}
         if load_params is None:
@@ -306,15 +315,25 @@ class DBInterface(object):
                 lv = save_params[_k]
             setattr(self, _k, sv)
             setattr(self, 'load_' + _k, lv)
+
+        # Determine whether this loading is from the same location as saving
         self.sameloc = all([getattr(self, _k) == getattr(
             self, 'load_' + _k) for _k in location_variables])
-        if 'query' in load_params and not load_params['query'] is None and 'exp_id' in load_params['query']:
-            self.sameloc = self.sameloc & (load_params['query']['exp_id'] == self.exp_id)
+        if 'query' in load_params \
+                and not load_params['query'] is None \
+                and 'exp_id' in load_params['query']:
+            self.sameloc = \
+                    self.sameloc \
+                    & (load_params['query']['exp_id'] == self.exp_id)
 
-        for _k in ['do_save', 'save_metrics_freq', 'save_valid_freq', 'cache_filters_freq', 'cache_max_num',
-                   'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
+        # Set some attributes only in save_params
+        for _k in [\
+                'do_save', 'save_metrics_freq', \
+                'save_valid_freq', 'cache_filters_freq', 'cache_max_num', \
+                'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
+        # Set some attributes only in load_params
         for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
@@ -322,11 +341,14 @@ class DBInterface(object):
         self.checkpoint_thread = None
         self.outrecs = []
 
+        # Set the save mongo client
         self.conn = pymongo.MongoClient(host=self.host, port=self.port)
         self.conn.server_info()
         self.collfs = gridfs.GridFS(self.conn[self.dbname], self.collname)
 
-        recent_name = '_'.join([self.dbname, self.collname, self.exp_id, '__RECENT'])
+        # Set the cache mongo client
+        recent_name = '_'.join(
+                [self.dbname, self.collname, self.exp_id, '__RECENT'])
         self.collfs_recent = gridfs.GridFS(self.conn[recent_name])
 
         self.load_data = None
@@ -334,16 +356,22 @@ class DBInterface(object):
         if load_query is None:
             load_query = {}
         else:
+            # Special situation here
+            # Users try to load from the same place they try to save through 
+            # setting the load_query
+            # This is not allowed
             if self.sameloc and (not save_params == {}):
-                raise Exception('Loading pointlessly')
+                raise Exception(
+                        'Loading pointlessly! '\
+                        + 'If you want to continue your training, '\
+                        + 'please set your load_query to be None!')
             else:
                 self.sameloc = False
-                # print('Set sameloc to False!')
-
         if 'exp_id' not in load_query:
             load_query.update({'exp_id': self.load_exp_id})
-
         self.load_query = load_query
+
+        # Set the load mongo client
         if self.load_host != self.host or self.port != self.load_port:
             self.load_conn = pymongo.MongoClient(host=self.load_host,
                                                  port=self.load_port)
@@ -352,6 +380,7 @@ class DBInterface(object):
             self.load_conn = self.conn
         self.load_collfs = gridfs.GridFS(self.load_conn[self.load_dbname],
                                          self.load_collname)
+        # Set the cache mongo client for loading
         load_recent_name = '_'.join([self.load_dbname,
                                      self.load_collname,
                                      self.load_exp_id,
@@ -359,7 +388,9 @@ class DBInterface(object):
         self.load_collfs_recent = gridfs.GridFS(
             self.load_conn[load_recent_name])
 
-        if (save_params == {}) and ('cache_dir' in load_params): # use cache_dir from load params if save_params not given
+        # Set the cache_dir: where to put local cache files
+        # use cache_dir from load params if save_params not given
+        if (save_params == {}) and ('cache_dir' in load_params): 
             cache_dir = load_params['cache_dir']
         elif 'cache_dir' in save_params:
             cache_dir = save_params['cache_dir']
@@ -394,56 +425,73 @@ class DBInterface(object):
                                 'record was found with the given spec.')
         self.load_data = load
 
-    def initialize(self, no_scratch=False):
+    def initialize(self):
         """Fetch record then uses tf's saver.restore."""
         if self.do_restore:
-
             # First, determine which checkpoint to use.
             if self.from_ckpt is not None:
                 # Use a cached checkpoint file.
                 ckpt_filename = self.from_ckpt
-                log.info('Restoring variables from checkpoint %s ...' % ckpt_filename)
+                log.info('Restoring variables from checkpoint %s ...' \
+                        % ckpt_filename)
             else:
                 # Otherwise, use a database checkpoint.
                 self.load_rec() if self.load_data is None else None
                 if self.load_data is not None:
                     rec, ckpt_filename = self.load_data
-                    log.info('Restoring variables from record %s (step %d)...' %
-                             (str(rec['_id']), rec['step']))
+                    log.info('Restoring variables from record %s (step %d)...' \
+                             % (str(rec['_id']), rec['step']))
                 else:
                     # No db checkpoint to load.
                     ckpt_filename = None
 
             if ckpt_filename is not None:
+                # Determine which vars should be restored from the specified checkpoint.
+                restore_vars = self.get_restore_vars(ckpt_filename)
+                restore_names = [name for name, var in restore_vars.items()]
+                # remap the actually restored names
+                if self.load_param_dict:
+                    new_restore_names = []
+                    for each_old_name in restore_names:
+                        new_restore_names.append(
+                                self.load_param_dict[each_old_name])
+                    restore_names = new_restore_names
 
-                all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
-                self.all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
-
-                # Next, determine which vars should be restored from the specified checkpoint.
-                restore_vars = self.get_restore_vars(ckpt_filename, self.all_vars)
-                restore_stripped = strip_prefix(self.params['model_params']['prefix'], list(restore_vars.values()))
-                restore_names =  [name for name, var in restore_stripped.items()]
                 # Actually load the vars.
                 log.info('Restored Vars:\n' + str(restore_names))
                 tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
 
+                # Run post init_ops if needed
+                if self.var_manager:
+                    self.sess.run(
+                            tf.group(*self.var_manager.get_post_init_ops()))
+
                 # Reinitialize all other, unrestored vars.
-                unrestored_vars = [var for name, var in self.all_vars.items() if name not in restore_names]
-                unrestored_var_names = [name for name, var in self.all_vars.items() if name not in restore_names]
+                unrestored_vars = [\
+                        var \
+                        for name, var in self.var_list.items() \
+                        if name not in restore_names]
+                unrestored_var_names = [\
+                        name \
+                        for name, var in self.var_list.items() \
+                        if name not in restore_names]
                 log.info('Unrestored Vars:\n' + str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
                     self.sess.run(tf.report_uninitialized_variables()))
 
-        if not self.do_restore or (self.load_data is None and self.from_ckpt is None):
+        if not self.do_restore \
+                or (self.load_data is None and self.from_ckpt is None):
             init_op_global = tf.global_variables_initializer()
             self.sess.run(init_op_global)
             init_op_local = tf.local_variables_initializer()
             self.sess.run(init_op_local)
+            if self.var_manager:
+                self.sess.run(tf.group(*self.var_manager.get_post_init_ops()))
 
-    def get_restore_vars(self, save_file, all_vars=None):
+    def get_restore_vars(self, save_file):
         """Create the `var_list` init argument to tf.Saver from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
@@ -464,71 +512,37 @@ class DBInterface(object):
         """
         reader = tf.train.NewCheckpointReader(save_file)
         var_shapes = reader.get_variable_to_shape_map()
-        log.info('Saved Vars:\n' + str(var_shapes.keys()))
-
-        var_shapes = {  # Strip the prefix off saved var names.
-            strip_prefix_from_name(self.params['model_params']['prefix'], name): shape
-            for name, shape in var_shapes.items()}
 
         # Map old vars from checkpoint to new vars via load_param_dict.
-        mapped_var_shapes = self.remap_var_list(var_shapes)
-        log.info('Saved shapes:\n' + str(mapped_var_shapes))
-
-        if all_vars is None:
-            all_vars = tf.global_variables() + tf.local_variables()  # get list of all variables
-            all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
+        log.info('Saved vars and shapes:\n' + str(var_shapes))
 
         # Specify which vars are to be restored vs. reinitialized.
-        if self.load_param_dict is None:
-            restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        all_vars = self.var_list
+        if not self.load_param_dict:
+            restore_vars = {
+                    name: var for name, var in all_vars.items() \
+                            if name in var_shapes}
         else:
             # associate checkpoint names with actual variables
             load_var_dict = {}
             for ckpt_var_name, curr_var_name in self.load_param_dict.items():
-                for curr_name, curr_var in all_vars.items():
-                    if curr_name == curr_var_name:
-                        load_var_dict[ckpt_var_name] = curr_var
-                        break
-
+                if curr_var_name in all_vars:
+                    load_var_dict[ckpt_var_name] = all_vars[curr_var_name]
             restore_vars = load_var_dict
 
         restore_vars = self.filter_var_list(restore_vars)
 
         # Ensure the vars to restored have the correct shape.
         var_list = {}
+
         for name, var in restore_vars.items():
             var_shape = var.get_shape().as_list()
-            if var_shape == mapped_var_shapes[name]:
+            if var_shape == var_shapes[name]:
                 var_list[name] = var
-        return var_list
-
-    def remap_var_list(self, var_list):
-        """Map old vars in checkpoint to new vars in current session.
-
-        Args:
-            var_list (dict): var names mapped to variables (or some related
-            quantity, such as variable shapes).
-
-        Returns:
-            dict: New var names mapped to the corresponding restored var.
-
-        Examples:
-        >>>var_list
-        {'Weights': <tf.Variable>}
-        >>>self.load_param_dict
-        {'Weights': 'Filters'}
-        >>>self.remap_var_list(var_list)
-        {'Filters': <tf.Variable>}
-
-        """
-        if self.load_param_dict is None:
-            log.info('No variable mapping specified.')
-            return var_list
-        for old_name, new_name in self.load_param_dict.items():
-            for name in var_list:
-                if old_name == name:
-                    var_list[old_name] = var_list.pop(old_name)
-                    break
+            else:
+                log.info('Shape mismatch for %s' % name \
+                      + str(var_shape) \
+                      + str(var_shapes[name]))
         return var_list
 
     def filter_var_list(self, var_list):
@@ -556,6 +570,7 @@ class DBInterface(object):
     def tf_saver(self):
         if not hasattr(self, '_tf_saver'):
             self._tf_saver = tf.train.Saver(
+                var_list=self.var_list,
                 *self.tfsaver_args, **self.tfsaver_kwargs)
         return self._tf_saver
 
@@ -670,8 +685,10 @@ class DBInterface(object):
 
             # If ndarray found, get the mean of it
             for k, v in train_res.items():
-                if k not in ['optimizer', '__grads__'] and \
-                        isinstance(v, np.ndarray) and len(v) > 1:
+                if k not in ['optimizer', '__grads__'] \
+                        and isinstance(v, np.ndarray) \
+                        and len(v) > 1 \
+                        and k not in self.save_to_gfs:
                     train_res[k] = np.mean(v)
 
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
@@ -790,15 +807,17 @@ class DBInterface(object):
 
             if not save_filters_permanent:
                 recent_gridfs_files = self.collfs_recent._GridFS__files
-                recent_query_result = recent_gridfs_files.find({'saved_filters': True}, sort=[('uploadDate', 1)])
+                recent_query_result = recent_gridfs_files.find(
+                        {'saved_filters': True}, sort=[('uploadDate', 1)])
                 num_cached_filters = recent_query_result.count()
                 cache_max_num = self.cache_max_num
                 if num_cached_filters > cache_max_num:
                     log.info('Cleaning up cached filters')
-                    fsbucket = gridfs.GridFSBucket(recent_gridfs_files._Collection__database, bucket_name=recent_gridfs_files.name.split('.')[0])
+                    fsbucket = gridfs.GridFSBucket(
+                            recent_gridfs_files._Collection__database, 
+                            bucket_name=recent_gridfs_files.name.split('.')[0])
 
                     for del_indx in xrange(0, num_cached_filters - cache_max_num):
-                        #log.info(recent_query_result[del_indx]['uploadDate'])
                         fsbucket.delete(recent_query_result[del_indx]['_id'])
 
         if not save_filters_permanent:

@@ -18,6 +18,9 @@ import git
 
 import tensorflow as tf
 from tensorflow.python.client import device_lib
+from tfutils.multi_gpu.easy_variable_mgr import \
+        REAL_NAME_SCOPE, OPTIMIZER_NAME_SCOPE
+from tfutils.optimizer import NON_SAVE_SUFFIX
 
 
 def isstring(x):
@@ -73,29 +76,43 @@ def format_devices(devices):
     return sorted(list(set(map(format_device, devices))))
 
 
-def strip_prefix(prefix, all_vars):
-
-    # def _strip_prefix_from_name(prefix, name):
-    #     prefix = prefix + '/' if not prefix.endswith('/') else prefix
-    #     if name.startswith(prefix):
-    #         name = name[len(prefix):]
-    #         name = _strip_prefix_from_name(prefix, name)
-    #     return name
-
-    var_list = {}
-
-    for var in all_vars:
-        new_name = strip_prefix_from_name(prefix, var.op.name)
-        var_list[new_name] = var
-    return var_list
-
-
 def strip_prefix_from_name(prefix, name):
     prefix = prefix + '/' if not prefix.endswith('/') else prefix
     if name.startswith(prefix):
         name = name[len(prefix):]
         name = strip_prefix_from_name(prefix, name)
     return name
+
+
+def strip_prefix(prefix, all_vars):
+    var_list = {}
+
+    for var in all_vars:
+        if isinstance(all_vars, dict):
+            new_name = strip_prefix_from_name(prefix, var)
+            var_list[new_name] = all_vars[var]
+        else:
+            new_name = strip_prefix_from_name(prefix, var.op.name)
+            var_list[new_name] = var
+    return var_list
+
+
+def get_var_list_wo_prefix(param, var_manager):
+    """
+    Get all savable variables, strip prefixes
+    """
+    all_vars = var_manager.savable_variables()
+    # Remove all minibatch related unuseful parameters
+    all_vars = filter(lambda x: NON_SAVE_SUFFIX not in x.name, all_vars)
+
+    # Strip prefixes added by tfutils
+    var_list = strip_prefix(param['model_params']['prefix'], all_vars)
+    var_list = strip_prefix(OPTIMIZER_NAME_SCOPE, var_list)
+    var_list = strip_prefix(REAL_NAME_SCOPE, var_list)
+    # Strip two times for optimizer parameters
+    var_list = strip_prefix(param['model_params']['prefix'], var_list)
+    var_list = strip_prefix(REAL_NAME_SCOPE, var_list)
+    return var_list
 
 
 def aggregate_outputs(tower_outputs):
@@ -138,8 +155,10 @@ def aggregate_outputs(tower_outputs):
     # Tensorflow tensors are concatenated along axis 0.
     elif isinstance(tower_outputs[0], tf.Tensor):
         if tower_outputs[0].shape.ndims == 0:
+            new_outputs = []
             for i, output in enumerate(tower_outputs):
-                tower_outputs[i] = tf.expand_dims(output, axis=0)
+                new_outputs.append(tf.expand_dims(output, axis=0))
+            tower_outputs = new_outputs
         return tf.concat(tower_outputs, axis=0)
 
     # Tensorflow variables are not processed.
@@ -152,7 +171,7 @@ def aggregate_outputs(tower_outputs):
                 for key in tower_outputs[0]}
 
     # List elements are aggregated by index.
-    elif isinstance(tower_outputs[0], list):
+    elif isinstance(tower_outputs[0], collections.Iterable):
         return [aggregate_outputs(out) for out in zip(*tower_outputs)]
 
     # Simply return all other types

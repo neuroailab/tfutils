@@ -10,6 +10,7 @@ import logging
 import unittest
 from collections import defaultdict
 import copy
+import inspect
 
 import gridfs
 import pymongo
@@ -23,6 +24,7 @@ sys.path.insert(0, "..")
 import tfutils.base as base
 import tfutils.model as model
 import tfutils.utils as utils
+import tfutils.defaults as defaults
 from tfutils.db_interface import TFUTILS_HOME
 
 
@@ -43,7 +45,7 @@ VALIDATION_PARAMS = {
             'agg_func': utils.mean_dict}}
 NUM_BATCHES_PER_EPOCH = 10000 // 256
 LEARNING_RATE_PARAMS = {
-        'learning_rate': 0.05,
+        'learning_rate': 0.01,
         'decay_steps': NUM_BATCHES_PER_EPOCH,
         'decay_rate': 0.95,
         'staircase': True}
@@ -228,7 +230,9 @@ class TestBase(unittest.TestCase):
         self.assertIn('train_results', saved_data)
         self.assertIn('first_image', saved_data['train_results'])
         self.assertEqual(len(saved_data['train_results']['first_image']), 100)
-        self.assertEqual(saved_data['train_results']['first_image'][0].shape, (28 * 28,))
+        self.assertEqual(
+                saved_data['train_results']['first_image'][0].shape, 
+                (28 * 28,))
 
     def test_validation(self):
         """Illustrate validation.
@@ -369,7 +373,7 @@ class TestBase(unittest.TestCase):
         names = [[x.name for x in op.values()] for op in tf.get_default_graph().get_operations()]
         names = [y for x in names for y in x]
 
-        r = re.compile(r'__GPU__\d/')
+        r = re.compile(r'__GPU\d__/')
         _targets = defaultdict(list)
 
         for name in names:
@@ -417,8 +421,10 @@ class TestBase(unittest.TestCase):
         assert set(vk) == set(vk1)
 
         assert r['params']['model_params']['seed'] == 0
-        assert r['params']['model_params']['func']['modname'] == 'tfutils.model_tool'
-        assert r['params']['model_params']['func']['objname'] == 'mnist_tfutils'
+        assert r['params']['model_params']['func']['modname'] \
+                == 'tfutils.model_tool'
+        assert r['params']['model_params']['func']['objname'] \
+                == 'mnist_tfutils'
 
         _k = vk[0]
         should_contain = ['agg_func', 'data_params', 'num_steps',
@@ -437,18 +443,35 @@ class TestBase(unittest.TestCase):
             assert set(should_contain).difference(r['params'].keys()) == set()
             r_train_params = r['params']['train_params']
             assert r_train_params['thres_loss'] == 100
+
+            # Check modname and objname for data function
+            default_data_func = TRAIN_PARAMS['data_params']['func']
+            corr_modname = inspect.getmodule(default_data_func).__name__
+            corr_objname = default_data_func.__name__
             assert r_train_params['data_params']['func']['modname'] \
-                    == 'mnist_data', \
+                    == corr_modname, \
                     r_train_params['data_params']['func']['modname']
             assert r_train_params['data_params']['func']['objname'] \
-                    == 'build_data',\
+                    == corr_objname,\
                     r_train_params['data_params']['func']['objname']
 
-            assert r['params']['loss_params']['agg_func']['modname'] == 'tensorflow.python.ops.math_ops'
-            assert r['params']['loss_params']['agg_func']['objname'] == 'reduce_mean'
-            assert r['params']['loss_params']['loss_func']['modname'] == 'tensorflow.python.ops.nn_ops'
-            assert r['params']['loss_params']['loss_func']['objname'] == 'sparse_softmax_cross_entropy_with_logits'
-            assert r['params']['loss_params']['pred_targets'] == ['labels']
+            default_agg_func = defaults.DEFAULT_LOSS_PARAMS['agg_func']
+            corr_modname = inspect.getmodule(default_agg_func).__name__
+            curr_objname = default_agg_func.__name__
+            assert r['params']['loss_params']['agg_func']['modname'] \
+                    == corr_modname
+            assert r['params']['loss_params']['agg_func']['objname'] \
+                    == curr_objname
+
+            default_loss_func = defaults.DEFAULT_LOSS_PARAMS['loss_func']
+            corr_modname = inspect.getmodule(default_loss_func).__name__
+            curr_objname = default_loss_func.__name__
+            assert r['params']['loss_params']['loss_func']['modname'] \
+                    == corr_modname
+            assert r['params']['loss_params']['loss_func']['objname'] \
+                    == curr_objname
+            assert r['params']['loss_params']['pred_targets'] \
+                    == defaults.DEFAULT_LOSS_PARAMS['pred_targets']
         else:
             assert not r['params']['model_params']['train']
             assert 'train_params' not in r['params']
@@ -567,7 +590,8 @@ class TestMultiModel(TestBase):
         params['save_params']['save_valid_freq'] = 3000
         params['save_params']['save_filters_freq'] = 30000
         params['save_params']['cache_filters_freq'] = 3000
-        params['train_params']['targets'] = {'func': self.get_first_image_target}
+        params['train_params']['targets'] = {
+                'func': self.get_first_image_target}
 
         # Actually run the training.
         base.train_from_params(**params)

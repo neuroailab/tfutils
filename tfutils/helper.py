@@ -9,6 +9,7 @@ from tfutils.optimizer import ClipOptimizer, MinibatchOptimizer
 import tfutils.utils as utils
 from tfutils.utils import aggregate_outputs
 import pdb
+import inspect
 from tfutils.defaults import \
         BRANCH_QUEUE_NAME, DEFAULT_HOST, \
         DEFAULT_DEVICES, DEFAULT_MODEL_SEED, DEFAULT_DONT_RUN, \
@@ -16,7 +17,8 @@ from tfutils.defaults import \
         DEFAULT_TRAIN_THRES_LOSS, DEFAULT_LOAD_PARAMS, \
         DEFAULT_LEARNING_RATE_PARAMS, DEFAULT_LOSS_PARAMS, \
         DEFAULT_OPTIMIZER_PARAMS, DEFAULT_SAVE_PARAMS, DEFAULT_PARAMS, \
-        train_loop
+        train_loop, mean_and_reg_loss
+from tfutils.multi_gpu import easy_variable_mgr as variable_mgr
          
 
 if 'TFUTILS_LOGFILE' in os.environ:
@@ -43,7 +45,7 @@ def get_model_base(inputs, func, seed=0, train=False, **model_params):
     return model_params, outputs
 
 
-def get_model(inputs, model_params, param=None, trarg=None):
+def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
     """Return model and any other targets (loss + optimizer) specified.
 
     Args:
@@ -58,87 +60,101 @@ def get_model(inputs, model_params, param=None, trarg=None):
         tuple: Description.
 
     """
-    with tf.variable_scope(tf.get_variable_scope()):
+    devices = model_params['devices']
+    num_gpus = model_params['num_gpus']
+    model_prefix = model_params['prefix']
 
+    # var_manager is used for variable management in multiple gpu training 
+    if not var_manager:
+        var_manager = variable_mgr.VariableMgrLocalReplicated(
+                model_prefix, devices)
+
+    with tf.variable_scope(model_prefix):
         tower_outputs = []
-        devices = model_params['devices']
-        num_gpus = model_params['num_gpus']
         multi_gpu_inputs = split_input(inputs, num_gpus)
+
         # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
-            assert param and trarg is not None
+            assert param and trarg
 
+            # Build global step
+            trarg['global_step'] = tf.get_variable(
+                    'global_step', [],
+                    dtype=tf.int64, trainable=False,
+                    initializer=tf.constant_initializer(0))
+
+            # Lists that will include things from each gpu
             tower_losses = []
             tower_grads = []
+            tower_opts = []
 
-            (param['learning_rate_params'],
-             learning_rate) = get_learning_rate(trarg['global_step'],
-                                                **param['learning_rate_params'])
-            (param['optimizer_params'],
-             optimizer_base) = get_optimizer(learning_rate,
-                                             param['optimizer_params'])
+            param['learning_rate_params'], learning_rate \
+                    = get_learning_rate(
+                            trarg['global_step'],
+                            **param['learning_rate_params'])
+
+            # Make optimizers first, to avoid naming problems in optimizer
+            for which_gpu, (device, each_input) \
+                    in enumerate(zip(devices, multi_gpu_inputs)):
+                with tf.device(device):
+                    ## Build optimizer on each gpu
+                    param['optimizer_params'], optimizer_base \
+                            = get_optimizer(
+                                    learning_rate,
+                                    param['optimizer_params'])
+                    tower_opts.append(optimizer_base)
 
         # Distribute graph across desired devices.
-        for device, each_input in zip(devices, multi_gpu_inputs):
-            with tf.device(device), tf.name_scope('__GPU__' + device[-1]):
+        update_ops = []
+        for which_gpu, (device, each_input) \
+                in enumerate(zip(devices, multi_gpu_inputs)):
+            with var_manager.create_outer_variable_scope(which_gpu),\
+                 tf.device(device), \
+                 tf.name_scope('__GPU%i__' % (which_gpu)) as name_scope:
 
-                model_params, output = get_model_base(each_input, **model_params)
+                model_params, output = get_model_base(
+                        each_input, 
+                        **model_params)
                 tower_outputs.append(output)
 
                 tf.get_variable_scope().reuse_variables()
 
-                # Get loss and optimizer if training
+                # Get loss and gradients, collect update_ops if training
                 if model_params['train']:
-                    param['loss_params'], loss = get_loss(
-                            each_input, output, 
-                            **param['loss_params'])
-
-                    tf.get_variable_scope().reuse_variables()
-
-                    grad = optimizer_base.compute_gradients(loss)
+                    loss, grad, update_ops, param = get_loss_grad_updt(
+                            param, each_input, 
+                            output, which_gpu,
+                            update_ops, var_manager, 
+                            name_scope, tower_opts[which_gpu])
                     tower_losses.append(loss)
                     tower_grads.append(grad)
 
-    # Gather and aggregate outputs on the host (CPU).
-    output = aggregate_outputs(tower_outputs)
+        tf.get_variable_scope().reuse_variables()
 
-    # DEFAULT: Accumulate and average gradients on the host (CPU).
-    if model_params['train']:
+        # Gather and aggregate outputs on the host (CPU).
+        output = aggregate_outputs(tower_outputs)
 
-        if param['train_params'].get('targets'):
-            ttargs = copy.deepcopy(param['train_params']['targets'])
-            ttargs_func = ttargs.pop('func')
-            ttarg = ttargs_func(inputs, output, **ttargs)
-            trarg['train_targets'].update(ttarg)
+        # DEFAULT: Accumulate and average gradients on GPUs.
+        if model_params['train']:
+            trarg = get_train_targets(param, inputs, output, trarg)
 
-        # Aggregate loss.
-        loss = tf.reduce_mean(tf.stack(tower_losses))
+            loss = tf.reduce_mean(tf.stack(tower_losses))
+            with tf.variable_scope(variable_mgr.OPTIMIZER_NAME_SCOPE):
+                mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
+                        var_manager, trarg, 
+                        tower_grads, tower_opts)
+            mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
-        # Aggregate and accumulate gradients.
-        minibatch_grads = optimizer_base.aggregate_gradients(tower_grads)
-        mini_flag, grads = optimizer_base.accumulate_gradients(
-                minibatch_grads, 
-                trarg['num_minibatches'])
-        #grads = minibatch_grads
-
-        # Apply accumulated gradients.
-        optimizer = optimizer_base.apply_gradients(grads, trarg['global_step'])
-
-        # Prepare train_targets
-        if 'loss' not in trarg['train_targets']:
+            # Prepare train_targets
             trarg['train_targets']['loss'] = loss
-        if '__grads__' not in trarg['train_targets']:
-            trarg['train_targets']['__grads__'] = mini_flag
-            pass
-        if 'optimizer' not in trarg['train_targets']:
-            trarg['train_targets']['optimizer'] = optimizer
-        if 'learning_rate' not in trarg['train_targets']:
+            trarg['train_targets']['__grads__'] = mnb_accu_updt_list
+            trarg['train_targets']['optimizer'] = optimizer_list
             trarg['train_targets']['learning_rate'] = learning_rate
 
-        param['model_params'] = model_params
-        return param['model_params'], output, param, trarg
-    else:
-        return model_params, output
+            param['model_params'] = model_params
+            return model_params, output, param, trarg, var_manager
+        else:
+            return model_params, output, var_manager
 
 
 def get_learning_rate(global_step,
@@ -169,7 +185,7 @@ def get_optimizer(
             optimizer=optimizer,
             learning_rate=learning_rate,
             **optimizer_params)
-    optimizer_params['optimizer'] = func
+    optimizer_params['optimizer'] = optimizer
     return optimizer_params, optimizer_base
 
 
@@ -206,14 +222,94 @@ def get_loss(train_inputs,
     return loss_params, loss
 
 
+def get_train_targets(param, inputs, output, trarg):
+    if param['train_params'].get('targets'):
+        train_targts_args = copy.deepcopy(param['train_params']['targets'])
+        train_targts_func = train_targts_args.pop('func')
+        train_targets = train_targts_func(inputs, output, **train_targts_args)
+        trarg['train_targets'].update(train_targets)
+    reserved_keys = ['loss', '__grads__', 'optimizer', 'learning_rate']
+    for each_key in reserved_keys:
+        assert each_key not in trarg['train_targets'], \
+                "Please avoid using reserved key %s in your targets!" \
+                    % each_key
+    return trarg
+
+
+def get_loss_grad_updt(
+        param, each_input, output, which_gpu,
+        update_ops, var_manager, 
+        name_scope, curr_opt):
+    param['loss_params']['which_device'] = which_gpu
+    param['loss_params'], loss = get_loss(
+            each_input, output, 
+            **param['loss_params'])
+    
+    update_ops.extend(
+            tf.get_collection(
+                tf.GraphKeys.UPDATE_OPS, 
+                name_scope))
+
+    tf.get_variable_scope().reuse_variables()
+
+    ## Get gradients for trainable vars on this gpu
+    trainable_params = var_manager.trainable_variables_on_device(which_gpu)
+        
+    aggmeth = tf.AggregationMethod.DEFAULT
+    grad = curr_opt.compute_gradients(
+            loss,
+            var_list=trainable_params,
+            aggregation_method=aggmeth,
+            )
+    return loss, grad, update_ops, param
+
+
+def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
+    # Aggregate and accumulate gradients.
+    ## This is setting the devices where each gradient will be summed across
+    ## all gpus
+    apply_gradient_devices, gradient_state = (
+            var_manager.preprocess_device_grads(tower_grads))
+
+    ## mnb_accu_updt_list includes ops doing one minibatch, 
+    ## which includes accumulating gradients for this minibatch and 
+    ## also update_ops for this minibatch, which is usually for batch
+    ## normalization
+    mnb_accu_updt_list = []
+
+    ## optimizer_list contains ops for applying gradients 
+    ## and global step updates
+    gstep_update_op = tf.assign(
+            trarg['global_step'], 
+            trarg['global_step']+1)
+    optimizer_list = [gstep_update_op]
+
+    ## Apply gradients on each gpu
+    for d, device in enumerate(apply_gradient_devices):
+        with var_manager.create_outer_variable_scope(d),\
+             tf.device(device):
+            avg_grads = var_manager.get_gradients_to_apply(
+                    d, gradient_state)
+            mnb_accu_grad, optimizer = tower_opts[d].accu_and_apply_grads(
+                    avg_grads,
+                    trarg['num_minibatches'],
+                    None,
+                    )
+
+            mnb_accu_updt_list.append(mnb_accu_grad)
+            optimizer_list.append(optimizer)
+    return mnb_accu_updt_list, optimizer_list
+
+
 def get_loss_base(
         inputs,
         outputs,
         pred_targets,
         loss_func,
         loss_func_kwargs={},
-        agg_func=None,
+        agg_func=DEFAULT_PARAMS['loss_params']['agg_func'],
         agg_func_kwargs={},
+        which_device=0,
         **loss_params):
     # Process some parameters
     loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
@@ -224,29 +320,39 @@ def get_loss_base(
 
     # Get the labels to predict from inputs
     labels = [inputs[t] for t in pred_targets]
-    try:
+    loss_func_args = loss_func.__code__.co_varnames
+    if '_sentinel' not in loss_func_args:
         # Usual way to call the loss function: 
         #   outputs will be sent as first parameter, labels will be unpacked
         loss = loss_func(outputs, *labels, **loss_func_kwargs)
-    except:
+    else:
         # Very special situation for 
         #   tf.nn.sparse_softmax_cross_entropy_with_logits,
         # which only accepts named parameters rather than positional parameters
-        log.info('Error in directly calling loss_func, trying softmax way!')
-        try:
-            assert len(labels)==1, \
-                    'Should only have one thing to predict!'
-            loss = loss_func(
-                    logits=outputs, 
-                    labels=labels[0], 
-                    **loss_func_kwargs)
-        except:
-            # If still fails, then original loss_func is wrong, show the error
-            log.info('Errors in loss_func!')
-            loss = loss_func(outputs, *labels, **loss_func_kwargs)
+        assert len(labels)==1, \
+                'Should only have one thing to predict!'
+        loss = loss_func(
+                logits=outputs, 
+                labels=labels[0], 
+                **loss_func_kwargs)
 
+    if not agg_func==mean_and_reg_loss:
+        log.info('You are not using function mean_and_reg_loss provided in '\
+                + 'tfutils.defaults, if you are using multi-gpu training, '\
+                + 'please check that function to make sure your '\
+                + 'regularization loss is multi-gpu safe!')
     if agg_func:
-        loss = agg_func(loss, **agg_func_kwargs)
+        # Check whether which_device is required for agg_func
+        agg_func_args = agg_func.__code__.co_varnames
+        if 'which_device' in agg_func_args:
+            loss = agg_func(loss, which_device=which_device, **agg_func_kwargs)
+        else:
+            log.info('You are not requiring which_device parameter in your '\
+                    + 'agg_func, if you are using multi-gpu training, '\
+                    + 'please check function mean_and_reg_loss in '\
+                    + 'tfutils.defaults to make sure your '\
+                    + 'regularization loss is multi-gpu safe!')
+            loss = agg_func(loss, **agg_func_kwargs)
     return loss
 
 
