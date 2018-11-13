@@ -13,7 +13,7 @@ def initializer(kind='xavier', *args, **kwargs):
         init = getattr(tf, kind + '_initializer')(*args, **kwargs)
     return init
 
-def batchnorm_corr(inputs, is_training, decay = 0.999, epsilon = 1e-3):
+def batchnorm_corr(inputs, is_training, data_format='channels_last', decay = 0.999, epsilon = 1e-3, init_zero=None, activation=None):
 
     scale = tf.get_variable(name = 'scale', shape = [inputs.get_shape()[-1]], initializer = tf.ones_initializer(), trainable=True)
     beta = tf.get_variable(name = 'beta', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=True)
