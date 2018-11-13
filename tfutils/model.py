@@ -47,15 +47,14 @@ def conv(inp,
          activation='relu',
          batch_norm=False,
          is_training=False,
+         batch_norm_decay = 0.9,
+         batch_norm_epsilon = 1e-5,
          init_zero=None,
          dropout=None,
          dropout_seed=0,
          name='conv'
          ):
 
-    # BATCH_NORM_DECAY = 0.9
-    # BATCH_NORM_EPSILON = 1e-5
-    
     # assert out_shape is not None
     if weight_decay is None:
         weight_decay = 0.
@@ -109,7 +108,7 @@ def conv(inp,
         #                                        gamma_initializer=gamma_init,
         #                                        name="post_conv_BN")
 
-        output = batchnorm_corr(output, is_training=is_training, decay = 0.999, epsilon = 1e-3)
+        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
@@ -128,6 +127,8 @@ def conv_bnf(inp,
          activation='relu6',
          batch_norm=True,
          is_training=True,
+         batch_norm_decay = 0.9,
+         batch_norm_epsilon = 1e-5,
          name='conv_bnf'
          ):
 
@@ -157,7 +158,7 @@ def conv_bnf(inp,
                         padding=padding)
 
     if batch_norm:
-        output = batchnorm_corr(output, is_training=is_training, decay = 0.999, epsilon = 1e-3)
+        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -219,6 +220,8 @@ def depth_conv(inp,
              weight_decay=None,
              batch_norm = True,
              is_training=True,
+             batch_norm_decay = 0.9,
+             batch_norm_epsilon = 1e-5,
              name='depth_conv'
              ):
 
@@ -250,7 +253,7 @@ def depth_conv(inp,
                             padding=padding)
         
     if batch_norm:
-        output = batchnorm_corr(output, is_training=is_training, decay = 0.999, epsilon = 1e-3)
+        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -274,6 +277,8 @@ def fc(inp,
        activation='relu',
        batch_norm=False,
        is_training=False,
+       batch_norm_decay = 0.9,
+       batch_norm_epsilon = 1e-5,
        dropout=None,
        dropout_seed=0,
        name='fc'):
@@ -309,7 +314,7 @@ def fc(inp,
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
     if batch_norm:
-        output = batchnorm_corr(output, is_training=is_training, decay = 0.999, epsilon = 1e-3)
+        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon)
     return output
 
 
