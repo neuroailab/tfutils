@@ -715,7 +715,8 @@ class DBInterface(object):
             log.info(message)
 
         if validation_only:
-            rec['validates'] = self.load_data[0]['_id']
+            if self.load_data is not None:
+                rec['validates'] = self.load_data[0]['_id']
             save_filters_permanent = save_filters_tmp = False
             need_to_save = True
         else:
