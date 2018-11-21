@@ -19,6 +19,7 @@ import sys
 import threading
 import git
 import pdb
+import pkg_resources
 
 from tfutils.utils import strip_prefix_from_name, \
         strip_prefix, get_var_list_wo_prefix
