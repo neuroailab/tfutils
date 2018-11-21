@@ -248,6 +248,7 @@ class ConvNet(object):
              stride=2,
              padding='SAME',
              pool_type='maxpool',
+             layer='pool',
              in_layer=None):
         # Set parameters
         if in_layer is None:
@@ -275,7 +276,7 @@ class ConvNet(object):
                 ksize=ksizes,
                 strides=strides,
                 padding=padding,
-                name='pool',
+                name=layer,
                 )
 
         # Set params, return the value
