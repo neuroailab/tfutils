@@ -101,8 +101,12 @@ def test_from_params(load_params,
         _ttargs = [{key: value[i] for (key, value) in test_args.items()}
                    for i in range(len(params['model_params']))]
 
+
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
+            print(param['load_params'])
+            from_ckpt = param['load_params'].get('from_ckpt')
+            use_ckpt = (from_ckpt is not None)
 
             if not 'cache_dir' in load_params:
                 temp_cache_dir = save_params.get('cache_dir', None)
@@ -115,14 +119,17 @@ def test_from_params(load_params,
                     var_manager=None,
                     params=param, 
                     load_params=param['load_params'])
-            ttarg['dbinterface'].load_rec()
-            ld = ttarg['dbinterface'].load_data
-            assert ld is not None, "No load data found for query, aborting"
-            ld = ld[0]
-            # TODO: have option to reconstitute model_params entirely from
-            # saved object ("revivification")
-            param['model_params']['seed'] = ld['params']['model_params']['seed']
-            cfg_final = ld['params']['model_params']['cfg_final']
+            if not use_ckpt:
+                ttarg['dbinterface'].load_rec()
+                ld = ttarg['dbinterface'].load_data
+                assert ld is not None, "No load data found for query, aborting"
+                ld = ld[0]
+                # TODO: have option to reconstitute model_params entirely from
+                # saved object ("revivification")
+                param['model_params']['seed'] = ld['params']['model_params']['seed']
+                cfg_final = ld['params']['model_params']['cfg_final']
+            else:
+                cfg_final = param['model_params'].get('cfg_final')
 
             ttarg['validation_targets'], var_manager \
                     = get_valid_targets_dict(
