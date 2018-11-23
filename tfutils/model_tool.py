@@ -15,10 +15,15 @@ class ConvNet(object):
         self.seed = seed
         self.output = None
         self._params = OrderedDict()
+        self._layers = OrderedDict()
 
     @property
     def params(self):
         return self._params
+
+    @property
+    def layers(self):
+        return self._layers
 
     @params.setter
     def params(self, value):
@@ -145,6 +150,7 @@ class ConvNet(object):
                        'activation': activation,
                        'weight_decay': weight_decay,
                        'seed': self.seed}
+        self._layers[layer] = self.output
         return self.output
 
     @tf.contrib.framework.add_arg_scope
@@ -205,6 +211,7 @@ class ConvNet(object):
                        'dropout': dropout,
                        'weight_decay': weight_decay,
                        'seed': self.seed}
+        self._layers[layer] = self.output
         return self.output
 
     @tf.contrib.framework.add_arg_scope
@@ -232,6 +239,7 @@ class ConvNet(object):
                        'bias': bias,
                        'alpha': alpha,
                        'beta': beta}
+        self._layers[layer] = self.output
         return self.output
 
     @tf.contrib.framework.add_arg_scope
@@ -240,6 +248,7 @@ class ConvNet(object):
              stride=2,
              padding='SAME',
              pool_type='maxpool',
+             layer='pool',
              in_layer=None):
         # Set parameters
         if in_layer is None:
@@ -267,7 +276,7 @@ class ConvNet(object):
                 ksize=ksizes,
                 strides=strides,
                 padding=padding,
-                name='pool',
+                name=layer,
                 )
 
         # Set params, return the value
@@ -277,6 +286,7 @@ class ConvNet(object):
                 'kernel_size': (ksize1, ksize2),
                 'stride': stride,
                 'padding': padding}
+        self._layers[layer] = self.output
         return self.output
 
     def activation(self, kind='relu', in_layer=None):
