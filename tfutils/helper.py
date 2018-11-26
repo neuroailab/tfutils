@@ -19,7 +19,7 @@ from tfutils.defaults import \
         DEFAULT_OPTIMIZER_PARAMS, DEFAULT_SAVE_PARAMS, DEFAULT_PARAMS, \
         train_loop, mean_and_reg_loss
 from tfutils.multi_gpu import easy_variable_mgr as variable_mgr
-         
+
 
 if 'TFUTILS_LOGFILE' in os.environ:
     logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
@@ -33,8 +33,8 @@ log.setLevel('DEBUG')
 def get_model_base(inputs, func, seed=0, train=False, **model_params):
     model_params['seed'] = seed
     model_params['train'] = train
-    # Your model function should return: 
-    #   1. the outputs 
+    # Your model function should return:
+    #   1. the outputs
     #   2. onfiguration files you want to put to database
     outputs, cfg_to_database = func(inputs=inputs,
                               **model_params)
@@ -64,10 +64,11 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
     num_gpus = model_params['num_gpus']
     model_prefix = model_params['prefix']
 
-    # var_manager is used for variable management in multiple gpu training 
+    # var_manager is used for variable management in multiple gpu training
     if not var_manager:
         var_manager = variable_mgr.VariableMgrLocalReplicated(
-                model_prefix, devices)
+            model_prefix, devices,
+            trainable_scopes=model_params['trainable_scopes'])
 
     with tf.variable_scope(model_prefix):
         tower_outputs = []
@@ -113,7 +114,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                  tf.name_scope('__GPU%i__' % (which_gpu)) as name_scope:
 
                 model_params, output = get_model_base(
-                        each_input, 
+                        each_input,
                         **model_params)
                 tower_outputs.append(output)
 
@@ -122,9 +123,9 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                 # Get loss and gradients, collect update_ops if training
                 if model_params['train']:
                     loss, grad, update_ops, param = get_loss_grad_updt(
-                            param, each_input, 
+                            param, each_input,
                             output, which_gpu,
-                            update_ops, var_manager, 
+                            update_ops, var_manager,
                             name_scope, tower_opts[which_gpu])
                     tower_losses.append(loss)
                     tower_grads.append(grad)
@@ -141,7 +142,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
             loss = tf.reduce_mean(tf.stack(tower_losses))
             with tf.variable_scope(variable_mgr.OPTIMIZER_NAME_SCOPE):
                 mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
-                        var_manager, trarg, 
+                        var_manager, trarg,
                         tower_grads, tower_opts)
             mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
@@ -238,29 +239,27 @@ def get_train_targets(param, inputs, output, trarg):
 
 def get_loss_grad_updt(
         param, each_input, output, which_gpu,
-        update_ops, var_manager, 
+        update_ops, var_manager,
         name_scope, curr_opt):
     param['loss_params']['which_device'] = which_gpu
     param['loss_params'], loss = get_loss(
-            each_input, output, 
+            each_input, output,
             **param['loss_params'])
-    
+
     update_ops.extend(
             tf.get_collection(
-                tf.GraphKeys.UPDATE_OPS, 
+                tf.GraphKeys.UPDATE_OPS,
                 name_scope))
 
     tf.get_variable_scope().reuse_variables()
 
     ## Get gradients for trainable vars on this gpu
     trainable_params = var_manager.trainable_variables_on_device(which_gpu)
-        
-    aggmeth = tf.AggregationMethod.DEFAULT
-    grad = curr_opt.compute_gradients(
-            loss,
-            var_list=trainable_params,
-            aggregation_method=aggmeth,
-            )
+    print('Trainable params for', which_gpu, 'are:')
+    for v in trainable_params:
+        print(v.name)
+
+    grad = curr_opt.compute_gradients(loss, var_list=trainable_params)
     return loss, grad, update_ops, param
 
 
@@ -271,16 +270,16 @@ def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
     apply_gradient_devices, gradient_state = (
             var_manager.preprocess_device_grads(tower_grads))
 
-    ## mnb_accu_updt_list includes ops doing one minibatch, 
-    ## which includes accumulating gradients for this minibatch and 
+    ## mnb_accu_updt_list includes ops doing one minibatch,
+    ## which includes accumulating gradients for this minibatch and
     ## also update_ops for this minibatch, which is usually for batch
     ## normalization
     mnb_accu_updt_list = []
 
-    ## optimizer_list contains ops for applying gradients 
+    ## optimizer_list contains ops for applying gradients
     ## and global step updates
     gstep_update_op = tf.assign(
-            trarg['global_step'], 
+            trarg['global_step'],
             trarg['global_step']+1)
     optimizer_list = [gstep_update_op]
 
@@ -322,18 +321,18 @@ def get_loss_base(
     labels = [inputs[t] for t in pred_targets]
     loss_func_args = loss_func.__code__.co_varnames
     if '_sentinel' not in loss_func_args:
-        # Usual way to call the loss function: 
+        # Usual way to call the loss function:
         #   outputs will be sent as first parameter, labels will be unpacked
         loss = loss_func(outputs, *labels, **loss_func_kwargs)
     else:
-        # Very special situation for 
+        # Very special situation for
         #   tf.nn.sparse_softmax_cross_entropy_with_logits,
         # which only accepts named parameters rather than positional parameters
         assert len(labels)==1, \
                 'Should only have one thing to predict!'
         loss = loss_func(
-                logits=outputs, 
-                labels=labels[0], 
+                logits=outputs,
+                labels=labels[0],
                 **loss_func_kwargs)
 
     if not agg_func==mean_and_reg_loss:
@@ -357,7 +356,7 @@ def get_loss_base(
 
 
 """
-Less important functions: 
+Less important functions:
 """
 
 
@@ -440,6 +439,11 @@ def parse_params(mode,
                         param['train'] = True
                     else:
                         param['train'] = False
+
+                if 'trainable_scopes' not in param:
+                    param['trainable_scopes'] = None
+                    log.info('No trainable scopes specified for model {}... '.format(model_num) +
+                             'All trainable variables will be trained by default.')
 
                 # Parse device specification.
                 if 'devices' not in param:

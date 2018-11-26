@@ -22,13 +22,21 @@ class VariableMgr(object):
     managed, and how gradients are computed and applied.
   """
 
-  def __init__(self, prefix, devices):
+  def __init__(self, prefix, devices, trainable_scopes=None):
     self.devices = devices
     self.staging_delta_ops = []
     self.prefix = prefix
 
     # A variable for automatic loss scaling.
     self.grad_has_inf_nan = None
+
+    # Names of scopes that are considered trainable.
+    # (Names should include trailing slash.)
+    if trainable_scopes is None:
+      trainable_scopes = ['']
+    elif isinstance(trainable_scopes, basestring):
+      trainable_scopes = [trainable_scopes]
+    self.trainable_scopes = trainable_scopes
 
   def each_tower_has_variables(self):
     """Returns True if each GPU tower of the model has separate variables."""
@@ -83,26 +91,29 @@ class VariableMgr(object):
     """Returns a list/dict of savable variables to pass to tf.train.Saver."""
     return tf.global_variables()
 
-  def trainable_variables_on_device(self,
-                                    abs_device_num,
-                                    ):
+  def trainable_variables_on_device(self, abs_device_num):
     """Return the set of trainable variables on device.
 
     Args:
       abs_device_num: global graph device index.
+      trainable_scopes (list of strings, optional): names of scopes that are
+        considered trainable (default is all scopes). Scope names should include
+        a trailing slash.
 
     Returns:
       The set of trainable variables on the specified device.
     """
+    prefix = ''
     if self.each_tower_has_variables():
-      params = [
-          v for v in tf.trainable_variables()
-          if v.name.startswith('%s/%s%s/' \
-                  % (self.prefix, COPY_NAME_SCOPE, abs_device_num))
-      ]
-    else:
-      params = tf.trainable_variables()
-    return params
+      prefix = '%s/%s%s/' % (self.prefix, COPY_NAME_SCOPE, abs_device_num)
+
+    def is_trainable(v):
+      for scope_name in self.trainable_scopes:
+        if v.name.startswith(prefix + scope_name):
+          return True
+      return False
+
+    return [v for v in tf.trainable_variables() if is_trainable(v)]
 
 
 class VariableMgrLocalReplicated(VariableMgr):
@@ -114,10 +125,7 @@ class VariableMgrLocalReplicated(VariableMgr):
      gradients to all towers.
   """
 
-  def __init__(
-      self, 
-      *args,
-      **kwargs):
+  def __init__(self, *args, **kwargs):
     super(VariableMgrLocalReplicated, self).__init__(*args, **kwargs)
     self._warmup_ops = []
     self._gradient_put_ops = None
@@ -127,7 +135,7 @@ class VariableMgrLocalReplicated(VariableMgr):
 
   def create_outer_variable_scope(self, device_num):
     return tf.variable_scope(
-        '%s%s' % (COPY_NAME_SCOPE, device_num), 
+        '%s%s' % (COPY_NAME_SCOPE, device_num),
         reuse=tf.AUTO_REUSE,
         use_resource=False)
 

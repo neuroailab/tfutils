@@ -1,12 +1,12 @@
 """Default Optimizer to be used with tfutils.
 
-The ClipOptimizer class adds support for gradient clipping, self-defined 
-trainable parameters. This optimizer is just a tool provided by TFUtils, 
+The ClipOptimizer class adds support for gradient clipping, self-defined
+trainable parameters. This optimizer is just a tool provided by TFUtils,
 but not what tfutils must use.
 
-The MinibatchOptimizer adds support for gradient aggregation gradient 
+The MinibatchOptimizer adds support for gradient aggregation gradient
 accumulation useful for performing minibatching (accumulating and aggregating
-gradients for multiple batches before applying a gradient update). 
+gradients for multiple batches before applying a gradient update).
 This optimizer is what tfutils must use.
 
 """
@@ -29,7 +29,7 @@ NON_SAVE_SUFFIX = '__tfutils_minibatch__'
 
 
 class ClipOptimizer(object):
-    """A wrapper for general optimizers. 
+    """A wrapper for general optimizers.
 
     This class supports:
 
@@ -39,12 +39,11 @@ class ClipOptimizer(object):
     Args:
         optimizer_class: Returned value of this function should have `compute_gradients` and `apply_gradients` methods.
         clip (bool, optional): Default is True, clipping by `[-1, 1]`.
-        trainable_names (list of strings, or string, optional): Default is None. Scope names for variables to be trained.
 
     """
     def __init__(
-            self, optimizer_class, clip=True, 
-            trainable_names=None, *optimizer_args, **optimizer_kwargs):
+            self, optimizer_class, clip=True,
+            *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
         required_methods = ['compute_gradients', 'apply_gradients']
@@ -53,10 +52,6 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
-        if not isinstance(trainable_names, list) \
-                and trainable_names is not None:
-            trainable_names = [trainable_names]
-        self.trainable_names = trainable_names
 
     def compute_gradients(self, loss, var_list=None, *args, **kwargs):
         """Compute gradients to model variables from loss.
@@ -69,30 +64,7 @@ class ClipOptimizer(object):
             clipping operation if `self.clip` is True.
 
         """
-        train_vars = var_list
-        if self.trainable_names is not None:
-            if train_vars:
-                log.info('Ignoring specified trainable_names!')
-            else:
-                train_key = tf.GraphKeys.TRAINABLE_VARIABLES
-                log.info('All trainable vars:\n' \
-                        + str([var.name for var in tf.get_collection(train_key)]))
-                train_vars = []
-                for scope_name in self.trainable_names:
-                    new_vars = tf.get_collection(
-                            train_key, 
-                            scope=scope_name)
-                    if len(new_vars) == 0:
-                        raise ValueError(
-                                'The scope name, {}, '.format(scope_name)\
-                                + 'you specified does not contain '\
-                                + 'any trainable variables.')
-                    train_vars.extend(new_vars)
-                log.info('Variables to be trained:\n' \
-                        + str([var.name for var in train_vars]))
-
-        gvs = self._optimizer.compute_gradients(loss,
-                                                var_list=train_vars,
+        gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
                                                 *args, **kwargs)
         if self.clip:
             # gradient clipping. Some gradients returned are 'None' because
@@ -122,7 +94,7 @@ class ClipOptimizer(object):
 
 
 class MinibatchOptimizer(object):
-    """A wrapper used by tfutils for general optimizers. 
+    """A wrapper used by tfutils for general optimizers.
 
     This class supports:
 
@@ -159,7 +131,7 @@ class MinibatchOptimizer(object):
             # No need for accumulating
             return tf.no_op(), minibatch_grads
 
-        # Make sure that the var_list is the same variable list with 
+        # Make sure that the var_list is the same variable list with
         # that in minibatch_grads
         assert len(minibatch_grads) == len(self.var_list), \
                 "Variable list length not matched!"
@@ -217,11 +189,11 @@ class MinibatchOptimizer(object):
         return optimize
 
     def accu_and_apply_grads(
-            self, minibatch_grads, 
+            self, minibatch_grads,
             num_minibatch, global_step):
         # Aggregate and accumulate gradients.
         mnb_accu_grad, grads_and_vars = self.accumulate_gradients(
-                minibatch_grads, 
+                minibatch_grads,
                 num_minibatch)
 
         # Apply accumulated gradients.
