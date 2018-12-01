@@ -37,6 +37,7 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                            gamma_initializer=gamma_init,
                                            name="post_conv_BN")
 
+
     return output
 
 def conv(inp,
