@@ -1684,11 +1684,7 @@ def get_optimizer(learning_rate,
     func = optimizer_params.pop('func', default_optimizer_func)
     optimizer_base = func(learning_rate=learning_rate,
                           **optimizer_params)
-
-    # batch_norm
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        optimizer = optimizer_base.minimize(loss, global_step)
+    optimizer = optimizer_base.minimize(loss, global_step)
     optimizer_params['func'] = func
     return optimizer_params, optimizer
 
