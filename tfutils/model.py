@@ -15,7 +15,14 @@ def initializer(kind='xavier', *args, **kwargs):
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', decay = 0.999, epsilon = 1e-3, init_zero=None, activation=None):
 
-    scale = tf.get_variable(name = 'scale', shape = [inputs.get_shape()[-1]], initializer = tf.ones_initializer(), trainable=True)
+    if init_zero is None:
+        init_zero = True if activation is None else False
+    if init_zero:
+        gamma_init = tf.zeros_initializer()
+    else:
+        gamma_init = tf.ones_initializer()
+    
+    scale = tf.get_variable(name = 'scale', shape = [inputs.get_shape()[-1]], initializer = gamma_init, trainable=True)
     beta = tf.get_variable(name = 'beta', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=True)
     pop_mean = tf.get_variable(name = 'bn_mean', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=False)
     pop_var = tf.get_variable(name = 'bn_var', shape = [inputs.get_shape()[-1]], initializer = tf.ones_initializer(), trainable=False)
@@ -47,8 +54,8 @@ def conv(inp,
          activation='relu',
          batch_norm=False,
          is_training=False,
-         batch_norm_decay = 0.9,
-         batch_norm_epsilon = 1e-5,
+         batch_norm_decay = 0.999,
+         batch_norm_epsilon = 1e-3,
          init_zero=None,
          dropout=None,
          dropout_seed=0,
@@ -108,7 +115,7 @@ def conv(inp,
         #                                        gamma_initializer=gamma_init,
         #                                        name="post_conv_BN")
 
-        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon)
+        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon, activation=activation, init_zero=init_zero)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
