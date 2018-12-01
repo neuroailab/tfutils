@@ -30,12 +30,11 @@ class VariableMgr(object):
     # A variable for automatic loss scaling.
     self.grad_has_inf_nan = None
 
-    # Names of scopes that are considered trainable.
-    # (Names should include trailing slash.)
-    if trainable_scopes is None:
-      trainable_scopes = ['']
-    elif isinstance(trainable_scopes, basestring):
-      trainable_scopes = [trainable_scopes]
+    # Names of scopes that are considered trainable. None means all
+    # scopes are trainable. Names should *omit* trailing slash.
+    if trainable_scopes is not None:
+      for scope_name in trainable_scopes:
+        assert not scope_name.endswith('/')
     self.trainable_scopes = trainable_scopes
 
   def each_tower_has_variables(self):
@@ -108,8 +107,10 @@ class VariableMgr(object):
       prefix = '%s/%s%s/' % (self.prefix, COPY_NAME_SCOPE, abs_device_num)
 
     def is_trainable(v):
+      if self.trainable_scopes is None:
+        return v.name.startswith(prefix)
       for scope_name in self.trainable_scopes:
-        if v.name.startswith(prefix + scope_name):
+        if v.name.startswith(prefix + scope_name + '/'):
           return True
       return False
 

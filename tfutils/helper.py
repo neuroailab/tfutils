@@ -66,9 +66,15 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
 
     # var_manager is used for variable management in multiple gpu training
     if not var_manager:
+        trainable_scopes = model_params['trainable_scopes']
+        if isinstance(trainable_scopes, basestring):
+            trainable_scopes = [trainable_scopes]
+        if trainable_scopes is not None:
+            trainable_scopes = [s.rstrip('/') for s in trainable_scopes]
+            log.info('Only variables within the following scopes will be trained: {}'.format(trainable_scopes))
         var_manager = variable_mgr.VariableMgrLocalReplicated(
             model_prefix, devices,
-            trainable_scopes=model_params['trainable_scopes'])
+            trainable_scopes=trainable_scopes)
 
     with tf.variable_scope(model_prefix):
         tower_outputs = []
@@ -255,9 +261,6 @@ def get_loss_grad_updt(
 
     ## Get gradients for trainable vars on this gpu
     trainable_params = var_manager.trainable_variables_on_device(which_gpu)
-    print('Trainable params for', which_gpu, 'are:')
-    for v in trainable_params:
-        print(v.name)
 
     grad = curr_opt.compute_gradients(loss, var_list=trainable_params)
     return loss, grad, update_ops, param
