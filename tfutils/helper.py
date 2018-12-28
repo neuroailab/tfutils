@@ -193,7 +193,6 @@ def get_optimizer(
 
     # Build the optimizer, use class MinibatchOptimizer as a wrapper
     if include_global_step:
-        print('TFUTILS global step', global_step)
         optimizer_base = MinibatchOptimizer(
             optimizer=optimizer,
             learning_rate=learning_rate,
