@@ -30,7 +30,8 @@ log = logging.getLogger('tfutils')
 log.setLevel('DEBUG')
 
 
-def get_model_base(inputs, func, seed=0, train=False, **model_params):
+def get_model_base(inputs, func, seed=0, train=False, **old_model_params):
+    model_params = copy.deepcopy(old_model_params)
     model_params['seed'] = seed
     model_params['train'] = train
     # Your model function should return:
@@ -119,7 +120,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                  tf.device(device), \
                  tf.name_scope('__GPU%i__' % (which_gpu)) as name_scope:
 
-                model_params, output = get_model_base(
+                new_model_params, output = get_model_base(
                         each_input,
                         **model_params)
                 tower_outputs.append(output)
@@ -136,6 +137,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                     tower_losses.append(loss)
                     tower_grads.append(grad)
 
+        model_params = new_model_params
         tf.get_variable_scope().reuse_variables()
 
         # Gather and aggregate outputs on the host (CPU).
@@ -312,6 +314,7 @@ def get_loss_base(
         agg_func=DEFAULT_PARAMS['loss_params']['agg_func'],
         agg_func_kwargs={},
         which_device=0,
+        labels_to_dict=False,
         **loss_params):
     # Process some parameters
     loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
@@ -326,6 +329,9 @@ def get_loss_base(
     if '_sentinel' not in loss_func_args:
         # Usual way to call the loss function:
         #   outputs will be sent as first parameter, labels will be unpacked
+        if labels_to_dict: # put labels in dictionary for certain function signatures
+            loss_func_kwargs['labels'] = [inputs[t] for t in pred_targets]
+            labels = []
         loss = loss_func(outputs, *labels, **loss_func_kwargs)
     else:
         # Very special situation for
