@@ -121,6 +121,12 @@ def test_from_params(load_params,
             ld = ld[0]
             # TODO: have option to reconstitute model_params entirely from
             # saved object ("revivification")
+            is_rename = 'agent_params' in ld['params']
+            if is_rename:
+                try:
+                    ld = rename_interaction_utils(ld)
+                except Exception as e:
+                    ld = rename_interaction_utils_v2(ld)
             param['model_params']['seed'] = ld['params']['model_params']['seed']
             cfg_final = ld['params']['model_params']['cfg_final']
 
@@ -156,3 +162,63 @@ def test_from_params(load_params,
         res = test(sess, **test_args)
         sess.close()
         return res
+
+def rename_interaction_utils_v2(data):
+    params = data['params']
+    params['model_params'] = params['agent_params']\
+            ['model_params']['wm_cfg']
+    params['model_params']['OB1'] = params['agent_params']\
+            ['model_params']['wm_cfg']['OB1']
+    params['model_params']['OB2'] = params['agent_params']\
+            ['model_params']['wm_cfg']['OB2']
+    params['model_params']['seed'] = 0
+    params['model_params']['num_gpus'] = 1
+    params['model_params']['devices'] = ['/gpu:0']
+    params['model_params']['dynamic_group'] = False
+    params['model_params']['prefix'] = "" #check strip
+    params['model_params']['stats_file'] = ""
+    params['model_params']['group_file'] = ['/mnt/fs1/chengxuz/Dataset/                  5231_world_dataset/group_result_km6_aaad_sd0.pkl']
+    params['model_params']['group_rand_num'] = ""
+    params['model_params']['static_path'] = ['/mnt/fs1/datasets/5231_world_dataset/      static_particles.pkl']
+    params['model_params']['train'] = True
+    params['model_params']['cfg'] = \
+            params['agent_params']['model_params']['wm_cfg']
+    params['model_params']['cfg_final'] = {}
+    params['model_params']['func'] = \
+            params['agent_params']['model_params']['func']
+
+    params['train_params'] = {}
+    params['train_params']['queue_params'] = {'batch_size': 256, 'capacity': 10240,      'queue_type': 'random', 'seed': 0}
+
+    data['params'] = params
+    return data
+
+def rename_interaction_utils(data):
+    params = data['params']
+    params['model_params'] = params['agent_params']\
+            ['model_params']['cfg'].pop('him_kwargs')
+    params['model_params']['OB1'] = params['agent_params']\
+            ['model_params']['cfg']['object_ids'][0]
+    params['model_params']['OB2'] = params['agent_params']\
+            ['model_params']['cfg']['object_ids'][1]
+    params['model_params']['seed'] = 0
+    params['model_params']['num_gpus'] = 1
+    params['model_params']['devices'] = ['/gpu:0']
+    params['model_params']['dynamic_group'] = False
+    params['model_params']['prefix'] = "" #check strip
+    params['model_params']['stats_file'] = ""
+    params['model_params']['group_file'] = ['/mnt/fs1/chengxuz/Dataset/                  5231_world_dataset/group_result_km6_aaad_sd0.pkl']
+    params['model_params']['group_rand_num'] = ""
+    params['model_params']['static_path'] = ['/mnt/fs1/datasets/5231_world_dataset/      static_particles.pkl']
+    params['model_params']['train'] = True
+    params['model_params']['cfg'] = \
+            params['agent_params']['model_params']['cfg']['him_cfg']
+    params['model_params']['cfg_final'] = {}
+    params['model_params']['func'] = \
+            params['agent_params']['model_params']['func']
+
+    params['train_params'] = {}
+    params['train_params']['queue_params'] = {'batch_size': 256, 'capacity': 10240,      'queue_type': 'random', 'seed': 0}
+
+    data['params'] = params
+    return data
