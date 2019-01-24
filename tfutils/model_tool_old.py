@@ -13,23 +13,54 @@ def initializer(kind='xavier', *args, **kwargs):
         init = getattr(tf, kind + '_initializer')(*args, **kwargs)
     return init
 
+def batchnorm_corr(inputs, is_training, data_format='channels_last', 
+    decay = 0.9, epsilon = 1e-5, init_zero=None, activation=None):
+
+    # if activation is none, should use zeros; else ones
+    if init_zero is None:
+        init_zero = True if activation is None else False
+    if init_zero: 
+        gamma_init = tf.zeros_initializer()
+    else:
+        gamma_init = tf.ones_initializer()
+
+    axis = 1 if data_format == 'channels_first' else 3
+    output = tf.layers.batch_normalization(inputs=inputs,
+                                           axis=axis,
+                                           momentum=decay,
+                                           epsilon=epsilon,
+                                           center=True,
+                                           scale=True,
+                                           training=is_training,
+                                           trainable=True,
+                                           fused=True,
+                                           gamma_initializer=gamma_init,
+                                           name="post_conv_BN")
+
+    return output
 
 def conv(inp,
          out_depth,
          ksize=[3,3],
          strides=[1,1,1,1],
+         data_format='channels_last',
          padding='SAME',
          kernel_init='xavier',
          kernel_init_kwargs=None,
+         use_bias=True,
          bias=0,
          weight_decay=None,
          activation='relu',
          batch_norm=False,
+         is_training=False,
+         batch_norm_decay=0.9,
+         batch_norm_epsilon=1e-5,
+         init_zero=None,
          dropout=None,
          dropout_seed=0,
          name='conv'
          ):
-
+    
     # assert out_shape is not None
     if weight_decay is None:
         weight_decay = 0.
@@ -46,8 +77,10 @@ def conv(inp,
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='weights')
-    init = initializer(kind='constant', value=bias)
-    biases = tf.get_variable(initializer=init,
+    
+    if use_bias:
+        init = initializer(kind='constant', value=bias)
+        biases = tf.get_variable(initializer=init,
                             shape=[out_depth],
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
@@ -59,13 +92,23 @@ def conv(inp,
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
                         padding=padding)
-    output = tf.nn.bias_add(conv, biases, name=name)
+
+    if use_bias:
+        output = tf.nn.bias_add(conv, biases, name=name)
+    else:
+        output = tf.identity(conv, name=name)
+
+    if batch_norm:
+        output = batchnorm_corr(inputs=output, 
+                                is_training=is_training, 
+                                data_format=data_format, 
+                                decay = batch_norm_decay, 
+                                epsilon = batch_norm_epsilon, 
+                                init_zero=init_zero, activation=activation)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
-    if batch_norm:
-        output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
-                            scale=None, variance_epsilon=1e-8, name='batch_norm')
+
     return output
 
 def conv_bnf(inp,
@@ -78,8 +121,12 @@ def conv_bnf(inp,
          bias=0,
          weight_decay=None,
          activation='relu6',
-         batch_norm=False,
-         train_bn=True,
+         batch_norm=True,
+         is_training=True,
+         batch_norm_decay=0.9,
+         batch_norm_epsilon=1e-5,
+         init_zero=None,
+         data_format='channels_last',
          name='conv_bnf'
          ):
 
@@ -109,7 +156,8 @@ def conv_bnf(inp,
                         padding=padding)
 
     if batch_norm:
-        output = tf.contrib.layers.batch_norm(conv, center=True, scale=True, decay=0.9997, epsilon=0.001, is_training=train_bn, trainable=True)
+        # if activation is none, should use zeros; else ones
+        output = batchnorm_corr(inputs=output, is_training=is_training, data_format=data_format, decay = batch_norm_decay, epsilon = batch_norm_epsilon, init_zero=init_zero, activation=activation)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -131,8 +179,8 @@ def depthsep_conv(inp,
              strides=1,
              dep_padding='SAME',
              sep_padding='SAME',
-             batch_norm = False,
-             train_bn=True,
+             batch_norm = True,
+             is_training=True,
              name='depthsep_conv',
              *args,
              **kwargs
@@ -144,7 +192,7 @@ def depthsep_conv(inp,
                 strides = strides,
                 padding = dep_padding,
                 batch_norm = batch_norm,
-                train_bn = train_bn,
+                is_training = is_training,
                 *args, **kwargs)
 
     with tf.variable_scope('pointwise_conv'):
@@ -154,7 +202,7 @@ def depthsep_conv(inp,
                 strides = 1,
                 padding = sep_padding,
                 batch_norm = batch_norm,
-                train_bn = train_bn,
+                is_training = is_training,
                 *args, **kwargs)
         
     return p_out
@@ -169,8 +217,12 @@ def depth_conv(inp,
              bias=1,
              activation='relu6',
              weight_decay=None,
-             batch_norm = False,
-             train_bn=True,
+             batch_norm = True,
+             is_training=True,
+             batch_norm_decay=0.9,
+             batch_norm_epsilon=1e-5,
+             init_zero=None,
+             data_format='channels_last',
              name='depth_conv'
              ):
 
@@ -202,7 +254,12 @@ def depth_conv(inp,
                             padding=padding)
         
     if batch_norm:
-        output = tf.contrib.layers.batch_norm(conv, center=True, scale=True, decay=0.9997, epsilon=0.001, is_training=train_bn, trainable=True)
+        output = batchnorm_corr(inputs=output, 
+                                is_training=is_training, 
+                                data_format=data_format, 
+                                decay = batch_norm_decay, 
+                                epsilon = batch_norm_epsilon, 
+                                init_zero=init_zero, activation=activation)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -221,10 +278,15 @@ def fc(inp,
        out_depth,
        kernel_init='xavier',
        kernel_init_kwargs=None,
+       use_bias=True,
        bias=1,
        weight_decay=None,
        activation='relu',
        batch_norm=False,
+       is_training=False,
+       batch_norm_decay=0.9,
+       batch_norm_epsilon=1e-5,
+       init_zero=None,
        dropout=None,
        dropout_seed=0,
        name='fc'):
@@ -244,8 +306,10 @@ def fc(inp,
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='weights')
-    init = initializer(kind='constant', value=bias)
-    biases = tf.get_variable(initializer=init,
+    
+    if use_bias:
+        init = initializer(kind='constant', value=bias)
+        biases = tf.get_variable(initializer=init,
                             shape=[out_depth],
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
@@ -255,13 +319,34 @@ def fc(inp,
     if dropout is not None:
         resh = tf.nn.dropout(resh, dropout, seed=dropout_seed, name='dropout')
     fcm = tf.matmul(resh, kernel)
-    output = tf.nn.bias_add(fcm, biases, name=name)
+
+    if use_bias:
+        output = tf.nn.bias_add(fcm, biases, name=name)
+    else:
+        output = tf.identity(fcm, name=name)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
     if batch_norm:
-        output = tf.nn.batch_normalization(output, mean=0, variance=1, offset=None,
-                            scale=None, variance_epsilon=1e-8, name='batch_norm')
+        # if activation is none, should use zeros; else ones
+        if init_zero is None:
+            init_zero = True if activation is None else False
+        if init_zero: 
+            gamma_init = tf.zeros_initializer()
+        else:
+            gamma_init = tf.ones_initializer()
+
+        output = tf.layers.batch_normalization(inputs=output,
+                                               axis=-1,
+                                               momentum=batch_norm_decay,
+                                               epsilon=batch_norm_epsilon,
+                                               center=True,
+                                               scale=True,
+                                               training=is_training,
+                                               trainable=True,
+                                               fused=True,
+                                               gamma_initializer=gamma_init,
+                                               name="post_conv_BN")
     return output
 
 
