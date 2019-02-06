@@ -14,15 +14,18 @@ def initializer(kind='xavier', *args, **kwargs):
     return init
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
-    decay = 0.9, epsilon = 1e-5, init_zero=None, activation=None):
+    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None):
 
     # if activation is none, should use zeros; else ones
-    if init_zero is None:
-        init_zero = True if activation is None else False
-    if init_zero: 
-        gamma_init = tf.zeros_initializer()
+    if constant_init is None:
+        if init_zero is None:
+            init_zero = True if activation is None else False
+        if init_zero: 
+            gamma_init = tf.zeros_initializer()
+        else:
+            gamma_init = tf.ones_initializer()
     else:
-        gamma_init = tf.ones_initializer()
+        gamma_init = tf.constant_initializer(constant_init)
 
     axis = 1 if data_format == 'channels_first' else 3
     output = tf.layers.batch_normalization(inputs=inputs,
