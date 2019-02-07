@@ -315,34 +315,39 @@ def get_loss_base(
         agg_func_kwargs={},
         which_device=0,
         labels_to_dict=False,
+        inputs_as_dict=False,
         **loss_params):
     # Process some parameters
     loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
 
-    if not isinstance(pred_targets, (list, tuple, np.ndarray)):
-        pred_targets = [pred_targets]
-    pred_targets = list(pred_targets)
+    if not inputs_as_dict:
+        if not isinstance(pred_targets, (list, tuple, np.ndarray)):
+            pred_targets = [pred_targets]
+        pred_targets = list(pred_targets)
 
-    # Get the labels to predict from inputs
-    labels = [inputs[t] for t in pred_targets]
-    loss_func_args = loss_func.__code__.co_varnames
-    if '_sentinel' not in loss_func_args:
-        # Usual way to call the loss function:
-        #   outputs will be sent as first parameter, labels will be unpacked
-        if labels_to_dict: # put labels in dictionary for certain function signatures
-            loss_func_kwargs['labels'] = [inputs[t] for t in pred_targets]
-            labels = []
-        loss = loss_func(outputs, *labels, **loss_func_kwargs)
+        # Get the labels to predict from inputs
+        labels = [inputs[t] for t in pred_targets]
+        loss_func_args = loss_func.__code__.co_varnames
+        if '_sentinel' not in loss_func_args:
+            # Usual way to call the loss function:
+            #   outputs will be sent as first parameter, labels will be unpacked
+            if labels_to_dict: 
+                # put labels in dictionary for certain function signatures
+                loss_func_kwargs['labels'] = [inputs[t] for t in pred_targets]
+                labels = []
+            loss = loss_func(outputs, *labels, **loss_func_kwargs)
+        else:
+            # Very special situation for
+            #   tf.nn.sparse_softmax_cross_entropy_with_logits,
+            # which only accepts named parameters rather than positional parameters
+            assert len(labels)==1, \
+                    'Should only have one thing to predict!'
+            loss = loss_func(
+                    logits=outputs,
+                    labels=labels[0],
+                    **loss_func_kwargs)
     else:
-        # Very special situation for
-        #   tf.nn.sparse_softmax_cross_entropy_with_logits,
-        # which only accepts named parameters rather than positional parameters
-        assert len(labels)==1, \
-                'Should only have one thing to predict!'
-        loss = loss_func(
-                logits=outputs,
-                labels=labels[0],
-                **loss_func_kwargs)
+        loss = loss_func(outputs, inputs, **loss_func_kwargs)
 
     if not agg_func==mean_and_reg_loss:
         log.info('You are not using function mean_and_reg_loss provided in '\
