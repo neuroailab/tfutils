@@ -109,6 +109,8 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                     param['optimizer_params'], optimizer_base \
                             = get_optimizer(
                                     learning_rate,
+                                    trarg['global_step'],
+                                    param['train_params'].get('include_global_step'),
                                     param['optimizer_params'])
                     tower_opts.append(optimizer_base)
 
@@ -177,7 +179,9 @@ def get_learning_rate(global_step,
 
 def get_optimizer(
         learning_rate,
-        optimizer_params,
+        global_step,
+        include_global_step,
+        optimizer_params
         ):
     if not optimizer_params:
         optimizer_params = dict(DEFAULT_PARAMS['optimizer_params'])
@@ -190,7 +194,14 @@ def get_optimizer(
         optimizer = func
 
     # Build the optimizer, use class MinibatchOptimizer as a wrapper
-    optimizer_base = MinibatchOptimizer(
+    if include_global_step:
+        optimizer_base = MinibatchOptimizer(
+            optimizer=optimizer,
+            learning_rate=learning_rate,
+            global_step=global_step, 
+            **optimizer_params)
+    else:
+        optimizer_base = MinibatchOptimizer(
             optimizer=optimizer,
             learning_rate=learning_rate,
             **optimizer_params)
