@@ -2,7 +2,10 @@ import pymongo
 from pymongo import errors as er
 import gridfs
 import tarfile
-import cPickle
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
 from bson.objectid import ObjectId
 import datetime
 from tensorflow.python import DType
@@ -20,6 +23,7 @@ import threading
 import git
 import pdb
 import pkg_resources
+from six import string_types
 
 from tfutils.utils import strip_prefix_from_name, \
         strip_prefix, get_var_list_wo_prefix
@@ -118,8 +122,9 @@ def verify_pb2_v2_files(cache_prefix, ckpt_record):
 def get_saver_pb2_v2_files(prefix):
     dirn, pref = os.path.split(prefix)
     pref = pref + '.'
-    files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
-                   os.listdir(dirn))
+    ldirn = os.listdir(dirn)
+    files = list(filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
+                   ldirn))
     indexf = pref + 'index'
     assert indexf in files, (prefix, indexf, files)
     notindexfiles = [_f for _f in files if _f != indexf]
@@ -137,7 +142,7 @@ def get_saver_pb2_v2_files(prefix):
         fns.append(thisf)
     fns = list(set(fns))
     fns.sort()
-    assert fns == range(total0), (fns, total0)
+    assert fns == list(range(total0)), (fns, total0)
     files = [os.path.join(dirn, f) for f in files]
     file_data = {'files': files, 'num_data_files': total0}
     return file_data
@@ -150,7 +155,7 @@ def make_mongo_safe(_d):
         _d (dict): a dictionary to make safe for Mongo.
 
     """
-    klist = _d.keys()[:]
+    klist = list(_d.keys())
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
             make_mongo_safe(_d[_k])
@@ -223,7 +228,7 @@ def sonify(arg, memo=None, skip=False):
     elif isinstance(arg, dict):
         rval = dict([(sonify(k, memo, skip), sonify(v, memo, skip))
                      for k, v in arg.items()])
-    elif isinstance(arg, (basestring, float, int, type(None))):
+    elif isinstance(arg, (string_types, float, int, type(None))):
         rval = arg
     elif isinstance(arg, np.ndarray):
         if arg.ndim == 0:
@@ -826,7 +831,7 @@ class DBInterface(object):
                             recent_gridfs_files._Collection__database, 
                             bucket_name=recent_gridfs_files.name.split('.')[0])
 
-                    for del_indx in xrange(0, num_cached_filters - cache_max_num):
+                    for del_indx in range(0, num_cached_filters - cache_max_num):
                         fsbucket.delete(recent_query_result[del_indx]['_id'])
 
         if not save_filters_permanent:
@@ -840,7 +845,7 @@ class DBInterface(object):
         if save_to_gfs:
             idval = str(outrec)
             save_to_gfs_path = idval + "_fileitems"
-            self.collfs.put(cPickle.dumps(save_to_gfs),
+            self.collfs.put(pickle.dumps(save_to_gfs),
                             filename=save_to_gfs_path, item_for=outrec)
 
         sys.stdout.flush()  # flush the stdout buffer
