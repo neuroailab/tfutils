@@ -1,11 +1,17 @@
-"""Test base module."""
+"""Test base module.
+   Tests in this module require a running database instance. 
+   This database instance can be running at a port specified by the environment variable TFUTILS_TEST_PORT, which defaults to 29101
+"""
 
 import os
 import re
 import sys
 import errno
 import shutil
-import cPickle
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
 import logging
 import unittest
 from collections import defaultdict
@@ -64,7 +70,7 @@ def tearDownModule():
 
 class TestBase(unittest.TestCase):
 
-    port = 29101
+    port = int(os.environ.get('TFUTILS_TEST_PORT', 29101))
     host = 'localhost'
     database_name = '_tfutils'
 
@@ -223,7 +229,7 @@ class TestBase(unittest.TestCase):
         fn = coll.find({'item_for': idx})[0]['filename']
         fs = gridfs.GridFS(coll.database, self.collection_name)
         fh = fs.get_last_version(fn)
-        saved_data = cPickle.loads(fh.read())
+        saved_data = pickle.loads(fh.read())
         fh.close()
 
         # Assert as expected.
@@ -416,13 +422,13 @@ class TestBase(unittest.TestCase):
                           'model_params', 'validation_params']
         assert set(should_contain).difference(r['params'].keys()) == set()
 
-        vk = r['params']['validation_params'].keys()
-        vk1 = r['validation_results'].keys()
+        vk = list(r['params']['validation_params'].keys())
+        vk1 = list(r['validation_results'].keys())
         assert set(vk) == set(vk1)
 
         assert r['params']['model_params']['seed'] == 0
         assert r['params']['model_params']['func']['modname'] \
-                == 'tfutils.model_tool'
+                == 'tfutils.model_tool', (r['params']['model_params']['func']['modname'])
         assert r['params']['model_params']['func']['objname'] \
                 == 'mnist_tfutils'
 
@@ -561,7 +567,11 @@ class TestMultiModel(TestBase):
         for i in range(num_models):
             exp_id = base_exp_id + '_model_{}'.format(i)
             self.assert_as_expected(exp_id, 51, [0, 200, 400, 600, 800, 1000])
-            self.assertItemsEqual(
+            try:
+                eqmeth = self.assertItemsEqual
+            except AttributeError:
+                eqmeth = self.assertCountEqual
+            eqmeth(
                 self.collection['files'].distinct('exp_id'),
                 [base_exp_id + '_model_{}'.format(i) for i in range(num_models)])
 
@@ -607,7 +617,7 @@ class TestMultiModel(TestBase):
             fn = coll.find({'item_for': idx})[0]['filename']
             fs = gridfs.GridFS(coll.database, self.collection_name)
             fh = fs.get_last_version(fn)
-            saved_data = cPickle.loads(fh.read())
+            saved_data = pickle.loads(fh.read())
             fh.close()
 
             self.assertIn('train_results', saved_data)

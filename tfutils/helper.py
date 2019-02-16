@@ -10,6 +10,8 @@ import tfutils.utils as utils
 from tfutils.utils import aggregate_outputs
 import pdb
 import inspect
+from six import string_types
+
 from tfutils.defaults import \
         BRANCH_QUEUE_NAME, DEFAULT_HOST, \
         DEFAULT_DEVICES, DEFAULT_MODEL_SEED, DEFAULT_DONT_RUN, \
@@ -68,7 +70,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
     # var_manager is used for variable management in multiple gpu training
     if not var_manager:
         trainable_scopes = model_params['trainable_scopes']
-        if isinstance(trainable_scopes, basestring):
+        if isinstance(trainable_scopes, string_types):
             trainable_scopes = [trainable_scopes]
         if trainable_scopes is not None:
             trainable_scopes = [s.rstrip('/') for s in trainable_scopes]
@@ -607,7 +609,7 @@ def split_input(inputs, num_gpus=1):
                  for v in inputs}
 
     list_of_args = [{now_arg: temp_args[now_arg][ind]
-                     for now_arg in temp_args} for ind in xrange(n_gpus)]
+                     for now_arg in temp_args} for ind in range(n_gpus)]
 
     return list_of_args
 

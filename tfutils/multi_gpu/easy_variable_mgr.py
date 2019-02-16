@@ -8,7 +8,7 @@ import re
 import tensorflow as tf
 import pdb
 
-import easy_batch_allreduce as batch_allreduce
+import tfutils.multi_gpu.easy_batch_allreduce as batch_allreduce
 
 COPY_NAME_SCOPE = '__var_copy_'
 REAL_NAME_SCOPE = '__var_copy_0'
