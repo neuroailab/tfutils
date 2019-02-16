@@ -567,7 +567,7 @@ class TestMultiModel(TestBase):
         for i in range(num_models):
             exp_id = base_exp_id + '_model_{}'.format(i)
             self.assert_as_expected(exp_id, 51, [0, 200, 400, 600, 800, 1000])
-            try:
+            try:  #idiotic thing to allow py2-3 compatiility
                 eqmeth = self.assertItemsEqual
             except AttributeError:
                 eqmeth = self.assertCountEqual
