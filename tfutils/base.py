@@ -322,6 +322,8 @@ class DBInterface(object):
                 all_variables = tf.global_variables() + tf.local_variables() # get list of all variables
                 unrestored_vars = [var for var in all_variables \
                         if var not in restore_vars]
+                print('other report of things not restored')
+                print(unrestored_vars)
                 self.sess.run(tf.variables_initializer(unrestored_vars)) # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, self.sess.run(tf.report_uninitialized_variables())
         if not self.do_restore or self.load_data is None:
@@ -351,11 +353,13 @@ class DBInterface(object):
         restore_vars = []
         for saved_var_name, var in var_names:
             curr_var = var
-            var_shape = curr_var.get_shape().as_list()
-            if var_shape == saved_shapes[saved_var_name]:
-                restore_vars.append(curr_var)
-            else:
-                print(curr_var.name, var_shape, saved_shapes[saved_var_name])
+            print(saved_var_name)
+            print(var)
+            #var_shape = curr_var.get_shape().as_list()
+            #if var_shape == saved_shapes[saved_var_name]:
+            restore_vars.append(curr_var)
+            #else:
+            #    print(curr_var.name, var_shape, saved_shapes[saved_var_name])
         return restore_vars
 
     @property
