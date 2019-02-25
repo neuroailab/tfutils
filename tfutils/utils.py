@@ -10,6 +10,7 @@ import os
 import re
 import copy
 import pdb
+from collections import OrderedDict
 
 import numpy as np
 from bson.objectid import ObjectId
@@ -166,8 +167,11 @@ def aggregate_outputs(tower_outputs):
 
     # Dict values are aggregated by key.
     elif isinstance(tower_outputs[0], collections.Mapping):
-        return {key: aggregate_outputs([out[key] for out in tower_outputs])
-                for key in tower_outputs[0]}
+        ret_dict = OrderedDict()
+        for key in tower_outputs[0]:
+            ret_dict[key] = aggregate_outputs(
+                    [out[key] for out in tower_outputs])
+        return ret_dict
 
     # List elements are aggregated by index.
     elif isinstance(tower_outputs[0], collections.Iterable):
