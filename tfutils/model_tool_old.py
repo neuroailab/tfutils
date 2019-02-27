@@ -14,7 +14,13 @@ def initializer(kind='xavier', *args, **kwargs):
     return init
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
-    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None):
+    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None,
+    time_suffix=None):
+
+    if time_suffix is not None:
+        bn_op_name = "post_conv_BN_" + time_suffix
+    else:
+        bn_op_name = "post_conv_BN"
 
     # if activation is none, should use zeros; else ones
     if constant_init is None:
@@ -38,7 +44,7 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                            trainable=True,
                                            fused=True,
                                            gamma_initializer=gamma_init,
-                                           name="post_conv_BN")
+                                           name=bn_op_name)
 
     return output
 
@@ -61,10 +67,16 @@ def conv(inp,
          init_zero=None,
          dropout=None,
          dropout_seed=0,
+         time_sep=False,
+         time_suffix=None,
          name='conv'
          ):
     
     # assert out_shape is not None
+
+    if time_sep:
+        assert time_suffix is not None
+
     if weight_decay is None:
         weight_decay = 0.
     if isinstance(ksize, int):
@@ -107,7 +119,9 @@ def conv(inp,
                                 data_format=data_format, 
                                 decay = batch_norm_decay, 
                                 epsilon = batch_norm_epsilon, 
-                                init_zero=init_zero, activation=activation)
+                                init_zero=init_zero, 
+                                activation=activation,
+                                time_suffix=time_suffix)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
@@ -292,6 +306,8 @@ def fc(inp,
        init_zero=None,
        dropout=None,
        dropout_seed=0,
+       time_sep=False,
+       time_suffix=None,
        name='fc'):
 
     if weight_decay is None:
@@ -339,6 +355,11 @@ def fc(inp,
         else:
             gamma_init = tf.ones_initializer()
 
+        if time_suffix is not None:
+            bn_op_name = "post_conv_BN_" + time_suffix
+        else:
+            bn_op_name = "post_conv_BN"
+
         output = tf.layers.batch_normalization(inputs=output,
                                                axis=-1,
                                                momentum=batch_norm_decay,
@@ -349,7 +370,7 @@ def fc(inp,
                                                trainable=True,
                                                fused=True,
                                                gamma_initializer=gamma_init,
-                                               name="post_conv_BN")
+                                               name=bn_op_name)
     return output
 
 
