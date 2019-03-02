@@ -39,7 +39,7 @@ def mean_and_reg_loss(loss, which_device):
     loss = tf.reduce_mean(loss)
 
     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-    if False: #len(reg_losses) > 0:
+    if len(reg_losses) > 0:
         curr_name_scope = '%s%i' % (COPY_NAME_SCOPE, which_device)
         valid_reg_losses = filter(
                 lambda v: curr_name_scope in v.name, 
