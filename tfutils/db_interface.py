@@ -665,7 +665,7 @@ class DBInterface(object):
             cache_filename = None
         return ckpt_record, cache_filename
 
-    def save(self, train_res=None, valid_res=None, step=None, validation_only=False):
+    def save(self, train_res=None, valid_res=None, step=None, validation_only=False, force_filter_save=False):
         """Actually save record into DB and makes local filter caches."""
         if train_res is None:
             train_res = {}
@@ -733,7 +733,7 @@ class DBInterface(object):
             need_to_save = True
         else:
             save_filters_permanent = ((step % self.save_filters_freq == 0) and
-                                      (step > 0 or (self.save_initial_filters and not self.load_data)))
+                                      (step > 0 or (self.save_initial_filters and not self.load_data))) or force_filter_save
             save_filters_tmp = ((step % self.cache_filters_freq == 0) and
                                 (step > 0 or (self.save_initial_filters and not self.load_data)))
             save_metrics_now = step % self.save_metrics_freq == 0

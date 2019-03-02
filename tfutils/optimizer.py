@@ -64,13 +64,32 @@ class ClipOptimizer(object):
             clipping operation if `self.clip` is True.
 
         """
+        # TODO Freeze everything except for hrn 
+        hrn_list = [v for v in var_list if 'hrn' in v.name]
+        if len(hrn_list) > 0:
+            print("Training HRN only!")
+            var_list = hrn_list
+
         gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
                                                 *args, **kwargs)
+
         if self.clip:
-            # gradient clipping. Some gradients returned are 'None' because
-            # no relation between the variable and loss; so we skip those.
-            gvs = [(tf.clip_by_value(grad, -1., 1.), var)
-                   for grad, var in gvs if grad is not None]
+            self.clipping_method = ""
+            if self.clipping_method == "value":
+                # gradient clipping. Some gradients returned are 'None' because
+                # no relation between the variable and loss; so we skip those.
+                gvs = [(tf.clip_by_value(grad, -1., 1.), var)
+                        for grad, var in gvs if grad is not None]
+            elif self.clipping_method == "norm":
+                print("USING GLOBAL NORM CLIPPING")
+                gradients, variables = zip(*gvs)
+                norm = tf.global_norm(gradients)
+                true_fn = lambda: tf.constant(1.0)
+                false_fn = lambda: tf.identity(norm)
+                norm = tf.case([(tf.is_nan(norm), true_fn)], default=false_fn)
+                gradients, global_norm = tf.clip_by_global_norm(gradients, 0.1,
+                        use_norm=norm)
+                gvs = zip(gradients, variables)
         return gvs
 
     def apply_gradients(self, grads_and_vars, global_step=None):

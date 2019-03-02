@@ -474,6 +474,10 @@ def train(sess,
                         'Loss {:.2f} exceeded the threshold {:.2f}'.format(
                             train_res['loss'],
                             trarg['thres_loss']))
+                trarg['dbinterface'].save(train_res=train_res,
+                        valid_res=valid_res,
+                        validation_only=False,
+                        force_filter_save=True)
 
             # Validation
             vtargs = trarg['validation_targets'] \
