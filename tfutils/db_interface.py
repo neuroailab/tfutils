@@ -524,6 +524,7 @@ class DBInterface(object):
 
         # Specify which vars are to be restored vs. reinitialized.
         all_vars = self.var_list
+        log.info('\nRequested vars:\n' + str(self.var_list))
         if not self.load_param_dict:
             restore_vars = {
                     name: var for name, var in all_vars.items() \
