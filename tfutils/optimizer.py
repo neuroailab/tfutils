@@ -67,7 +67,7 @@ class ClipOptimizer(object):
         # TODO Freeze everything except for hrn 
         hrn_list = [v for v in var_list if 'hrn' in v.name]
         if len(hrn_list) > 0:
-            print("Training HRN only!")
+            log.info("Training HRN only!")
             var_list = hrn_list
 
         gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
