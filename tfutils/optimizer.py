@@ -42,7 +42,7 @@ class ClipOptimizer(object):
 
     """
     def __init__(
-            self, optimizer_class, clip=True,
+            self, optimizer_class, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
             *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
@@ -52,6 +52,9 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
+        self.clipping_method = clipping_method
+        self.clipping_value = clipping_value
+        self.print_global_norm = print_global_norm
 
     def compute_gradients(self, loss, var_list=None, *args, **kwargs):
         """Compute gradients to model variables from loss.
@@ -74,22 +77,26 @@ class ClipOptimizer(object):
                                                 *args, **kwargs)
 
         if self.clip:
-            self.clipping_method = ""
             if self.clipping_method == "value":
                 # gradient clipping. Some gradients returned are 'None' because
                 # no relation between the variable and loss; so we skip those.
-                gvs = [(tf.clip_by_value(grad, -1., 1.), var)
+                gvs = [(tf.clip_by_value(grad, -self.clipping_value, self.clipping_value), var)
                         for grad, var in gvs if grad is not None]
             elif self.clipping_method == "norm":
-                print("USING GLOBAL NORM CLIPPING")
+                print("USING GLOBAL NORM CLIPPING with clip_value %.2f" % self.clipping_value)
                 gradients, variables = zip(*gvs)
                 norm = tf.global_norm(gradients)
+                if self.print_global_norm:
+                    norm = tf.Print(norm, [norm], message="grad_global_norm")
                 true_fn = lambda: tf.constant(1.0)
                 false_fn = lambda: tf.identity(norm)
-                norm = tf.case([(tf.is_nan(norm), true_fn)], default=false_fn)
-                gradients, global_norm = tf.clip_by_global_norm(gradients, 0.1,
+                norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)                
+                # norm = tf.case([(tf.is_nan(norm), true_fn)], default=false_fn)
+                gradients, global_norm = tf.clip_by_global_norm(gradients, self.clipping_value,
                         use_norm=norm)
                 gvs = zip(gradients, variables)
+            else:
+                raise ValueError("optimizer.clip = True but you didn't specify a valid method in ['value', 'norm']")
         return gvs
 
     def apply_gradients(self, grads_and_vars, global_step=None):
