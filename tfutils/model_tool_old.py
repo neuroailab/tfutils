@@ -19,8 +19,10 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
 
     if time_suffix is not None:
         bn_op_name = "post_conv_BN_" + time_suffix
+        reuse_flag = tf.AUTO_REUSE # create bn variables per timestep if they do not exist
     else:
         bn_op_name = "post_conv_BN"
+        reuse_flag = None
 
     # if activation is none, should use zeros; else ones
     if constant_init is None:
@@ -44,7 +46,8 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                            trainable=True,
                                            fused=True,
                                            gamma_initializer=gamma_init,
-                                           name=bn_op_name)
+                                           name=bn_op_name,
+                                           reuse=reuse_flag)
 
     return output
 
@@ -357,8 +360,10 @@ def fc(inp,
 
         if time_suffix is not None:
             bn_op_name = "post_conv_BN_" + time_suffix
+            reuse_flag = tf.AUTO_REUSE # create bn variables per timestep if they do not exist
         else:
             bn_op_name = "post_conv_BN"
+            reuse_flag = None
 
         output = tf.layers.batch_normalization(inputs=output,
                                                axis=-1,
@@ -370,7 +375,8 @@ def fc(inp,
                                                trainable=True,
                                                fused=True,
                                                gamma_initializer=gamma_init,
-                                               name=bn_op_name)
+                                               name=bn_op_name,
+                                               reuse=reuse_flag)
     return output
 
 
