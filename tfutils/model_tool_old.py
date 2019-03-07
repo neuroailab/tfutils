@@ -80,6 +80,9 @@ def conv(inp,
     if time_sep:
         assert time_suffix is not None
 
+    if batch_norm:
+        use_bias = False
+
     if weight_decay is None:
         weight_decay = 0.
     if isinstance(ksize, int):
@@ -334,6 +337,9 @@ def fc(inp,
        time_suffix=None,
        name='fc'):
 
+    if batch_norm:
+        use_bias = False
+        
     if weight_decay is None:
         weight_decay = 0.
     # assert out_shape is not None
