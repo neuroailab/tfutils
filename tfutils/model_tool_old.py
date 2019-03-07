@@ -144,10 +144,16 @@ def conv_bnf(inp,
          batch_norm_epsilon=1e-5,
          init_zero=None,
          data_format='channels_last',
+         time_sep=False,
+         time_suffix=None,
          name='conv_bnf'
          ):
 
     # assert out_shape is not None
+
+    if time_sep:
+        assert time_suffix is not None
+
     if weight_decay is None:
         weight_decay = 0.
     if isinstance(ksize, int):
@@ -174,7 +180,14 @@ def conv_bnf(inp,
 
     if batch_norm:
         # if activation is none, should use zeros; else ones
-        output = batchnorm_corr(inputs=output, is_training=is_training, data_format=data_format, decay = batch_norm_decay, epsilon = batch_norm_epsilon, init_zero=init_zero, activation=activation)
+        output = batchnorm_corr(inputs=output, 
+                                is_training=is_training, 
+                                data_format=data_format, 
+                                decay = batch_norm_decay, 
+                                epsilon = batch_norm_epsilon, 
+                                init_zero=init_zero, 
+                                activation=activation,
+                                time_suffix=time_suffix)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -240,10 +253,16 @@ def depth_conv(inp,
              batch_norm_epsilon=1e-5,
              init_zero=None,
              data_format='channels_last',
+             time_sep=False,
+             time_suffix=None,
              name='depth_conv'
              ):
 
     # assert out_shape is not None
+
+    if time_sep:
+        assert time_suffix is not None
+
     if weight_decay is None:
         weight_decay = 0.
     if isinstance(ksize, int):
@@ -276,7 +295,9 @@ def depth_conv(inp,
                                 data_format=data_format, 
                                 decay = batch_norm_decay, 
                                 epsilon = batch_norm_epsilon, 
-                                init_zero=init_zero, activation=activation)
+                                init_zero=init_zero, 
+                                activation=activation,
+                                time_suffix=time_suffix)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
