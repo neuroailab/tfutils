@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tfutils.db_interface import DBInterface
 from tfutils.helper import log
+from tfutils.optimizer import ClipOptimizer
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP, DEFAULT_TPU_LOSS_PARAMS
 
 def train_estimator(cls,
@@ -164,7 +165,7 @@ def create_train_estimator_fn(use_tpu,
     loss_agg_func_kwargs = loss_params.get('agg_func_kwargs', {})
 
     # tells clip optimizer to use tpu
-    if opt_params['func'].__name__ == 'ClipOptimizer' or opt_params['optimizer'].__name__ == 'ClipOptimizer':
+    if ((opt_params.get('func', None) is not None) and opt_params['func'].__name__ == 'ClipOptimizer') or ((opt_params.get('optimizer', None) is not None) and opt_params['optimizer'].__name__ == 'ClipOptimizer'):
         opt_params['use_tpu'] = use_tpu
 
     # build params dictionary to be instantiated with the model_fn
