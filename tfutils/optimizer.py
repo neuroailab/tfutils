@@ -13,6 +13,7 @@ This optimizer is what tfutils must use.
 import os
 import copy
 import tensorflow as tf
+from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 import logging
 import pdb
 
@@ -42,9 +43,15 @@ class ClipOptimizer(object):
 
     """
     def __init__(
-            self, optimizer_class, clip=True,
+            self, optimizer_class, use_tpu=False, clip=True,
+            clip_min=-1.0, clip_max=1.0,
             *optimizer_args, **optimizer_kwargs):
-        self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
+        self.use_tpu = use_tpu
+        if self.use_tpu:
+            log.info('Passing optimizer class to CrossShardOptimizer')
+            self._optimizer = tpu_optimizer.CrossShardOptimizer(optimizer_class(*optimizer_args, **optimizer_kwargs))
+        else:
+            self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
         required_methods = ['compute_gradients', 'apply_gradients']
         for required_method in required_methods:
@@ -52,6 +59,8 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
+        self.clip_min = clip_min
+        self.clip_max = clip_max
 
     def compute_gradients(self, loss, var_list=None, *args, **kwargs):
         """Compute gradients to model variables from loss.
@@ -69,7 +78,7 @@ class ClipOptimizer(object):
         if self.clip:
             # gradient clipping. Some gradients returned are 'None' because
             # no relation between the variable and loss; so we skip those.
-            gvs = [(tf.clip_by_value(grad, -1., 1.), var)
+            gvs = [(tf.clip_by_value(grad, self.clip_min, self.clip_max), var)
                    for grad, var in gvs if grad is not None]
         return gvs
 
