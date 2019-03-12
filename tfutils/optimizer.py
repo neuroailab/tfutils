@@ -13,7 +13,6 @@ This optimizer is what tfutils must use.
 import os
 import copy
 import tensorflow as tf
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 import logging
 import pdb
 
@@ -43,15 +42,10 @@ class ClipOptimizer(object):
 
     """
     def __init__(
-            self, optimizer_class, use_tpu=False, clip=True,
+            self, optimizer_class, clip=True,
             clip_min=-1.0, clip_max=1.0,
             *optimizer_args, **optimizer_kwargs):
-        self.use_tpu = use_tpu
-        if self.use_tpu:
-            log.info('Passing optimizer class to CrossShardOptimizer')
-            self._optimizer = tpu_optimizer.CrossShardOptimizer(optimizer_class(*optimizer_args, **optimizer_kwargs))
-        else:
-            self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
+        self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
         required_methods = ['compute_gradients', 'apply_gradients']
         for required_method in required_methods:
@@ -82,7 +76,7 @@ class ClipOptimizer(object):
                    for grad, var in gvs if grad is not None]
         return gvs
 
-    def apply_gradients(self, grads_and_vars, global_step=None):
+    def apply_gradients(self, grads_and_vars, global_step=None, name=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
 
         `apply_gradients` returns an op that calls
@@ -98,7 +92,8 @@ class ClipOptimizer(object):
 
         """
         optimize = self._optimizer.apply_gradients(grads_and_vars,
-                                                   global_step=global_step)
+                                                   global_step=global_step,
+                                                   name=name)
         return optimize
 
 

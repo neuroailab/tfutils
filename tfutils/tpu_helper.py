@@ -9,6 +9,7 @@ from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERA
 from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator
 from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
+from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 
 def train_estimator(cls,
                     param,
@@ -170,10 +171,6 @@ def create_train_estimator_fn(use_tpu,
 
     loss_agg_func_kwargs = loss_params.get('agg_func_kwargs', {})
 
-    # tells clip optimizer to use tpu
-    if ((opt_params.get('func', None) is not None) and opt_params['func'].__name__ == 'ClipOptimizer') or ((opt_params.get('optimizer', None) is not None) and opt_params['optimizer'].__name__ == 'ClipOptimizer'):
-        opt_params['use_tpu'] = use_tpu
-
     # build params dictionary to be instantiated with the model_fn
     params_to_pass = {}
     params_to_pass['model_params'] = model_params
@@ -194,7 +191,7 @@ def create_train_estimator_fn(use_tpu,
         lr_params = params['lr_params']
 
         model_params['train'] = (mode==tf.estimator.ModeKeys.TRAIN)
-        if opt_params['use_tpu']:
+        if use_tpu:
             model_params['batch_size'] = params['batch_size'] # per shard batch_size
 
         model_func = model_params.pop('func')
@@ -224,7 +221,8 @@ def create_train_estimator_fn(use_tpu,
                         'please use optimizer')
                 opt_func = old_opt_func
 
-            optimizer_base = opt_func(learning_rate=learning_rate, **opt_params)
+            log.info('Passing optimizer class to CrossShardOptimizer')
+            optimizer_base = tpu_optimizer.CrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
@@ -237,7 +235,7 @@ def create_train_estimator_fn(use_tpu,
         if mode == tf.estimator.ModeKeys.EVAL:
            num_valid_targets = len(validation_params.keys())
            metric_fn_kwargs = {'labels': labels, 'logits': logits}
-           if opt_params['use_tpu']:
+           if use_tpu:
                assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
                first_valid = validation_params.keys()[0]
                valid_target = validation_params[first_valid]['targets']
@@ -274,7 +272,7 @@ def create_train_estimator_fn(use_tpu,
                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
                eval_metrics = eval_dict
 
-        if opt_params['use_tpu']:
+        if use_tpu:
             return tpu_estimator.TPUEstimatorSpec(
               mode=mode,
               loss=loss,
