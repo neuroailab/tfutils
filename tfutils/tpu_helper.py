@@ -1,8 +1,14 @@
+import time
 import tensorflow as tf
 from tfutils.db_interface import DBInterface
 from tfutils.helper import log
 from tfutils.optimizer import ClipOptimizer
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP, DEFAULT_TPU_LOSS_PARAMS
+
+# tpu and estimator imports
+from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator
+from tensorflow.contrib.training.python.training import evaluation
+from tensorflow.python.estimator import estimator
 
 def train_estimator(cls,
                     param,
@@ -210,13 +216,13 @@ def create_train_estimator_fn(use_tpu,
         learning_rate = lr_func(global_step=global_step, **lr_params)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
-            opt_func = optimizer_params.pop('optimizer', ClipOptimizer)
+            opt_func = opt_params.pop('optimizer', ClipOptimizer)
             # For deprecated parameter func
-            old_opt_func = optimizer_params.pop('func', None)
+            old_opt_func = opt_params.pop('func', None)
             if old_opt_func:
                 log.info('func in optimizer_params is deprecated, ' + \
                         'please use optimizer')
-                opt_func= old_opt_func
+                opt_func = old_opt_func
 
             optimizer_base = opt_func(learning_rate=learning_rate, **opt_params)
 

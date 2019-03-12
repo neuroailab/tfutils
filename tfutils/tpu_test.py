@@ -3,8 +3,9 @@ import tensorflow as tf
 from tfutils.helper import log
 from tfutils.tpu_helper import create_test_estimator_fn, create_test_tpu_config, test_estimator
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP
+from tensorflow.contrib.tpu.python.tpu import tpu_estimator
 
-def tpu_test_from_params(params, test_args):
+def tpu_test_from_params(params, test_args, use_tpu=False):
     """
     Main tpu testing interface function, called by test_from_params in tfutils.test.
     See the doc string there for info.

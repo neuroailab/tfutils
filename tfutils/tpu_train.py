@@ -2,8 +2,9 @@ import tensorflow as tf
 
 from tfutils.tpu_helper import create_train_estimator_fn, create_train_tpu_config, train_estimator
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP
+from tensorflow.contrib.tpu.python.tpu import tpu_estimator
 
-def tpu_train_from_params(params, train_args):
+def tpu_train_from_params(params, train_args, use_tpu=False):
     """
     Main tpu training interface function, called by train_from_params in tfutils.train.
     See the doc string there for info.

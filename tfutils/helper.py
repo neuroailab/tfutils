@@ -399,6 +399,7 @@ def parse_params(mode,
                  validation_params=None,
                  learning_rate_params=None,
                  log_device_placement=False,
+                 use_tpu=False
                  ):
     """Ensure the params dictionary has the correct structure.
 

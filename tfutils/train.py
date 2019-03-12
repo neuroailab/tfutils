@@ -320,7 +320,7 @@ def train_from_params(
                                       )
 
     if use_estimator or use_tpu:
-        return tpu_train_from_params(params, train_args)
+        return tpu_train_from_params(params, train_args, use_tpu=use_tpu)
     else:
         with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
             # For convenience, use list of dicts instead of dict of lists

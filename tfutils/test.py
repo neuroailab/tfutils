@@ -89,7 +89,7 @@ def test_from_params(load_params,
 
     # do not need to create sess with estimator interface
     if use_estimator or use_tpu:
-        return tpu_test_from_params(params, test_args)
+        return tpu_test_from_params(params, test_args, use_tpu=use_tpu)
     else:
         with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
