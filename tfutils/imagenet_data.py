@@ -268,17 +268,7 @@ class ImageNet(object):
         else:
             return {"images": image, "labels": image_label}
 
-    def get_dataset(self):
-
-        # tfr_list = self.get_tfr_filenames()
-        # dataset = tf.data.Dataset.list_files(tfr_list)
-
-        # get file pattern and create dataset
-        file_pattern = os.path.join(
-            self.image_dir, self.file_pattern)
-
-        dataset = tf.data.Dataset.list_files(file_pattern)
-
+    def process_dataset(self, dataset):
         # if training, shuffle. repeat indefinitely
         if self.is_train:
             dataset = dataset.shuffle(self.q_cap)
@@ -326,7 +316,10 @@ class ImageNet(object):
         self.batch_size = batch_size
         self.q_cap = q_cap
 
-        dataset = self.get_dataset()
+        tfr_list = self.get_tfr_filenames()
+        dataset = tf.data.Dataset.list_files(tfr_list)
+
+        dataset = self.process_dataset(dataset)
 
         # Batch the dataset and make iteratior
         next_element = dataset.make_one_shot_iterator().get_next()
@@ -345,7 +338,13 @@ class ImageNet(object):
         self.batch_size = params['batch_size']
         self.q_cap = 1024
 
-        dataset = self.get_dataset()
+        # get file pattern and create dataset
+        file_pattern = os.path.join(
+            self.image_dir, self.file_pattern)
+
+        dataset = tf.data.Dataset.list_files(file_pattern)
+
+        dataset = self.process_dataset(dataset)
 
         dataset = dataset.prefetch(2)
         images, labels = dataset.make_one_shot_iterator().get_next()
