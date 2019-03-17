@@ -276,16 +276,23 @@ class ImageNet(object):
         else:
             dataset = dataset.repeat()
 
-        # Read each file
-        dataset = dataset.apply(
-            tf.contrib.data.parallel_interleave(
-                fetch_dataset, cycle_length=self.num_cores, sloppy=True
-            )
-        )
-
         # re-shuffle if training
         if self.is_train:
+            # Read each file
+            dataset = dataset.apply(
+                tf.contrib.data.parallel_interleave(
+                    fetch_dataset, cycle_length=self.num_cores, sloppy=True
+                )
+            )
+
             dataset.shuffle(self.q_cap)
+        else:
+            # Read each file, but make it deterministic for validation
+            dataset = dataset.apply(
+                tf.contrib.data.parallel_interleave(
+                    fetch_dataset, cycle_length=self.num_cores, sloppy=False
+                )
+            )
 
         # apply preprocessing to each image
         dataset = dataset.map(
@@ -317,7 +324,10 @@ class ImageNet(object):
         self.q_cap = q_cap
 
         tfr_list = self.get_tfr_filenames()
-        dataset = tf.data.Dataset.list_files(tfr_list)
+        if self.is_train:
+            dataset = tf.data.Dataset.list_files(tfr_list)
+        else:
+            dataset = tf.data.Dataset.list_files(tfr_list, shuffle=False)
 
         dataset = self.process_dataset(dataset)
 
@@ -342,7 +352,10 @@ class ImageNet(object):
         file_pattern = os.path.join(
             self.image_dir, self.file_pattern)
 
-        dataset = tf.data.Dataset.list_files(file_pattern)
+        if self.is_train:
+            dataset = tf.data.Dataset.list_files(file_pattern)
+        else:
+            dataset = tf.data.Dataset.list_files(file_pattern, shuffle=False)
 
         dataset = self.process_dataset(dataset)
 
