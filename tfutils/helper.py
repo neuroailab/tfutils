@@ -69,7 +69,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
 
     # var_manager is used for variable management in multiple gpu training
     if not var_manager:
-        trainable_scopes = model_params['trainable_scopes']
+        trainable_scopes = model_params.pop('trainable_scopes')
         if isinstance(trainable_scopes, string_types):
             trainable_scopes = [trainable_scopes]
         if trainable_scopes is not None:
