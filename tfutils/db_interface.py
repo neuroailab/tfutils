@@ -4,7 +4,7 @@ import gridfs
 import tarfile
 try:
     import cPickle as pickle
-except ModuleNotFoundError:
+except ImportError:
     import pickle
 from bson.objectid import ObjectId
 import datetime
@@ -234,7 +234,7 @@ def sonify(arg, memo=None, skip=False):
         if arg.ndim == 0:
             rval = sonify(arg.sum(), skip=skip)
         else:
-            rval = map(sonify, arg)  # N.B. memo None
+            rval = list(map(sonify, arg))  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
     elif arg in (True, False):
         rval = int(arg)
