@@ -706,7 +706,7 @@ class DBInterface(object):
                     train_res[k] = np.mean(v)
 
             msg2 = ['{}: {:.4f}'.format(k, v) for k, v in train_res.items()
-                    if k not in ['optimizer', '__grads__'] and k not in self.save_to_gfs]
+                    if k not in ['hrn_loss', 'optimizer', '__grads__'] and k not in self.save_to_gfs]
             message += ', '.join(msg2)
             log.info(message)
 
