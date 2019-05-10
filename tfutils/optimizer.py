@@ -43,7 +43,7 @@ class ClipOptimizer(object):
     """
     def __init__(
             self, optimizer_class, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
-            *optimizer_args, **optimizer_kwargs):
+            trainable_scope=None, *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
         required_methods = ['compute_gradients', 'apply_gradients']
@@ -55,6 +55,7 @@ class ClipOptimizer(object):
         self.clipping_method = clipping_method
         self.clipping_value = clipping_value
         self.print_global_norm = print_global_norm
+        self.trainable_scope = trainable_scope
 
     def compute_gradients(self, loss, var_list=None, *args, **kwargs):
         """Compute gradients to model variables from loss.
@@ -67,11 +68,20 @@ class ClipOptimizer(object):
             clipping operation if `self.clip` is True.
 
         """
-        # TODO Freeze everything except for hrn 
-        hrn_list = [v for v in var_list if 'hrn' in v.name]
-        if len(hrn_list) > 0:
-            log.info("Training HRN only!")
-            var_list = hrn_list
+        # freeze all variables except those with self.trainable_scope in their names
+        if self.trainable_scope is not None:
+            new_var_list = [v for v in var_list if self.trainable_scope in v.name]
+            if len(new_var_list):
+                var_list = new_var_list
+                log.info("Only training variables in scope: %s" % self.trainable_scope)            
+        # hrn_list = [v for v in var_list if 'hrn' in v.name]
+        # if len(hrn_list) > 0:
+        #     log.info("Training HRN only!")
+        #     var_list = hrn_list
+        print(var_list)
+        print("trainable scope", self.trainable_scope)
+        # import pdb
+        # pdb.set_trace()
 
         gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
                                                 *args, **kwargs)
