@@ -74,14 +74,6 @@ class ClipOptimizer(object):
             if len(new_var_list):
                 var_list = new_var_list
                 log.info("Only training variables in scope: %s" % self.trainable_scope)            
-        # hrn_list = [v for v in var_list if 'hrn' in v.name]
-        # if len(hrn_list) > 0:
-        #     log.info("Training HRN only!")
-        #     var_list = hrn_list
-        print(var_list)
-        print("trainable scope", self.trainable_scope)
-        # import pdb
-        # pdb.set_trace()
 
         gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
                                                 *args, **kwargs)
