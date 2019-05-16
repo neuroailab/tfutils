@@ -52,6 +52,8 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
+        clipping_method = "norm"
+        clipping_value = 0.1
         self.clipping_method = clipping_method
         self.clipping_value = clipping_value
         self.print_global_norm = print_global_norm

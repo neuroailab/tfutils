@@ -4,7 +4,7 @@ import gridfs
 import tarfile
 try:
     import cPickle as pickle
-except ModuleNotFoundError:
+except Exception:
     import pickle
 from bson.objectid import ObjectId
 import datetime
@@ -547,9 +547,9 @@ class DBInterface(object):
             if var_shape == var_shapes[name]:
                 var_list[name] = var
             else:
-                log.info('Shape mismatch for %s' % name \
-                      + str(var_shape) \
-                      + str(var_shapes[name]))
+                log.info('Shape mismatch for (Name: %s' % name \
+                        + ', Requested: ' + str(var_shape) \
+                        + ', Saved: ' + str(var_shapes[name]) + ')')
         return var_list
 
     def filter_var_list(self, var_list):
