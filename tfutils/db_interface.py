@@ -83,7 +83,7 @@ def git_info(repo):
     branchname = repo.active_branch.name
     commit = repo.active_branch.commit.hexsha
     origin = repo.remote('origin')
-    urls = map(str, list(origin.urls))
+    urls = list(map(str, list(origin.urls)))
     remote_ref = [_r for _r in origin.refs if _r.name ==
                   'origin/' + branchname]
     if not len(remote_ref) > 0:
@@ -134,7 +134,7 @@ def get_saver_pb2_v2_files(prefix):
     for f in notindexfiles:
         match = p.match(f)
         assert match, (f, prefix)
-        thisf, total = map(int, match.groups())
+        thisf, total = list(map(int, match.groups()))
         if total0 is None:
             total0 = total
         else:
@@ -234,7 +234,7 @@ def sonify(arg, memo=None, skip=False):
         if arg.ndim == 0:
             rval = sonify(arg.sum(), skip=skip)
         else:
-            rval = map(sonify, arg)  # N.B. memo None
+            rval = list(map(sonify, arg))  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
     elif arg in (True, False):
         rval = int(arg)
