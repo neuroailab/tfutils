@@ -943,14 +943,14 @@ def test_from_params(load_params,
         _ttargs = [{key: value[i] for (key, value) in test_args.items()}
                    for i in range(len(params['model_params']))]
 
-	from_ckpt = _params[0]['load_params'].get('from_ckpt')
-	use_ckpt = (from_ckpt is not None)
+        from_ckpt = _params[0]['load_params'].get('from_ckpt')
+        use_ckpt = (from_ckpt is not None)
 
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
 
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
-	    if not use_ckpt:
+            if not use_ckpt:
                 ttarg['dbinterface'].load_rec()
                 ld = ttarg['dbinterface'].load_data
                 assert ld is not None, "No load data found for query, aborting"
@@ -960,10 +960,10 @@ def test_from_params(load_params,
                 param['model_params']['seed'] = ld['params']['model_params']['seed']
                 cfg_final = ld['params']['model_params']['cfg_final']
                 load_queue_params = ld['params']['train_params']['queue_params']
-	    else:
-		first_targ = param['validation_params'].keys()[0]
-		load_queue_params = param['validation_params'][first_targ]['queue_params']
-		cfg_final = param['model_params'].get('cfg_final', {})
+            else:
+                first_targ = param['validation_params'].keys()[0]
+                load_queue_params = param['validation_params'][first_targ]['queue_params']
+                cfg_final = param['model_params'].get('cfg_final', {})
 
             (ttarg['validation_targets'],
              ttarg['queues']) = get_valid_targets_dict(loss_params=None,
