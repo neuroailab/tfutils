@@ -18,6 +18,7 @@ import tensorflow as tf
 from tensorflow.python import DType
 from tensorflow.python.client import device_lib
 # from tfutils.error import RepoIsDirtyError
+from six import string_types
 
 if 'TFUTILS_LOGFILE' in os.environ:
     logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
@@ -217,6 +218,8 @@ def sonify(arg, memo=None, skip=False):
         rval = float(arg)
     elif isinstance(arg, np.integer):
         rval = int(arg)
+    elif isinstance(arg, map):
+        rval = list(arg)
     elif isinstance(arg, (list, tuple)):
         rval = type(arg)([sonify(ai, memo, skip) for ai in arg])
     elif isinstance(arg, collections.OrderedDict):
@@ -226,13 +229,13 @@ def sonify(arg, memo=None, skip=False):
     elif isinstance(arg, dict):
         rval = dict([(sonify(k, memo, skip), sonify(v, memo, skip))
                      for k, v in arg.items()])
-    elif isinstance(arg, (basestring, float, int, type(None))):
+    elif isinstance(arg, (string_types, float, int, type(None))):
         rval = arg
     elif isinstance(arg, np.ndarray):
         if arg.ndim == 0:
             rval = sonify(arg.sum(), skip=skip)
         else:
-            rval = map(sonify, arg)  # N.B. memo None
+            rval = list(map(sonify, arg))  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
     elif arg in (True, False):
         rval = int(arg)

@@ -11,7 +11,10 @@ import json
 import copy
 import logging
 import tarfile
-import cPickle
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
 from collections import OrderedDict
 
 import tqdm
@@ -747,7 +750,7 @@ class DBInterface(object):
         if save_to_gfs:
             idval = str(outrec)
             save_to_gfs_path = idval + "_fileitems"
-            self.collfs.put(cPickle.dumps(save_to_gfs),
+            self.collfs.put(pickle.dumps(save_to_gfs),
                             filename=save_to_gfs_path, item_for=outrec)
 
         sys.stdout.flush()  # flush the stdout buffer
@@ -961,7 +964,7 @@ def test_from_params(load_params,
                 cfg_final = ld['params']['model_params']['cfg_final']
                 load_queue_params = ld['params']['train_params']['queue_params']
             else:
-                first_targ = param['validation_params'].keys()[0]
+                first_targ = list(param['validation_params'].keys())[0]
                 load_queue_params = param['validation_params'][first_targ]['queue_params']
                 cfg_final = param['model_params'].get('cfg_final', {})
 
