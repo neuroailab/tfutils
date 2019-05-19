@@ -750,7 +750,7 @@ class DBInterface(object):
         if save_to_gfs:
             idval = str(outrec)
             save_to_gfs_path = idval + "_fileitems"
-            self.collfs.put(pickle.dumps(save_to_gfs),
+            self.collfs.put(pickle.dumps(save_to_gfs, protocol=2),
                             filename=save_to_gfs_path, item_for=outrec)
 
         sys.stdout.flush()  # flush the stdout buffer
