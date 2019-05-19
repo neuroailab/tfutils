@@ -177,7 +177,7 @@ def make_mongo_safe(_d):
         _d (dict): a dictionary to make safe for Mongo.
 
     """
-    klist = _d.keys()[:]
+    klist = list(_d)[:]
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
             make_mongo_safe(_d[_k])
