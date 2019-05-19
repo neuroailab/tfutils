@@ -560,7 +560,7 @@ class DBInterface(object):
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
-                load_dest = open(cache_filename, 'rwb+')
+                load_dest = open(cache_filename, 'wb+')
                 fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 load_dest.close()
@@ -735,7 +735,7 @@ class DBInterface(object):
                     log.info('Cleaning up cached filters')
                     fsbucket = gridfs.GridFSBucket(recent_gridfs_files._Collection__database, bucket_name=recent_gridfs_files.name.split('.')[0])
 
-                    for del_indx in xrange(0, num_cached_filters - cache_max_num):
+                    for del_indx in range(0, num_cached_filters - cache_max_num):
                         #log.info(recent_query_result[del_indx]['uploadDate'])
                         fsbucket.delete(recent_query_result[del_indx]['_id'])
 

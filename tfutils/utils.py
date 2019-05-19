@@ -466,8 +466,8 @@ def verify_pb2_v2_files(cache_prefix, ckpt_record):
 def get_saver_pb2_v2_files(prefix):
     dirn, pref = os.path.split(prefix)
     pref = pref + '.'
-    files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
-                   os.listdir(dirn))
+    ldirn = os.listdir(dirn)
+    files = list(filter(lambda x: x.startswith(pref) and not x.endswith('.tar'), ldirn))
     indexf = pref + 'index'
     assert indexf in files, (prefix, indexf, files)
     notindexfiles = [_f for _f in files if _f != indexf]
@@ -485,7 +485,7 @@ def get_saver_pb2_v2_files(prefix):
         fns.append(thisf)
     fns = list(set(fns))
     fns.sort()
-    assert fns == range(total0), (fns, total0)
+    assert fns == list(range(total0)), (fns, total0)
     files = [os.path.join(dirn, f) for f in files]
     file_data = {'files': files, 'num_data_files': total0}
     return file_data
