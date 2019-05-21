@@ -13,31 +13,41 @@ def initializer(kind='xavier', *args, **kwargs):
         init = getattr(tf, kind + '_initializer')(*args, **kwargs)
     return init
 
-def batchnorm_corr(inputs, is_training, data_format='channels_last', decay = 0.999, epsilon = 1e-3, init_zero=None, activation=None):
+def batchnorm_corr(inputs, is_training, data_format='channels_last', 
+    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None,
+    time_suffix=None):
 
-    if init_zero is None:
-        init_zero = True if activation is None else False
-    if init_zero:
-        gamma_init = tf.zeros_initializer()
+    if time_suffix is not None:
+        bn_op_name = "post_conv_BN_" + time_suffix
+        reuse_flag = tf.AUTO_REUSE # create bn variables per timestep if they do not exist
     else:
-        gamma_init = tf.ones_initializer()
-    
-    scale = tf.get_variable(name = 'scale', shape = [inputs.get_shape()[-1]], initializer = gamma_init, trainable=True)
-    beta = tf.get_variable(name = 'beta', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=True)
-    pop_mean = tf.get_variable(name = 'bn_mean', shape = [inputs.get_shape()[-1]], initializer = tf.zeros_initializer(), trainable=False)
-    pop_var = tf.get_variable(name = 'bn_var', shape = [inputs.get_shape()[-1]], initializer = tf.ones_initializer(), trainable=False)
+        bn_op_name = "post_conv_BN"
+        reuse_flag = None
 
-    if is_training:
-        batch_mean, batch_var = tf.nn.moments(inputs, list(range(inputs.get_shape().ndims - 1)))
-        train_mean = tf.assign(pop_mean, pop_mean * decay + batch_mean * (1 - decay))
-        train_var = tf.assign(pop_var, pop_var * decay + batch_var * (1 - decay))
-
-        with tf.control_dependencies([train_mean, train_var]):
-            output = tf.nn.batch_normalization(inputs,
-                batch_mean, batch_var, beta, scale, epsilon)
+    # if activation is none, should use zeros; else ones
+    if constant_init is None:
+        if init_zero is None:
+            init_zero = True if activation is None else False
+        if init_zero: 
+            gamma_init = tf.zeros_initializer()
+        else:
+            gamma_init = tf.ones_initializer()
     else:
-        output = tf.nn.batch_normalization(inputs,
-            pop_mean, pop_var, beta, scale, epsilon)
+        gamma_init = tf.constant_initializer(constant_init)
+
+    axis = 1 if data_format == 'channels_first' else 3
+    output = tf.layers.batch_normalization(inputs=inputs,
+                                           axis=axis,
+                                           momentum=decay,
+                                           epsilon=epsilon,
+                                           center=True,
+                                           scale=True,
+                                           training=is_training,
+                                           trainable=True,
+                                           fused=True,
+                                           gamma_initializer=gamma_init,
+                                           name=bn_op_name,
+                                           reuse=reuse_flag)
 
     return output
 
@@ -49,20 +59,27 @@ def conv(inp,
          padding='SAME',
          kernel_init='xavier',
          kernel_init_kwargs=None,
+         use_bias=True,
          bias=0,
          weight_decay=None,
          activation='relu',
          batch_norm=False,
          is_training=False,
-         batch_norm_decay = 0.999,
-         batch_norm_epsilon = 1e-3,
+         batch_norm_decay=0.9,
+         batch_norm_epsilon=1e-5,
          init_zero=None,
          dropout=None,
          dropout_seed=0,
+         time_sep=False,
+         time_suffix=None,
          name='conv'
          ):
-
+    
     # assert out_shape is not None
+
+    if time_sep:
+        assert time_suffix is not None
+
     if weight_decay is None:
         weight_decay = 0.
     if isinstance(ksize, int):
@@ -78,8 +95,10 @@ def conv(inp,
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='weights')
-    init = initializer(kind='constant', value=bias)
-    biases = tf.get_variable(initializer=init,
+    
+    if use_bias:
+        init = initializer(kind='constant', value=bias)
+        biases = tf.get_variable(initializer=init,
                             shape=[out_depth],
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
@@ -91,31 +110,21 @@ def conv(inp,
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
                         padding=padding)
-    output = tf.nn.bias_add(conv, biases, name=name)
+
+    if use_bias:
+        output = tf.nn.bias_add(conv, biases, name=name)
+    else:
+        output = tf.identity(conv, name=name)
 
     if batch_norm:
-        # # if activation is none, should use zeros; else ones
-        # if init_zero is None:
-        #     init_zero = True if activation is None else False
-        # if init_zero: 
-        #     gamma_init = tf.zeros_initializer()
-        # else:
-        #     gamma_init = tf.ones_initializer()
-
-        # axis = 1 if data_format == 'channels_first' else 3
-        # output = tf.layers.batch_normalization(inputs=output,
-        #                                        axis=axis,
-        #                                        momentum=BATCH_NORM_DECAY,
-        #                                        epsilon=BATCH_NORM_EPSILON,
-        #                                        center=True,
-        #                                        scale=True,
-        #                                        training=is_training,
-        #                                        trainable=True,
-        #                                        fused=True,
-        #                                        gamma_initializer=gamma_init,
-        #                                        name="post_conv_BN")
-
-        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon, activation=activation, init_zero=init_zero)
+        output = batchnorm_corr(inputs=output, 
+                                is_training=is_training, 
+                                data_format=data_format, 
+                                decay = batch_norm_decay, 
+                                epsilon = batch_norm_epsilon, 
+                                init_zero=init_zero, 
+                                activation=activation,
+                                time_suffix=time_suffix)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
