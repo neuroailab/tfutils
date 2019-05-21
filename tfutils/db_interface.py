@@ -190,6 +190,8 @@ def version_check_and_info(module):
 
 
 def sonify(arg, memo=None, skip=False):
+    if isinstance(arg, range):
+        arg = list(arg)
     """Return version of arg that can be trivally serialized to json format.
 
     Args:
@@ -645,7 +647,7 @@ class DBInterface(object):
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
-                load_dest = open(cache_filename, 'rwb+')
+                load_dest = open(cache_filename, 'wb+')
                 fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 load_dest.close()
