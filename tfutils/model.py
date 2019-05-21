@@ -288,17 +288,21 @@ def fc(inp,
        out_depth,
        kernel_init='xavier',
        kernel_init_kwargs=None,
+       use_bias=True,
        bias=1,
        weight_decay=None,
        activation='relu',
        batch_norm=False,
        is_training=False,
-       batch_norm_decay = 0.9,
-       batch_norm_epsilon = 1e-5,
+       batch_norm_decay=0.9,
+       batch_norm_epsilon=1e-5,
+       init_zero=None,
        dropout=None,
        dropout_seed=0,
+       time_sep=False,
+       time_suffix=None,
        name='fc'):
-
+        
     if weight_decay is None:
         weight_decay = 0.
     # assert out_shape is not None
@@ -314,8 +318,10 @@ def fc(inp,
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='weights')
-    init = initializer(kind='constant', value=bias)
-    biases = tf.get_variable(initializer=init,
+    
+    if use_bias:
+        init = initializer(kind='constant', value=bias)
+        biases = tf.get_variable(initializer=init,
                             shape=[out_depth],
                             dtype=tf.float32,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
@@ -325,12 +331,42 @@ def fc(inp,
     if dropout is not None:
         resh = tf.nn.dropout(resh, dropout, seed=dropout_seed, name='dropout')
     fcm = tf.matmul(resh, kernel)
-    output = tf.nn.bias_add(fcm, biases, name=name)
+
+    if use_bias:
+        output = tf.nn.bias_add(fcm, biases, name=name)
+    else:
+        output = tf.identity(fcm, name=name)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
     if batch_norm:
-        output = batchnorm_corr(output, is_training=is_training, decay = batch_norm_decay, epsilon = batch_norm_epsilon)
+        # if activation is none, should use zeros; else ones
+        if init_zero is None:
+            init_zero = True if activation is None else False
+        if init_zero: 
+            gamma_init = tf.zeros_initializer()
+        else:
+            gamma_init = tf.ones_initializer()
+
+        if time_suffix is not None:
+            bn_op_name = "post_conv_BN_" + time_suffix
+            reuse_flag = tf.AUTO_REUSE # create bn variables per timestep if they do not exist
+        else:
+            bn_op_name = "post_conv_BN"
+            reuse_flag = None
+
+        output = tf.layers.batch_normalization(inputs=output,
+                                               axis=-1,
+                                               momentum=batch_norm_decay,
+                                               epsilon=batch_norm_epsilon,
+                                               center=True,
+                                               scale=True,
+                                               training=is_training,
+                                               trainable=True,
+                                               fused=True,
+                                               gamma_initializer=gamma_init,
+                                               name=bn_op_name,
+                                               reuse=reuse_flag)
     return output
 
 
