@@ -190,8 +190,7 @@ def version_check_and_info(module):
 
 
 def sonify(arg, memo=None, skip=False):
-    if isinstance(arg, range):
-        arg = list(arg)
+
     """Return version of arg that can be trivally serialized to json format.
 
     Args:
