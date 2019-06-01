@@ -13,6 +13,48 @@ def initializer(kind='xavier', *args, **kwargs):
         init = getattr(tf, kind + '_initializer')(*args, **kwargs)
     return init
 
+def groupnorm(inputs, G=32, data_format='channels_last', weight_decay=0.0, epsilon=1e-5, trainable=True, gamma_init=1, beta_init=0):
+    '''
+    Like LayerNorm, z-scores features along the channel dimension only. 
+    However, it only normalizes within G groups of C/G channels each.
+    Optionally applies learnable scale/shift parameters.
+    '''
+    assert len(inputs.shape.as_list()) == 4, "Applies only to conv2D layers"
+    if data_format == 'channels_first':
+        inputs = tf.transpose(inputs, [0,2,3,1])
+    elif data_format == 'channels_last':
+        pass
+    else:
+        raise ValueError("data_format must be 'channels_first' or 'channels_last'")
+
+    B,H,W,C = inputs.shape.as_list()
+    assert C % G == 0, "num groups G must divide C"
+    CpG = C // G
+
+    inputs = tf.reshape(inputs, [B,H,W,CpG,G])
+    mean, var = tf.nn.moments(inputs, axes=[1,2,3], keep_dims=True)
+    inputs = tf.div(inputs - mean, tf.sqrt(var + epsilon))
+    inputs = tf.reshape(inputs, [B,H,W,C])
+    
+    if trainable:
+        gamma = tf.get_variable("groupnorm_scale", shape=[1,1,1,C], dtype=tf.float32,
+                                initializer=initializer("constant", float(gamma_init)),
+                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay))
+        beta = tf.get_variable("groupnorm_shift", shape=[1,1,1,C], dtype=tf.float32,
+                               initializer=initializer("constant", float(beta_init)),
+                               regularizer=tf.contrib.layers.l2_regularizer(weight_decay))
+    else:
+        gamma = tf.constant(gamma_init, dtype=tf.float32)
+        beta = tf.constant(beta_init, dtype=tf.float32)
+
+    inputs = gamma*inputs + beta
+    if data_format == 'channels_first':
+        inputs = tf.transpose(inputs, [0,3,1,2])
+
+    print("applied group norm to", inputs.name.split('/')[:-1])
+
+    return inputs
+
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
     decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None,
     time_suffix=None):
@@ -64,6 +106,8 @@ def conv(inp,
          weight_decay=None,
          activation='relu',
          batch_norm=False,
+         group_norm=False,
+         num_groups=32,
          is_training=False,
          batch_norm_decay=0.9,
          batch_norm_epsilon=1e-5,
@@ -80,7 +124,7 @@ def conv(inp,
     if time_sep:
         assert time_suffix is not None
 
-    if batch_norm:
+    if batch_norm or group_norm:
         use_bias = False
 
     if weight_decay is None:
@@ -128,7 +172,13 @@ def conv(inp,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix)
-
+    elif group_norm:
+        output = groupnorm(inputs=output,
+                           G=num_groups,
+                           data_format=data_format,
+                           weight_decay=weight_decay,
+                           epsilon=batch_norm_epsilon)
+        
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
 
