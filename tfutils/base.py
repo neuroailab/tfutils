@@ -79,7 +79,7 @@ DEFAULT_TRAIN_THRES_LOSS = 100
 DEFAULT_HOST = '/cpu:0'
 DEFAULT_DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2', '/gpu:3']
 DEFAULT_LOOP_PARAMS = frozendict()
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'to_restore': None, 'load_param_dict': None, 'restore_global_step': True})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'use_ema':False, 'to_restore': None, 'load_param_dict': None, 'restore_global_step': True})
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
@@ -256,7 +256,7 @@ class DBInterface(object):
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
-        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict', 'restore_global_step']:
+        for _k in ['do_restore', 'from_ckpt', 'use_ema', 'to_restore', 'load_param_dict', 'restore_global_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -366,7 +366,19 @@ class DBInterface(object):
                 restore_names =  [name for name, var in restore_stripped.items()]
                 # Actually load the vars.
                 log.info('Restored Vars:\n' + str(restore_names))
-                tf_saver_restore = tf.train.Saver(restore_vars)
+                if self.use_ema:
+                    log.info('Using EMA') 
+                    ema = tf.train.ExponentialMovingAverage(decay=0.9999)
+                    ema_vars = tf.trainable_variables() + tf.get_collection('moving_vars')
+                    for v in tf.global_variables():
+                        if 'moving_mean' in v.name or 'moving_variance' in v.name:
+                           ema_vars.append(v)
+                    ema_vars = list(set(ema_vars))
+                    ema_var_dict = ema.variables_to_restore(ema_vars)
+                    print('EMA VAR DICT', ema_var_dict)
+                    tf_saver_restore = tf.train.Saver(ema_var_dict, max_to_keep=1)
+                else:
+                    tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
 
