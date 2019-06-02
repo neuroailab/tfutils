@@ -177,6 +177,7 @@ def conv(inp,
                            G=num_groups,
                            data_format=data_format,
                            weight_decay=weight_decay,
+                           gamma_init=(0.0 if init_zero else 1.0),
                            epsilon=batch_norm_epsilon)
         
     if activation is not None:
