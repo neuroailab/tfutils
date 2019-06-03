@@ -301,10 +301,12 @@ def depth_conv(inp,
              padding='SAME',
              kernel_init='xavier',
              kernel_init_kwargs=None,
-             bias=1,
              activation='relu6',
              weight_decay=None,
-             batch_norm = True,
+             batch_norm = False,
+               group_norm=False,
+               num_groups=32,
+               use_bias=False,
              is_training=True,
              batch_norm_decay=0.9,
              batch_norm_epsilon=1e-5,
@@ -355,8 +357,16 @@ def depth_conv(inp,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix)
-    else:
-        init = initializer(kind='constant', value=bias)
+    elif group_norm:
+        output = groupnorm(inputs=output,
+                           G=num_groups,
+                           data_format=data_format,
+                           weight_decay=weight_decay,
+                           gamma_init=(0.0 if init_zero else 1.0),
+                           epsilon=batch_norm_epsilon)
+        
+    elif use_bias:
+        init = initializer(kind='constant', value=1.0)
         biases = tf.get_variable(initializer=init,
                                 shape=[out_depth],
                                 dtype=tf.float32,
