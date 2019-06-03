@@ -70,10 +70,11 @@ class ClipOptimizer(object):
         """
         # freeze all variables except those with self.trainable_scope in their names
         if self.trainable_scope is not None:
-            new_var_list = [v for v in var_list if self.trainable_scope in v.name]
+            new_var_list = [v for v in var_list if any([nm in v.name for nm in self.trainable_scope])]
             if len(new_var_list):
                 var_list = new_var_list
-                log.info("Only training variables in scope: %s" % self.trainable_scope)            
+                log.info("Only training variables in scope: %s" % self.trainable_scope)
+                # log.info("variables to be trained: %s" % var_list)
 
         gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
                                                 *args, **kwargs)
