@@ -38,11 +38,11 @@ def groupnorm(inputs, G=32, data_format='channels_last', weight_decay=0.0, epsil
     
     if trainable:
         gamma = tf.get_variable("groupnorm_scale", shape=[1,1,1,C], dtype=tf.float32,
-                                initializer=initializer("constant", float(gamma_init)),
-                                regularizer=tf.contrib.layers.l2_regularizer(weight_decay))
+                                initializer=initializer("constant", float(gamma_init)))
+                                # regularizer=tf.contrib.layers.l2_regularizer(weight_decay))
         beta = tf.get_variable("groupnorm_shift", shape=[1,1,1,C], dtype=tf.float32,
-                               initializer=initializer("constant", float(beta_init)),
-                               regularizer=tf.contrib.layers.l2_regularizer(weight_decay))
+                               initializer=initializer("constant", float(beta_init)))
+                               # regularizer=tf.contrib.layers.l2_regularizer(weight_decay))
     else:
         gamma = tf.constant(gamma_init, dtype=tf.float32)
         beta = tf.constant(beta_init, dtype=tf.float32)
