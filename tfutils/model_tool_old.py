@@ -91,6 +91,9 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                            name=bn_op_name,
                                            reuse=reuse_flag)
 
+    print("is training?", is_training)
+    print("applied batch norm to %s" % inputs.name.split('/')[:-1])
+    
     return output
 
 def conv(inp,
@@ -111,6 +114,7 @@ def conv(inp,
          is_training=False,
          batch_norm_decay=0.9,
          batch_norm_epsilon=1e-5,
+         batch_norm_gamma_init=None,
          init_zero=None,
          dropout=None,
          dropout_seed=0,
@@ -131,6 +135,8 @@ def conv(inp,
         weight_decay = 0.
     if isinstance(ksize, int):
         ksize = [ksize, ksize]
+    if isinstance(strides, int):
+        strides = [1, strides, strides, 1]
     if kernel_init_kwargs is None:
         kernel_init_kwargs = {}
     in_depth = inp.get_shape().as_list()[-1]
@@ -168,7 +174,8 @@ def conv(inp,
                                 is_training=is_training, 
                                 data_format=data_format, 
                                 decay = batch_norm_decay, 
-                                epsilon = batch_norm_epsilon, 
+                                epsilon = batch_norm_epsilon,
+                                constant_init=batch_norm_gamma_init,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix)
@@ -310,6 +317,7 @@ def depth_conv(inp,
              is_training=True,
              batch_norm_decay=0.9,
              batch_norm_epsilon=1e-5,
+               batch_norm_gamma_init=None,
              init_zero=None,
              data_format='channels_last',
              time_sep=False,
@@ -344,7 +352,7 @@ def depth_conv(inp,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='weights')
 
-    conv = tf.nn.depthwise_conv2d(inp, kernel,
+    output = tf.nn.depthwise_conv2d(inp, kernel,
                             strides=strides,
                             padding=padding)
         
@@ -353,7 +361,8 @@ def depth_conv(inp,
                                 is_training=is_training, 
                                 data_format=data_format, 
                                 decay = batch_norm_decay, 
-                                epsilon = batch_norm_epsilon, 
+                                epsilon = batch_norm_epsilon,
+                                constant_init=batch_norm_gamma_init,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix)
@@ -372,7 +381,7 @@ def depth_conv(inp,
                                 dtype=tf.float32,
                                 regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                                 name='bias')
-        output = tf.nn.bias_add(conv, biases, name=name)   
+        output = tf.nn.bias_add(output, biases, name=name)   
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
