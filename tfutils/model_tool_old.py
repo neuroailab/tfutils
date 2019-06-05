@@ -56,7 +56,7 @@ def groupnorm(inputs, G=32, data_format='channels_last', weight_decay=0.0, epsil
     return inputs
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
-    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None,
+    decay = 0.99, epsilon = 1e-3, init_zero=None, constant_init=None, activation=None,
     time_suffix=None):
 
     if time_suffix is not None:
