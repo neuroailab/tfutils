@@ -157,8 +157,8 @@ def conv(inp,
                             regularizer=tf.contrib.layers.l2_regularizer(weight_decay),
                             name='bias')
     # ops
-    if dropout is not None:
-        inp = tf.nn.dropout(inp, dropout, seed=dropout_seed, name='dropout')
+    if dropout is not None: # dropout is not the dropout_rate, not the keep_porb
+        inp = tf.nn.dropout(inp, rate=dropout, seed=dropout_seed, name='dropout')
 
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
@@ -302,9 +302,10 @@ def depthsep_conv(inp,
     return p_out
 
 def depth_conv(inp,
-             multiplier=1,
-             ksize=3,
-             strides=1,
+               multiplier=1,
+               out_depth=None,
+               ksize=3,
+               strides=1,
              padding='SAME',
              kernel_init='xavier',
              kernel_init_kwargs=None,
@@ -435,8 +436,8 @@ def fc(inp,
                             name='bias')
 
     # ops
-    if dropout is not None:
-        resh = tf.nn.dropout(resh, dropout, seed=dropout_seed, name='dropout')
+    if dropout is not None: # dropout is not the dropout rate, not the keep_prob
+        resh = tf.nn.dropout(resh, rate=dropout, seed=dropout_seed, name='dropout')
     fcm = tf.matmul(resh, kernel)
 
     if use_bias:
