@@ -158,7 +158,7 @@ def conv(inp,
                             name='bias')
     # ops
     if dropout is not None: # dropout is not the dropout_rate, not the keep_porb
-        inp = tf.nn.dropout(inp, rate=dropout, seed=dropout_seed, name='dropout')
+        inp = tf.nn.dropout(inp, keep_prob=(1.0-dropout), seed=dropout_seed, name='dropout')
 
     conv = tf.nn.conv2d(inp, kernel,
                         strides=strides,
@@ -437,7 +437,7 @@ def fc(inp,
 
     # ops
     if dropout is not None: # dropout is not the dropout rate, not the keep_prob
-        resh = tf.nn.dropout(resh, rate=dropout, seed=dropout_seed, name='dropout')
+        resh = tf.nn.dropout(resh, keep_prob=(1.0-dropout), seed=dropout_seed, name='dropout')
     fcm = tf.matmul(resh, kernel)
 
     if use_bias:
