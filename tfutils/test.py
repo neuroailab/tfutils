@@ -129,7 +129,7 @@ def test_from_params(load_params,
                 param['model_params']['seed'] = ld['params']['model_params']['seed']
                 cfg_final = ld['params']['model_params']['cfg_final']
             else:
-                cfg_final = param['model_params'].get('cfg_final')
+                cfg_final = param['model_params'].get('cfg_final', {})
 
             ttarg['validation_targets'], var_manager \
                     = get_valid_targets_dict(
