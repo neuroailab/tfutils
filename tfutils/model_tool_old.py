@@ -5,13 +5,26 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 import tensorflow as tf
+import numpy as np
 
 def initializer(kind='xavier', *args, **kwargs):
     if kind == 'xavier':
         init = tf.contrib.layers.xavier_initializer(*args, **kwargs)
+    elif kind == 'normal':
+        init = normal_initializer
     else:
         init = getattr(tf, kind + '_initializer')(*args, **kwargs)
+            
     return init
+
+def normal_initializer(shape, dtype=None, partition_info=None):
+    '''
+    Used for EfficientNets
+    '''
+    H, W, _, C_out = shape
+    fan_out = int(H * W * C_out)
+    return tf.random_normal(
+        shape, mean=0.0, stddev=np.sqrt(2.0 / fan_out), dtype=dtype)
 
 def groupnorm(inputs, G=32, data_format='channels_last', weight_decay=0.0, epsilon=1e-5, trainable=True, gamma_init=1, beta_init=0):
     '''
@@ -91,8 +104,8 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                            name=bn_op_name,
                                            reuse=reuse_flag)
 
-    print("is training?", is_training)
-    print("applied batch norm to %s" % inputs.name.split('/')[:-1])
+    # print("is training?", is_training)
+    # print("applied batch norm to %s" % inputs.name.split('/')[:-1])
     
     return output
 
