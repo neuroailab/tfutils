@@ -105,7 +105,7 @@ def crossgpu_batch_norm(inputs,
             if num_dev == 1:
                 mean, var = tf.nn.moments(inputs, axes=red_axises)
             else:
-                multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']'
+                multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']/'
                 shared_name = re.sub(model_prefix + multi_device_gpu_var_string, '', tf.get_variable_scope().name)
                 batch_mean        = tf.reduce_mean(inputs, axis=red_axises)
                 batch_mean_square = tf.reduce_mean(tf.square(inputs), axis=red_axises)
@@ -141,7 +141,6 @@ def crossgpu_batch_norm(inputs,
                 tf.add_to_collections(updates_collections, update_moving_mean_op)
                 tf.add_to_collections(updates_collections, update_moving_var_op)
                 outputs = tf.identity(outputs)
-
         else:
             if inp_rank == 4: # fused batch norm only supports convolutional layer outputs
                 outputs,_,_ = tf.nn.fused_batch_norm(inputs, 
