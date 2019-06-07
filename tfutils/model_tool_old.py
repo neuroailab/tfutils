@@ -153,6 +153,8 @@ def conv(inp,
     if kernel_init_kwargs is None:
         kernel_init_kwargs = {}
     in_depth = inp.get_shape().as_list()[-1]
+    if out_depth is None:
+        out_depth = in_depth
 
     # weights
     init = initializer(kernel_init, **kernel_init_kwargs)
