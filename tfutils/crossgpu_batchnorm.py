@@ -52,6 +52,8 @@ def crossgpu_batch_norm(inputs,
             _validate_and_load_nccl_so()
             
         from tensorflow.contrib.nccl.ops import gen_nccl_ops
+    else:
+        from tensorflow.python.ops import gen_nccl_ops
 
     inp_shp = inputs.get_shape().as_list()
     inp_rank = len(inp_shp)
@@ -104,9 +106,7 @@ def crossgpu_batch_norm(inputs,
                 mean, var = tf.nn.moments(inputs, axes=red_axises)
             else:
                 multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']'
-                print('Original name', tf.get_variable_scope().name)
                 shared_name = re.sub(model_prefix + multi_device_gpu_var_string, '', tf.get_variable_scope().name)
-                print('Shared name', shared_name)
                 batch_mean        = tf.reduce_mean(inputs, axis=red_axises)
                 batch_mean_square = tf.reduce_mean(tf.square(inputs), axis=red_axises)
                 batch_mean        = gen_nccl_ops.nccl_all_reduce(
