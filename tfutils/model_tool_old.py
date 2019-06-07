@@ -16,8 +16,7 @@ def initializer(kind='xavier', *args, **kwargs):
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
     decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, 
-    activation=None, time_suffix=None, use_crossgpu_bn=False,
-    model_prefix='model_0', num_dev=None):
+    activation=None, time_suffix=None, use_crossgpu_bn=False, num_dev=None):
 
     if time_suffix is not None:
         bn_op_name = "post_conv_BN_" + time_suffix
@@ -47,7 +46,6 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                      gamma_initializer=gamma_init,
                                      scope=bn_op_name,
                                      reuse=reuse_flag,
-                                     model_prefix=model_prefix,
                                      num_dev=num_dev)
     else:
         axis = 1 if data_format == 'channels_first' else 3

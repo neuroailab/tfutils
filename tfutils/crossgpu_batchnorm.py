@@ -24,7 +24,6 @@ def crossgpu_batch_norm(inputs,
                     trainable=True,
                     reuse=None,
                     scope=None,
-                    model_prefix='model_0', # can be set by model_params['prefix']
                     gpu_var_string=COPY_NAME_SCOPE,
                     num_dev=None):
                     
@@ -105,8 +104,8 @@ def crossgpu_batch_norm(inputs,
             if num_dev == 1:
                 mean, var = tf.nn.moments(inputs, axes=red_axises)
             else:
-                multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']/'
-                shared_name = re.sub(model_prefix + multi_device_gpu_var_string, '', tf.get_variable_scope().name)
+                multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']'
+                shared_name = re.sub(multi_device_gpu_var_string, '', tf.get_variable_scope().name)
                 batch_mean        = tf.reduce_mean(inputs, axis=red_axises)
                 batch_mean_square = tf.reduce_mean(tf.square(inputs), axis=red_axises)
                 batch_mean        = gen_nccl_ops.nccl_all_reduce(
