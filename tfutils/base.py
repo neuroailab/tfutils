@@ -11,7 +11,10 @@ import json
 import copy
 import logging
 import tarfile
-import cPickle
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
 from collections import OrderedDict
 
 import tqdm
@@ -76,7 +79,7 @@ DEFAULT_TRAIN_THRES_LOSS = 100
 DEFAULT_HOST = '/cpu:0'
 DEFAULT_DEVICES = ['/gpu:0', '/gpu:1', '/gpu:2', '/gpu:3']
 DEFAULT_LOOP_PARAMS = frozendict()
-DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'to_restore': None, 'load_param_dict': None, 'restore_global_step': True})
+DEFAULT_LOAD_PARAMS = frozendict({'do_restore': True, 'from_ckpt': None, 'use_ema':False, 'to_restore': None, 'load_param_dict': None, 'restore_global_step': True})
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 DEFAULT_LOSS_PARAMS = frozendict({'targets': ['labels'],
@@ -253,7 +256,7 @@ class DBInterface(object):
                    'save_filters_freq', 'save_initial_filters', 'save_to_gfs']:
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
-        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict', 'restore_global_step']:
+        for _k in ['do_restore', 'from_ckpt', 'use_ema', 'to_restore', 'load_param_dict', 'restore_global_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -363,7 +366,19 @@ class DBInterface(object):
                 restore_names =  [name for name, var in restore_stripped.items()]
                 # Actually load the vars.
                 log.info('Restored Vars:\n' + str(restore_names))
-                tf_saver_restore = tf.train.Saver(restore_vars)
+                if self.use_ema:
+                    log.info('Using EMA') 
+                    ema = tf.train.ExponentialMovingAverage(decay=0.9999)
+                    ema_vars = tf.trainable_variables() + tf.get_collection('moving_vars')
+                    for v in tf.global_variables():
+                        if 'moving_mean' in v.name or 'moving_variance' in v.name:
+                           ema_vars.append(v)
+                    ema_vars = list(set(ema_vars))
+                    ema_var_dict = ema.variables_to_restore(ema_vars)
+                    print('EMA VAR DICT', ema_var_dict)
+                    tf_saver_restore = tf.train.Saver(ema_var_dict, max_to_keep=1)
+                else:
+                    tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
 
@@ -557,7 +572,7 @@ class DBInterface(object):
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
-                load_dest = open(cache_filename, 'rwb+')
+                load_dest = open(cache_filename, 'wb+')
                 fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 load_dest.close()
@@ -631,8 +646,8 @@ class DBInterface(object):
             log.info(message)
 
         if validation_only:
-	    if self.load_data is not None:
-		rec['validates'] = self.load_data[0]['_id']
+            if self.load_data is not None:
+                rec['validates'] = self.load_data[0]['_id']
             save_filters_permanent = save_filters_tmp = False
             need_to_save = True
         else:
@@ -732,7 +747,7 @@ class DBInterface(object):
                     log.info('Cleaning up cached filters')
                     fsbucket = gridfs.GridFSBucket(recent_gridfs_files._Collection__database, bucket_name=recent_gridfs_files.name.split('.')[0])
 
-                    for del_indx in xrange(0, num_cached_filters - cache_max_num):
+                    for del_indx in range(0, num_cached_filters - cache_max_num):
                         #log.info(recent_query_result[del_indx]['uploadDate'])
                         fsbucket.delete(recent_query_result[del_indx]['_id'])
 
@@ -747,7 +762,7 @@ class DBInterface(object):
         if save_to_gfs:
             idval = str(outrec)
             save_to_gfs_path = idval + "_fileitems"
-            self.collfs.put(cPickle.dumps(save_to_gfs),
+            self.collfs.put(pickle.dumps(save_to_gfs, protocol=2),
                             filename=save_to_gfs_path, item_for=outrec)
 
         sys.stdout.flush()  # flush the stdout buffer
@@ -943,14 +958,14 @@ def test_from_params(load_params,
         _ttargs = [{key: value[i] for (key, value) in test_args.items()}
                    for i in range(len(params['model_params']))]
 
-	from_ckpt = _params[0]['load_params'].get('from_ckpt')
-	use_ckpt = (from_ckpt is not None)
+        from_ckpt = _params[0]['load_params'].get('from_ckpt')
+        use_ckpt = (from_ckpt is not None)
 
         # Build a graph for each distinct model.
         for param, ttarg in zip(_params, _ttargs):
 
             ttarg['dbinterface'] = DBInterface(params=param, load_params=param['load_params'])
-	    if not use_ckpt:
+            if not use_ckpt:
                 ttarg['dbinterface'].load_rec()
                 ld = ttarg['dbinterface'].load_data
                 assert ld is not None, "No load data found for query, aborting"
@@ -960,10 +975,10 @@ def test_from_params(load_params,
                 param['model_params']['seed'] = ld['params']['model_params']['seed']
                 cfg_final = ld['params']['model_params']['cfg_final']
                 load_queue_params = ld['params']['train_params']['queue_params']
-	    else:
-		first_targ = param['validation_params'].keys()[0]
-		load_queue_params = param['validation_params'][first_targ]['queue_params']
-		cfg_final = param['model_params'].get('cfg_final', {})
+            else:
+                first_targ = list(param['validation_params'].keys())[0]
+                load_queue_params = param['validation_params'][first_targ]['queue_params']
+                cfg_final = param['model_params'].get('cfg_final', {})
 
             (ttarg['validation_targets'],
              ttarg['queues']) = get_valid_targets_dict(loss_params=None,

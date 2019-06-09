@@ -4,7 +4,10 @@ import os
 import functools
 import itertools
 import copy
-import cPickle
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
 import logging
 import threading
 
@@ -124,7 +127,7 @@ class ParallelByFileProviderBase(DataProviderBase):
           by subclasses.
         """
 
-        lens = map(len, source_paths)
+        lens = list(map(len, source_paths))
         assert all([lens[0] == l for l in lens[1:]]), lens
         self.source_paths = source_paths
         self.n_attrs = len(self.source_paths)
@@ -243,7 +246,7 @@ def get_data_paths(paths, file_pattern=DEFAULT_TFRECORDS_GLOB_PATTERN):
             datasources.append(datasource)
         else:
             datasources.append([path])
-    dl = map(len, datasources)
+    dl = list(map(len, datasources))
     assert all([dl[0] == d for d in dl[1:]]), dl
     return datasources
 
@@ -271,7 +274,7 @@ def parse_standard_tfmeta(paths):
             mpaths = path
         d = {}
         for mpath in mpaths:
-            d.update(cPickle.load(open(mpath)))
+            d.update(pickle.load(open(mpath, 'rb')))
         meta_list.append(d)
     return meta_list
 
@@ -928,4 +931,4 @@ class threadsafe_iter(object):
 
     def next(self):
         with self.lock:
-            return self.it.next()
+            return next(self.it)

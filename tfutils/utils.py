@@ -18,6 +18,7 @@ import tensorflow as tf
 from tensorflow.python import DType
 from tensorflow.python.client import device_lib
 # from tfutils.error import RepoIsDirtyError
+from six import string_types
 
 if 'TFUTILS_LOGFILE' in os.environ:
     logging.basicConfig(filename=os.environ['TFUTILS_LOGFILE'])
@@ -176,7 +177,7 @@ def make_mongo_safe(_d):
         _d (dict): a dictionary to make safe for Mongo.
 
     """
-    klist = _d.keys()[:]
+    klist = list(_d)[:]
     for _k in klist:
         if hasattr(_d[_k], 'keys'):
             make_mongo_safe(_d[_k])
@@ -217,6 +218,8 @@ def sonify(arg, memo=None, skip=False):
         rval = float(arg)
     elif isinstance(arg, np.integer):
         rval = int(arg)
+    elif isinstance(arg, map):
+        rval = list(arg)
     elif isinstance(arg, (list, tuple)):
         rval = type(arg)([sonify(ai, memo, skip) for ai in arg])
     elif isinstance(arg, collections.OrderedDict):
@@ -226,13 +229,13 @@ def sonify(arg, memo=None, skip=False):
     elif isinstance(arg, dict):
         rval = dict([(sonify(k, memo, skip), sonify(v, memo, skip))
                      for k, v in arg.items()])
-    elif isinstance(arg, (basestring, float, int, type(None))):
+    elif isinstance(arg, (string_types, float, int, type(None))):
         rval = arg
     elif isinstance(arg, np.ndarray):
         if arg.ndim == 0:
             rval = sonify(arg.sum(), skip=skip)
         else:
-            rval = map(sonify, arg)  # N.B. memo None
+            rval = list(map(sonify, arg))  # N.B. memo None
     # -- put this after ndarray because ndarray not hashable
     elif arg in (True, False):
         rval = int(arg)
@@ -463,8 +466,8 @@ def verify_pb2_v2_files(cache_prefix, ckpt_record):
 def get_saver_pb2_v2_files(prefix):
     dirn, pref = os.path.split(prefix)
     pref = pref + '.'
-    files = filter(lambda x: x.startswith(pref) and not x.endswith('.tar'),
-                   os.listdir(dirn))
+    ldirn = os.listdir(dirn)
+    files = list(filter(lambda x: x.startswith(pref) and not x.endswith('.tar'), ldirn))
     indexf = pref + 'index'
     assert indexf in files, (prefix, indexf, files)
     notindexfiles = [_f for _f in files if _f != indexf]
@@ -482,7 +485,7 @@ def get_saver_pb2_v2_files(prefix):
         fns.append(thisf)
     fns = list(set(fns))
     fns.sort()
-    assert fns == range(total0), (fns, total0)
+    assert fns == list(range(total0)), (fns, total0)
     files = [os.path.join(dirn, f) for f in files]
     file_data = {'files': files, 'num_data_files': total0}
     return file_data
