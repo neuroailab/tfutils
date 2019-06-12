@@ -24,6 +24,7 @@ def crossgpu_batch_norm(inputs,
                     trainable=True,
                     reuse=None,
                     scope=None,
+                    verbose=False,
                     gpu_var_string=COPY_NAME_SCOPE,
                     num_dev=None):
                     
@@ -87,9 +88,15 @@ def crossgpu_batch_norm(inputs,
                                 initializer=gamma_initializer, trainable=trainable,
                                 collections=variables_collections)
 
+        if verbose:
+            gamma = tf.Print(gamma, [gamma], "gamma")
+
         beta  = tf.get_variable(name='beta', shape=[num_outputs], dtype=tf.float32,
                                 initializer=beta_initializer, trainable=trainable,
                                 collections=variables_collections)
+
+        if verbose:
+            beta = tf.Print(beta, [beta], "beta")
 
         moving_mean = tf.get_variable(name='moving_mean', shape=[num_outputs], dtype=tf.float32,
                                     initializer=moving_mean_initializer, trainable=False,
@@ -107,7 +114,15 @@ def crossgpu_batch_norm(inputs,
                 multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']'
                 shared_name = re.sub(multi_device_gpu_var_string, '', tf.get_variable_scope().name)
                 batch_mean        = tf.reduce_mean(inputs, axis=red_axises)
+
+                if verbose:
+                    batch_mean = tf.Print(batch_mean, [batch_mean], "input_mean")
+
                 batch_mean_square = tf.reduce_mean(tf.square(inputs), axis=red_axises)
+
+                if verbose:
+                    batch_mean_square = tf.Print(batch_mean_square, [batch_mean_square], "input_mean_square")
+
                 batch_mean        = gen_nccl_ops.nccl_all_reduce(
                                         input=batch_mean,
                                         reduction='sum',
@@ -118,8 +133,15 @@ def crossgpu_batch_norm(inputs,
                                         reduction='sum',
                                         num_devices=num_dev,
                                         shared_name=shared_name + '_NCCL_mean_square') * (1.0 / num_dev)
+
+                if verbose:
+                    batch_mean = tf.Print(batch_mean, [batch_mean], "NCCL_mean")
+
                 mean              = batch_mean
                 var               = batch_mean_square - tf.square(batch_mean)
+
+                if verbose:
+                    var = tf.Print(var, [var], "NCCL_var")
 
             outputs = tf.nn.batch_normalization(inputs, 
                                                 mean=mean, 
