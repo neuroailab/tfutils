@@ -38,22 +38,23 @@ def crossgpu_batch_norm(inputs,
 
     assert num_dev is not None
 
-    TF_version = get_tf_version_tuple()
-    assert six.PY2 or TF_version >= (1, 10), \
-        "Cross-GPU BatchNorm is only supported in TF>=1.10 ." \
-        "Upgrade TF or apply this patch manually: https://github.com/tensorflow/tensorflow/pull/20360"
+    if num_dev != 1:
+        TF_version = get_tf_version_tuple()
+        assert six.PY2 or TF_version >= (1, 10), \
+            "Cross-GPU BatchNorm is only supported in TF>=1.10 ." \
+            "Upgrade TF or apply this patch manually: https://github.com/tensorflow/tensorflow/pull/20360"
 
-    if TF_version <= (1, 12):
-        try:
-            from tensorflow.contrib.nccl.python.ops.nccl_ops import _validate_and_load_nccl_so
-        except Exception:
-            pass
+        if TF_version <= (1, 12):
+            try:
+                from tensorflow.contrib.nccl.python.ops.nccl_ops import _validate_and_load_nccl_so
+            except Exception:
+                pass
+            else:
+                _validate_and_load_nccl_so()
+                
+            from tensorflow.contrib.nccl.ops import gen_nccl_ops
         else:
-            _validate_and_load_nccl_so()
-            
-        from tensorflow.contrib.nccl.ops import gen_nccl_ops
-    else:
-        from tensorflow.python.ops import gen_nccl_ops
+            from tensorflow.python.ops import gen_nccl_ops
 
     inp_shp = inputs.get_shape().as_list()
     inp_rank = len(inp_shp)
