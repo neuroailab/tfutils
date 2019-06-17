@@ -11,7 +11,7 @@ from tensorflow.python.ops import variables
 import numpy as np
 
 import tfutils.utils as utils
-from tfutils.error import HiLossError, NoChangeError
+from tfutils.error import NanLossError, HiLossError, NoChangeError
 from tfutils.utils import strip_prefix
 from tfutils.db_interface import DBInterface
 from tfutils.helper import \
@@ -469,6 +469,9 @@ def train(sess,
                         'Your optimizer should have incremented the global step,'
                         ' but did not: old_step=%d, new_step=%d' \
                                 % (old_step, step))
+            if np.isnan(train_res['loss']):
+                raise NanLossError(\
+                        'Loss has become NaN')
             if train_res['loss'] > trarg['thres_loss']:
                 raise HiLossError(\
                         'Loss {:.2f} exceeded the threshold {:.2f}'.format(
