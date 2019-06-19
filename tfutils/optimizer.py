@@ -75,7 +75,7 @@ class ClipOptimizer(object):
             if len(new_var_list):
                 var_list = new_var_list
                 log.info("Only training variables in scope: %s" % self.trainable_scope)
-                # log.info("variables to be trained: %s" % var_list)
+                log.info("variables to be trained: %s" % var_list)
 
         num_trainable_params = sum([np.prod(v.shape.as_list()) for v in var_list])
         log.info("Number of Trainable Parameters: %d" % num_trainable_params)

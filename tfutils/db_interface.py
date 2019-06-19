@@ -242,7 +242,10 @@ def sonify(arg, memo=None, skip=False):
     elif callable(arg):
         mod = inspect.getmodule(arg)
         modname = mod.__name__
-        objname = arg.__name__
+        try:
+            objname = arg.__name__
+        except:
+            objname = 'noname'
         if not skip:
             rval = version_check_and_info(mod)
         else:
@@ -341,7 +344,7 @@ class DBInterface(object):
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
         # Set some attributes only in load_params
-        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
+        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict', 'restore_global_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -564,6 +567,9 @@ class DBInterface(object):
             list: Variables to be restored from checkpoint.
 
         """
+        if not self.restore_global_step:
+            var_list = {name: var for name, var in var_list.items()
+                        if 'global_step' not in name}
         if not self.to_restore:
             return var_list
         elif isinstance(self.to_restore, re._pattern_type):
