@@ -644,7 +644,7 @@ class DBInterface(object):
                 # create new file to write from gridfs
                 load_dest = open(cache_filename, "w+")
                 load_dest.close()
-                load_dest = open(cache_filename, 'rwb+')
+                load_dest = open(cache_filename, 'rb+')
                 fsbucket = gridfs.GridFSBucket(database, bucket_name=loading_from.name.split('.')[0])
                 fsbucket.download_to_stream(ckpt_record['_id'], load_dest)
                 load_dest.close()
