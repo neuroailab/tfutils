@@ -250,6 +250,10 @@ def sonify(arg, memo=None, skip=False):
         rval.update({'objname': objname,
                      'modname': modname})
         rval = sonify(rval, skip=skip)
+    elif isinstance(arg, range):
+        rval = list([i for i in arg])
+    elif isinstance(arg, map):
+        rval = 0
     else:
         raise TypeError('sonify', arg)
 
