@@ -9,11 +9,6 @@ def get_tf_version_tuple():
     """
     return tuple(map(int, tf.__version__.split('.')[:2]))
 
-def masked_reduce_mean(x, axis=None):
-    float_mask = tf.cast(tf.is_finite(x), x.dtype)
-    y = tf.divide(tf.reduce_sum(tf.multiply(x, float_mask), axis=axis), tf.reduce_sum(float_mask, axis=axis))
-    return y
-
 def crossgpu_batch_norm(inputs,
                     decay=0.9,
                     epsilon=1e-5,
@@ -119,12 +114,12 @@ def crossgpu_batch_norm(inputs,
             else:
                 multi_device_gpu_var_string = '/+' + gpu_var_string + '[0-' + str(num_dev-1) + ']'
                 shared_name = re.sub(multi_device_gpu_var_string, '', tf.get_variable_scope().name)
-                batch_mean        = masked_reduce_mean(inputs, axis=red_axises)
+                batch_mean        = tf.reduce_mean(inputs, axis=red_axises)
 
                 if verbose:
                     batch_mean = tf.Print(batch_mean, [batch_mean], "input_mean")
 
-                batch_mean_square = masked_reduce_mean(tf.square(inputs), axis=red_axises)
+                batch_mean_square = tf.reduce_mean(tf.square(inputs), axis=red_axises)
 
                 if verbose:
                     batch_mean_square = tf.Print(batch_mean_square, [batch_mean_square], "input_mean_square")
@@ -144,7 +139,7 @@ def crossgpu_batch_norm(inputs,
                     batch_mean = tf.Print(batch_mean, [batch_mean], "NCCL_mean")
 
                 mean              = batch_mean
-                var               = batch_mean_square - tf.square(batch_mean)
+                var               = tf.nn.relu(batch_mean_square - tf.square(batch_mean)) # passing through a relu to prevent small negative values
 
                 if verbose:
                     var = tf.Print(var, [var], "NCCL_var")
