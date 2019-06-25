@@ -363,7 +363,7 @@ class DBInterface(object):
             load_query = {}
         else:
             # Special situation here
-            # Users try to load from the same place they try to save through 
+            # Users try to load from the same place they try to save through
             # setting the load_query
             # This is not allowed
             if self.sameloc and (not save_params == {}):
@@ -396,7 +396,7 @@ class DBInterface(object):
 
         # Set the cache_dir: where to put local cache files
         # use cache_dir from load params if save_params not given
-        if (save_params == {}) and ('cache_dir' in load_params): 
+        if (save_params == {}) and ('cache_dir' in load_params):
             cache_dir = load_params['cache_dir']
         elif 'cache_dir' in save_params:
             cache_dir = save_params['cache_dir']
@@ -464,7 +464,8 @@ class DBInterface(object):
                     restore_names = new_restore_names
 
                 # Actually load the vars.
-                log.info('Restored Vars:\n' + str(restore_names))
+                log.info('Restored Vars (in ckpt, in graph):\n'
+                         str(restore_names))
                 tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
@@ -483,7 +484,8 @@ class DBInterface(object):
                         name \
                         for name, var in self.var_list.items() \
                         if name not in restore_names]
-                log.info('Unrestored Vars:\n' + str(unrestored_var_names))
+                log.info('Unrestored Vars (in graph, not in ckpt):\n'
+                         str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
                     self.sess.run(tf.report_uninitialized_variables()))
@@ -537,6 +539,14 @@ class DBInterface(object):
             restore_vars = load_var_dict
 
         restore_vars = self.filter_var_list(restore_vars)
+
+        # These variables are stored in the checkpoint,
+        # but do not appear in the current graph
+        in_ckpt_not_in_graph = [ \
+                name \
+                for name in var_shapes.keys() \
+                if name not in all_vars.keys()]
+        log.info('Vars in ckpt, not in graph:\n' + str(in_ckpt_not_in_graph))
 
         # Ensure the vars to restored have the correct shape.
         var_list = {}
@@ -828,7 +838,7 @@ class DBInterface(object):
                 if num_cached_filters > cache_max_num:
                     log.info('Cleaning up cached filters')
                     fsbucket = gridfs.GridFSBucket(
-                            recent_gridfs_files._Collection__database, 
+                            recent_gridfs_files._Collection__database,
                             bucket_name=recent_gridfs_files.name.split('.')[0])
 
                     for del_indx in range(0, num_cached_filters - cache_max_num):
@@ -856,7 +866,7 @@ class CoordinatedThread(threading.Thread):
     """A thread class coordinated by tf.train.Coordinator."""
 
     def __init__(
-            self, coord=None, group=None, 
+            self, coord=None, group=None,
             target=None, name=None, args=(), kwargs={}):
         super(CoordinatedThread, self).__init__(
             group=None, target=target, name=name, args=args, kwargs=kwargs)
