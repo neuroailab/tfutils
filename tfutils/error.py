@@ -1,6 +1,8 @@
 class HiLossError(Exception):
     pass
 
+class NanLossError(Exception):
+    pass
 
 class NoChangeError(Exception):
     pass
