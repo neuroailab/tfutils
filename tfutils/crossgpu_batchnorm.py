@@ -124,52 +124,16 @@ def crossgpu_batch_norm(inputs,
                 if verbose:
                     batch_mean_square = tf.Print(batch_mean_square, [batch_mean_square], "input_mean_square")
 
-                @tf.custom_gradient
-                def cg_all_reduce_mean(x):
-                    def grad(dy):
-                        return gen_nccl_ops.nccl_all_reduce(
-                            input=dy,
-                            reduction='sum',
-                            num_devices=num_dev,
-                            shared_name=shared_name + '_NCCL_mean_grad')
-
-                    y = gen_nccl_ops.nccl_all_reduce(
-                        input=x,
-                        reduction='sum',
-                        num_devices=num_dev,
-                        shared_name=shared_name + '_NCCL_mean')                
-                    return y, grad
-
-                @tf.custom_gradient
-                def cg_all_reduce_meansq(x):
-                    def grad(dy):
-                        return gen_nccl_ops.nccl_all_reduce(
-                            input=dy,
-                            reduction='sum',
-                            num_devices=num_dev,
-                            shared_name=shared_name + '_NCCL_mean_square_grad')
-
-                    y = gen_nccl_ops.nccl_all_reduce(
-                        input=x,
-                        reduction='sum',
-                        num_devices=num_dev,
-                        shared_name=shared_name + '_NCCL_mean_square')
-                    return y, grad
-
-                batch_mean = cg_all_reduce_mean(batch_mean)
-                batch_mean = batch_mean * (1.0 / num_dev)
-                batch_mean_square = cg_all_reduce_meansq(batch_mean_square)
-                batch_mean_square = batch_mean_square * (1.0 / num_dev)
-                #batch_mean        = gen_nccl_ops.nccl_all_reduce(
-                #                        input=batch_mean,
-                #                        reduction='sum',
-                #                        num_devices=num_dev,
-                #                        shared_name=shared_name + '_NCCL_mean') * (1.0 / num_dev)
-                #batch_mean_square = gen_nccl_ops.nccl_all_reduce(
-                #                        input=batch_mean_square,
-                #                        reduction='sum',
-                #                        num_devices=num_dev,
-                #                        shared_name=shared_name + '_NCCL_mean_square') * (1.0 / num_dev)
+                batch_mean        = gen_nccl_ops.nccl_all_reduce(
+                                        input=batch_mean,
+                                        reduction='sum',
+                                        num_devices=num_dev,
+                                        shared_name=shared_name + '_NCCL_mean') * (1.0 / num_dev)
+                batch_mean_square = gen_nccl_ops.nccl_all_reduce(
+                                        input=batch_mean_square,
+                                        reduction='sum',
+                                        num_devices=num_dev,
+                                        shared_name=shared_name + '_NCCL_mean_square') * (1.0 / num_dev)
 
                 if verbose:
                     batch_mean = tf.Print(batch_mean, [batch_mean], "NCCL_mean")
