@@ -414,8 +414,8 @@ def fc(inp,
         use_crossgpu_bn = crossgpu_bn_kwargs.pop('use_crossgpu_bn', False)
         if use_crossgpu_bn:
             output = crossgpu_batch_norm(inputs=inputs,
-                                                 decay=decay,
-                                                 epsilon=epsilon,
+                                                 decay=batch_norm_decay,
+                                                 epsilon=batch_norm_epsilon,
                                                  training=is_training,
                                                  trainable=True,
                                                  gamma_initializer=gamma_init,
