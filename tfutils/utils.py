@@ -218,8 +218,8 @@ def sonify(arg, memo=None, skip=False):
         rval = float(arg)
     elif isinstance(arg, np.integer):
         rval = int(arg)
-    elif isinstance(arg, map):
-        rval = list(arg)
+    # elif isinstance(arg, map):
+    #     rval = list(arg)
     elif isinstance(arg, (list, tuple)):
         rval = type(arg)([sonify(ai, memo, skip) for ai in arg])
     elif isinstance(arg, collections.OrderedDict):
@@ -250,6 +250,10 @@ def sonify(arg, memo=None, skip=False):
         rval.update({'objname': objname,
                      'modname': modname})
         rval = sonify(rval, skip=skip)
+    elif isinstance(arg, range):
+        rval = list([i for i in arg])
+    elif isinstance(arg, map):
+        rval = 0
     else:
         raise TypeError('sonify', arg)
 
