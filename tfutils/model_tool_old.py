@@ -5,6 +5,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 import tensorflow as tf
+from tfutils.crossgpu_batchnorm import crossgpu_batch_norm
 
 def initializer(kind='xavier', *args, **kwargs):
     if kind == 'xavier':
@@ -14,8 +15,8 @@ def initializer(kind='xavier', *args, **kwargs):
     return init
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
-    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, activation=None,
-    time_suffix=None):
+    decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, 
+    activation=None, time_suffix=None, use_crossgpu_bn=False, num_dev=None):
 
     if time_suffix is not None:
         bn_op_name = "post_conv_BN_" + time_suffix
@@ -35,20 +36,31 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
     else:
         gamma_init = tf.constant_initializer(constant_init)
 
-    axis = 1 if data_format == 'channels_first' else 3
-    output = tf.layers.batch_normalization(inputs=inputs,
-                                           axis=axis,
-                                           momentum=decay,
-                                           epsilon=epsilon,
-                                           center=True,
-                                           scale=True,
-                                           training=is_training,
-                                           trainable=True,
-                                           fused=True,
-                                           gamma_initializer=gamma_init,
-                                           name=bn_op_name,
-                                           reuse=reuse_flag)
-
+    if use_crossgpu_bn:
+        output = crossgpu_batch_norm(inputs=inputs,
+                                     decay=decay,
+                                     epsilon=epsilon,
+                                     is_training=is_training,
+                                     data_format=data_format,
+                                     trainable=True,
+                                     gamma_initializer=gamma_init,
+                                     scope=bn_op_name,
+                                     reuse=reuse_flag,
+                                     num_dev=num_dev)
+    else:
+        axis = 1 if data_format == 'channels_first' else 3
+        output = tf.layers.batch_normalization(inputs=inputs,
+                                               axis=axis,
+                                               momentum=decay,
+                                               epsilon=epsilon,
+                                               center=True,
+                                               scale=True,
+                                               training=is_training,
+                                               trainable=True,
+                                               fused=True,
+                                               gamma_initializer=gamma_init,
+                                               name=bn_op_name,
+                                               reuse=reuse_flag)
     return output
 
 def conv(inp,
@@ -72,6 +84,7 @@ def conv(inp,
          dropout_seed=0,
          time_sep=False,
          time_suffix=None,
+         crossgpu_bn_kwargs={'use_crossgpu_bn': False},
          name='conv'
          ):
     
@@ -127,7 +140,8 @@ def conv(inp,
                                 epsilon = batch_norm_epsilon, 
                                 init_zero=init_zero, 
                                 activation=activation,
-                                time_suffix=time_suffix)
+                                time_suffix=time_suffix,
+                                **crossgpu_bn_kwargs)
 
     if activation is not None:
         output = getattr(tf.nn, activation)(output, name=activation)
@@ -152,6 +166,7 @@ def conv_bnf(inp,
          data_format='channels_last',
          time_sep=False,
          time_suffix=None,
+         crossgpu_bn_kwargs={'use_crossgpu_bn': False},
          name='conv_bnf'
          ):
 
@@ -193,7 +208,8 @@ def conv_bnf(inp,
                                 epsilon = batch_norm_epsilon, 
                                 init_zero=init_zero, 
                                 activation=activation,
-                                time_suffix=time_suffix)
+                                time_suffix=time_suffix,
+                                **crossgpu_bn_kwargs)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -261,7 +277,8 @@ def depth_conv(inp,
              data_format='channels_last',
              time_sep=False,
              time_suffix=None,
-             name='depth_conv'
+             crossgpu_bn_kwargs={'use_crossgpu_bn': False},
+             name='depth_conv',
              ):
 
     # assert out_shape is not None
@@ -303,7 +320,8 @@ def depth_conv(inp,
                                 epsilon = batch_norm_epsilon, 
                                 init_zero=init_zero, 
                                 activation=activation,
-                                time_suffix=time_suffix)
+                                time_suffix=time_suffix,
+                                **crossgpu_bn_kwargs)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -335,6 +353,7 @@ def fc(inp,
        dropout_seed=0,
        time_sep=False,
        time_suffix=None,
+       crossgpu_bn_kwargs={'use_crossgpu_bn': False},
        name='fc'):
 
     if batch_norm:
@@ -392,7 +411,19 @@ def fc(inp,
             bn_op_name = "post_conv_BN"
             reuse_flag = None
 
-        output = tf.layers.batch_normalization(inputs=output,
+        use_crossgpu_bn = crossgpu_bn_kwargs.pop('use_crossgpu_bn', False)
+        if use_crossgpu_bn:
+            output = crossgpu_batch_norm(inputs=inputs,
+                                                 decay=decay,
+                                                 epsilon=epsilon,
+                                                 training=is_training,
+                                                 trainable=True,
+                                                 gamma_initializer=gamma_init,
+                                                 scope=bn_op_name,
+                                                 reuse=reuse_flag,
+                                                 **crossgpu_bn_kwargs)
+        else:
+            output = tf.layers.batch_normalization(inputs=output,
                                                axis=-1,
                                                momentum=batch_norm_decay,
                                                epsilon=batch_norm_epsilon,
