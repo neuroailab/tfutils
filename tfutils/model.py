@@ -5,7 +5,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 import tensorflow as tf
-from tfutils.crossgpu_batchnorm import crossgpu_batch_norm
+#from tfutils.crossgpu_batchnorm import crossgpu_batch_norm
 import numpy as np
 
 def initializer(kind='xavier', *args, **kwargs):
