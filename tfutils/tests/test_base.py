@@ -10,7 +10,7 @@ import errno
 import shutil
 try:
     import cPickle as pickle
-except ModuleNotFoundError:
+except ImportError:
     import pickle
 import logging
 import unittest
