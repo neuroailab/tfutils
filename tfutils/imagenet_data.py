@@ -59,6 +59,7 @@ class ImageNet(object):
         prep_type,
         crop_size=224,
         smallest_side=256,
+        resize=None,
         is_train=False,
         drop_remainder=False,
         on_tpu=False
@@ -69,6 +70,7 @@ class ImageNet(object):
         self.prep_type = prep_type
         self.crop_size = crop_size
         self.smallest_side = smallest_side
+        self.resize = resize
         self.num_cores = 8
         self.on_tpu = on_tpu
 
@@ -246,6 +248,9 @@ class ImageNet(object):
             image = self.central_crop_from_jpg(image_string)
 
         image = color_normalize(image)
+
+        if self.resize is not None:
+            image = tf.image.resize_images(image, [self.resize, self.resize], align_corners=True)
         return image
 
     def data_parser(self, value):
