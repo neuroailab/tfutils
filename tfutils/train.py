@@ -300,8 +300,12 @@ def train_from_params(
 
     """
 
-    # use tpu only if a tpu_name has been specified
-    use_tpu = (model_params.get('tpu_name', None) is not None)
+    # use tpu only if a tpu_name has been specified and not a multi-model
+    if isinstance(model_params, list): # multi-model mode
+        use_tpu = (model_params[0].get('tpu_name', None) is not None)
+        assert(use_tpu is False)
+    else:
+        use_tpu = (model_params.get('tpu_name', None) is not None)
     if use_tpu:
         log.info('Using tpu: %s' %model_params['tpu_name'])
     params, train_args = parse_params('train',
