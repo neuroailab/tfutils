@@ -399,6 +399,7 @@ def parse_params(mode,
                  validation_params=None,
                  learning_rate_params=None,
                  log_device_placement=False,
+                 use_tpu=False
                  ):
     """Ensure the params dictionary has the correct structure.
 
@@ -472,22 +473,23 @@ def parse_params(mode,
                     log.info('No trainable scopes specified for model {}... '.format(model_num) +
                              'All trainable variables will be trained by default.')
 
-                # Parse device specification.
-                if 'devices' not in param:
-                    param['devices'] = [DEVICES.pop(0)]
-                    log.info('No devices specified for model {}... '.format(model_num) +
-                             'Defaulting to gpus: {}.'.format(param['devices']))
-                param['devices'] = format_devices(param['devices'])
+                if not use_tpu:
+                    # Parse device specification.
+                    if 'devices' not in param:
+                        param['devices'] = [DEVICES.pop(0)]
+                        log.info('No devices specified for model {}... '.format(model_num) +
+                                 'Defaulting to gpus: {}.'.format(param['devices']))
+                    param['devices'] = format_devices(param['devices'])
 
-                if 'num_gpus' not in param:
-                    param['num_gpus'] = len(param['devices'])
+                    if 'num_gpus' not in param:
+                        param['num_gpus'] = len(param['devices'])
 
-                if not isinstance(param['num_gpus'], list):
-                    assert param['num_gpus'] == len(param['devices']), (
-                       'num_gpus does not match the number of gpus specified in devices.')
-                else:
-                    assert len(param['num_gpus']) == len(param['devices']), (
-                       'num_gpus does not match the number of gpus specified in devices.')
+                    if not isinstance(param['num_gpus'], list):
+                        assert param['num_gpus'] == len(param['devices']), (
+                           'num_gpus does not match the number of gpus specified in devices.')
+                    else:
+                        assert len(param['num_gpus']) == len(param['devices']), (
+                           'num_gpus does not match the number of gpus specified in devices.')
 
             # Parse train_params.
             if name == 'train_params':
@@ -517,27 +519,37 @@ def parse_params(mode,
                 # Parse training data params (minibatching).
                 if 'minibatch_size' not in param:
                     param['num_minibatches'] = 1
-                    param['minibatch_size'] = param['data_params']['batch_size']
-                    log.info('minibatch_size not specified for training data_params... ' +
-                             'Defaulting minibatch_size to: {} (identical to the batch size).'
-                             .format(param['data_params']['batch_size']))
+                    if not use_tpu:
+                        param['minibatch_size'] = param['data_params']['batch_size']
+                        log.info('minibatch_size not specified for training data_params... ' +
+                                 'Defaulting minibatch_size to: {} (identical to the batch size).'
+                                 .format(param['data_params']['batch_size']))
                 else:
-                    batch_size = param['data_params']['batch_size']
-                    minibatch_size = param['minibatch_size']
-                    assert minibatch_size <= batch_size, (
-                           'Minibatch size cannot be larger than batch size.')
+                    if use_tpu:
+                        batch_size = param['train_params']['batch_size']
+                        minibatch_size = param['minibatch_size']
+                        if batch_size != minibatch_size:
+                            log.info('Minibatching currently not supported on TPU. Setting minibatch size ({}) ' +
+                                     'to be original batch size ({}).'.format(minibatch_size, batch_size))
+                        param['minibatch_size'] = batch_size
+                        param['num_minibatches'] = 1
+                    else:
+                        batch_size = param['data_params']['batch_size']
+                        minibatch_size = param['minibatch_size']
+                        assert minibatch_size <= batch_size, (
+                               'Minibatch size cannot be larger than batch size.')
 
-                    num_minibatches = batch_size / float(minibatch_size)
-                    if num_minibatches % 1 != 0:
-                        num_minibatches = round(num_minibatches)
-                        minibatch_size = batch_size / num_minibatches
-                        log.warning('Minibatch size ({}) does not divide batch size ({}) evenly...'
-                                    .format(minibatch_size, batch_size))
-                        log.info('Rounding minibatch size to closest factor of batch size: {}'
-                                 .format(minibatch_size))
-                    param['minibatch_size'] = minibatch_size
-                    param['num_minibatches'] = num_minibatches
-                    param['data_params']['batch_size'] = minibatch_size
+                        num_minibatches = batch_size / float(minibatch_size)
+                        if num_minibatches % 1 != 0:
+                            num_minibatches = round(num_minibatches)
+                            minibatch_size = batch_size / num_minibatches
+                            log.warning('Minibatch size ({}) does not divide batch size ({}) evenly...'
+                                        .format(minibatch_size, batch_size))
+                            log.info('Rounding minibatch size to closest factor of batch size: {}'
+                                     .format(minibatch_size))
+                        param['minibatch_size'] = minibatch_size
+                        param['num_minibatches'] = num_minibatches
+                        param['data_params']['batch_size'] = minibatch_size
 
         params[name] = param_list
 
