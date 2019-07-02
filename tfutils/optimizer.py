@@ -43,7 +43,6 @@ class ClipOptimizer(object):
     """
     def __init__(
             self, optimizer_class, clip=True,
-            clip_min=-1.0, clip_max=1.0,
             *optimizer_args, **optimizer_kwargs):
         self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
         # The optimizer needs to have these required methods
@@ -53,8 +52,6 @@ class ClipOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
-        self.clip_min = clip_min
-        self.clip_max = clip_max
 
     def compute_gradients(self, loss, var_list=None, *args, **kwargs):
         """Compute gradients to model variables from loss.
@@ -72,11 +69,11 @@ class ClipOptimizer(object):
         if self.clip:
             # gradient clipping. Some gradients returned are 'None' because
             # no relation between the variable and loss; so we skip those.
-            gvs = [(tf.clip_by_value(grad, self.clip_min, self.clip_max), var)
+            gvs = [(tf.clip_by_value(grad, -1., 1.), var)
                    for grad, var in gvs if grad is not None]
         return gvs
 
-    def apply_gradients(self, grads_and_vars, global_step=None, name=None):
+    def apply_gradients(self, grads_and_vars, global_step=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
 
         `apply_gradients` returns an op that calls
@@ -92,8 +89,7 @@ class ClipOptimizer(object):
 
         """
         optimize = self._optimizer.apply_gradients(grads_and_vars,
-                                                   global_step=global_step,
-                                                   name=name)
+                                                   global_step=global_step)
         return optimize
 
 
