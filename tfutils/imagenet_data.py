@@ -314,6 +314,14 @@ class ImageNet(object):
         return dataset
 
     def dataset_func(
+        self, *args, **kwargs
+    ):
+        if self.on_tpu:
+            return self.dataset_func_tpu(*args, **kwargs)
+        else:
+            return self.dataset_func_gpu(*args, **kwargs)
+
+    def dataset_func_gpu(
         self,
         is_train,
         batch_size,
@@ -346,6 +354,7 @@ class ImageNet(object):
         Build the dataset, get the elements
         """
 
+        self.is_train = params['is_train']
         if self.is_train:
             self.file_pattern = 'train-*'
         else:
