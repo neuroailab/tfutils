@@ -60,7 +60,6 @@ class ImageNet(object):
         crop_size=224,
         smallest_side=256,
         resize=None,
-        is_train=False,
         drop_remainder=False,
         on_tpu=False
     ):
@@ -81,7 +80,7 @@ class ImageNet(object):
 
         # Placeholders to be filled later
         self.file_pattern = None
-        self.is_train = is_train
+        self.is_train = None
 
     def get_tfr_filenames(self):
         """
