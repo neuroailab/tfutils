@@ -60,8 +60,7 @@ class ImageNet(object):
         crop_size=224,
         smallest_side=256,
         resize=None,
-        drop_remainder=False,
-        on_tpu=False
+        drop_remainder=False
     ):
         self.image_dir = image_dir
 
@@ -73,12 +72,10 @@ class ImageNet(object):
         self.num_cores = 8
         self.on_tpu = on_tpu
 
-        if self.on_tpu:
-            self.drop_remainder = True
-        else:
-            self.drop_remainder = drop_remainder
+        self.drop_remainder = drop_remainder
 
         # Placeholders to be filled later
+        self.on_tpu = None
         self.file_pattern = None
         self.is_train = None
 
@@ -313,14 +310,6 @@ class ImageNet(object):
         return dataset
 
     def dataset_func(
-        self, *args, **kwargs
-    ):
-        if self.on_tpu:
-            return self.dataset_func_tpu(*args, **kwargs)
-        else:
-            return self.dataset_func_gpu(*args, **kwargs)
-
-    def dataset_func_gpu(
         self,
         is_train,
         batch_size,
@@ -330,6 +319,7 @@ class ImageNet(object):
         """
         Build the dataset, get the elements
         """
+        self.on_tpu = False
         self.is_train = is_train
         self.file_pattern = file_pattern
         self.batch_size = batch_size
@@ -352,6 +342,8 @@ class ImageNet(object):
         """
         Build the dataset, get the elements
         """
+        self.on_tpu = True
+        self.drop_remainder = True
 
         self.is_train = params['is_train']
         if self.is_train:
