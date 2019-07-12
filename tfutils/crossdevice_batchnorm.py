@@ -2,12 +2,68 @@ import re
 import six
 import tensorflow as tf
 from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
+from tensorflow.contrib.tpu.python.ops import tpu_ops
+from tensorflow.contrib.tpu.python.tpu import tpu_function
 
 def get_tf_version_tuple():
     """
     Return TensorFlow version as a 2-element tuple (for comparison).
     """
     return tuple(map(int, tf.__version__.split('.')[:2]))
+
+class CRTPUBatchNormalization(tf.layers.BatchNormalization):
+  # class CRCRTPUBatchNormalization(tf.layers.BatchNormalization):
+  """Cross replica batch normalization for TPU. Useful if your per replica batch size is small.
+  Taken from: https://github.com/tensorflow/tpu/blob/master/models/official/efficientnet/utils.py"""
+
+    def __init__(self, fused=False, **kwargs):
+        if fused in (True, None):
+            raise ValueError('CRTPUBatchNormalization does not support fused=True.')
+        super(CRTPUBatchNormalization, self).__init__(fused=fused, **kwargs)
+
+    def _cross_replica_average(self, t, num_shards_per_group):
+    """Calculates the average value of input tensor across TPU replicas."""
+        num_shards = tpu_function.get_tpu_context().number_of_shards
+        group_assignment = None
+        if num_shards_per_group > 1:
+            if num_shards % num_shards_per_group != 0:
+                raise ValueError('num_shards: %d mod shards_per_group: %d, should be 0'
+                         % (num_shards, num_shards_per_group))
+            num_groups = num_shards // num_shards_per_group
+            group_assignment = [[
+              x for x in range(num_shards) if x // num_shards_per_group == y
+            ] for y in range(num_groups)]
+        return tpu_ops.cross_replica_sum(t, group_assignment) / tf.cast(num_shards_per_group, t.dtype)
+
+    def _moments(self, inputs, reduction_axes, keep_dims):
+    """Compute the mean and variance: it overrides the original _moments."""
+        shard_mean, shard_variance = super(CRTPUBatchNormalization, self)._moments(
+            inputs, reduction_axes, keep_dims=keep_dims)
+
+        num_shards = tpu_function.get_tpu_context().number_of_shards or 1
+        if num_shards < 8:  # Skip cross_replica for 2x2 or smaller slices. Note: original code has <= 8, but we want to do this on standard TPUs where num_shards == 8.
+            num_shards_per_group = 1
+        else:
+            num_shards_per_group = max(8, num_shards // 8)
+        tf.logging.info('CRTPUBatchNormalization with num_shards_per_group %s',
+                        num_shards_per_group)
+        if num_shards_per_group > 1:
+            # Each group has multiple replicas: here we compute group mean/variance by
+            # aggregating per-replica mean/variance.
+            group_mean = self._cross_replica_average(shard_mean, num_shards_per_group)
+            group_variance = self._cross_replica_average(shard_variance,
+                                                       num_shards_per_group)
+
+            # Group variance needs to also include the difference between shard_mean
+            # and group_mean. Note: this is from an older version of the code,
+            # but I prefer this as it explicitly avoids needing to relu E[X^2] - E[X]^2
+            # in case of numerical issues to prevent small negative variances.
+            mean_distance = tf.square(group_mean - shard_mean)
+            group_variance += self._cross_replica_average(mean_distance,
+                                                        num_shards_per_group)
+            return (group_mean, group_variance)
+        else:
+            return (shard_mean, shard_variance)
 
 def crossgpu_batch_norm(inputs,
                     decay=0.9,

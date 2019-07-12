@@ -4,8 +4,9 @@ from functools import wraps
 from collections import OrderedDict
 from contextlib import contextmanager
 
+import copy
 import tensorflow as tf
-from tfutils.crossgpu_batchnorm import crossgpu_batch_norm
+from tfutils.crossdevice_batchnorm import crossgpu_batch_norm, CRTPUBatchNormalization
 import numpy as np
 
 def initializer(kind='xavier', *args, **kwargs):
@@ -71,7 +72,8 @@ def groupnorm(inputs, G=32, data_format='channels_last', weight_decay=0.0, epsil
 
 def batchnorm_corr(inputs, is_training, data_format='channels_last', 
     decay = 0.9, epsilon = 1e-5, init_zero=None, constant_init=None, 
-    activation=None, time_suffix=None, use_crossgpu_bn=False, num_dev=None):
+    activation=None, time_suffix=None, use_crossgpu_bn=False, num_dev=None,
+    use_crtpu_bn=False):
 
     if time_suffix is not None:
         bn_op_name = "post_conv_BN_" + time_suffix
@@ -102,6 +104,20 @@ def batchnorm_corr(inputs, is_training, data_format='channels_last',
                                      scope=bn_op_name,
                                      reuse=reuse_flag,
                                      num_dev=num_dev)
+    elif use_crtpu_bn:
+        axis = 1 if data_format == 'channels_first' else 3
+        crtpu_bn_func = CRTPUBatchNormalization(axis=axis,
+                                                momentum=decay,
+                                                epsilon=epsilon,
+                                                center=True,
+                                                scale=True,
+                                                trainable=True,
+                                                gamma_initializer=gamma_init,
+                                                name=bn_op_name,
+                                                _reuse=reuse_flag,
+                                                _scope=bn_op_name)
+
+        output = crtpu_bn_func(inputs, training=is_training)
     else:
         axis = 1 if data_format == 'channels_first' else 3
         output = tf.layers.batch_normalization(inputs=inputs,
@@ -142,7 +158,7 @@ def conv(inp,
          dropout_seed=0,
          time_sep=False,
          time_suffix=None,
-         crossgpu_bn_kwargs={'use_crossgpu_bn': False},
+         crossdevice_bn_kwargs={},
          name='conv'
          ):
     
@@ -204,7 +220,7 @@ def conv(inp,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix,
-                                **crossgpu_bn_kwargs)
+                                **crossdevice_bn_kwargs)
     elif group_norm:
         output = groupnorm(inputs=output,
                            G=num_groups,
@@ -236,7 +252,7 @@ def conv_bnf(inp,
          data_format='channels_last',
          time_sep=False,
          time_suffix=None,
-         crossgpu_bn_kwargs={'use_crossgpu_bn': False},
+         crossdevice_bn_kwargs={},
          name='conv_bnf'
          ):
 
@@ -279,7 +295,7 @@ def conv_bnf(inp,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix,
-                                **crossgpu_bn_kwargs)
+                                **crossdevice_bn_kwargs)
     else:
         init = initializer(kind='constant', value=bias)
         biases = tf.get_variable(initializer=init,
@@ -351,7 +367,7 @@ def depth_conv(inp,
                data_format='channels_last',
                time_sep=False,
                time_suffix=None,
-               crossgpu_bn_kwargs={'use_crossgpu_bn': False},
+               crossdevice_bn_kwargs={},
                name='depth_conv'
              ):
 
@@ -396,7 +412,7 @@ def depth_conv(inp,
                                 init_zero=init_zero, 
                                 activation=activation,
                                 time_suffix=time_suffix,
-                                **crossgpu_bn_kwargs)
+                                **crossdevice_bn_kwargs)
     elif group_norm:
         output = groupnorm(inputs=output,
                            G=num_groups,
@@ -436,7 +452,7 @@ def fc(inp,
        dropout_seed=0,
        time_sep=False,
        time_suffix=None,
-       crossgpu_bn_kwargs={'use_crossgpu_bn': False},
+       crossdevice_bn_kwargs={},
        name='fc'):
 
     if batch_norm:
@@ -494,8 +510,12 @@ def fc(inp,
             bn_op_name = "post_conv_BN"
             reuse_flag = None
 
-        use_crossgpu_bn = crossgpu_bn_kwargs.pop('use_crossgpu_bn', False)
+        use_crossgpu_bn = crossdevice_bn_kwargs.get('use_crossgpu_bn', False)
+        use_crtpu_bn = crossdevice_bn_kwargs.get('use_crtpu_bn', False)
         if use_crossgpu_bn:
+            cg_bn_kw = copy.deepcopy(crossdevice_bn_kwargs)
+            cg_bn_kw.pop('use_crossgpu_bn', False)
+            cg_bn_kw.pop('use_crtpu_bn', False)
             output = crossgpu_batch_norm(inputs=inputs,
                                                  decay=batch_norm_decay,
                                                  epsilon=batch_norm_epsilon,
@@ -504,7 +524,20 @@ def fc(inp,
                                                  gamma_initializer=gamma_init,
                                                  scope=bn_op_name,
                                                  reuse=reuse_flag,
-                                                 **crossgpu_bn_kwargs)
+                                                 **cg_bn_kw)
+        elif use_crtpu_bn:
+            crtpu_bn_func = CRTPUBatchNormalization(axis=-1,
+                                                    momentum=batch_norm_decay,
+                                                    epsilon=batch_norm_epsilon,
+                                                    center=True,
+                                                    scale=True,
+                                                    trainable=True,
+                                                    gamma_initializer=gamma_init,
+                                                    name=bn_op_name,
+                                                    _reuse=reuse_flag,
+                                                    _scope=bn_op_name)
+
+            output = crtpu_bn_func(output, training=is_training)
         else:
             output = tf.layers.batch_normalization(inputs=output,
                                                axis=-1,
