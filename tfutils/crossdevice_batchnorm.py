@@ -49,9 +49,7 @@ class CRTPUBatchNormalization(tf.layers.BatchNormalization):
         )
 
         num_shards = tpu_function.get_tpu_context().number_of_shards or 1
-        if (
-            num_shards < 8
-        ):  # Skip cross_replica for 2x2 or smaller slices. Note: original code has <= 8, but we want to do this on standard TPUs where num_shards == 8.
+        if num_shards < 8:  # Skip cross_replica for 2x2 or smaller slices. Note: original code has <= 8, but we want to do this on standard TPUs where num_shards == 8.
             num_shards_per_group = 1
         else:
             num_shards_per_group = max(8, num_shards // 8)
@@ -275,9 +273,7 @@ def crossgpu_batch_norm(
                 tf.add_to_collections(updates_collections, update_moving_var_op)
                 outputs = tf.identity(outputs)
         else:
-            if (
-                inp_rank == 4
-            ):  # fused batch norm only supports convolutional layer outputs
+            if inp_rank == 4:  # fused batch norm only supports convolutional layer outputs
                 outputs, _, _ = tf.nn.fused_batch_norm(
                     inputs,
                     scale=gamma,
