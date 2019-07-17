@@ -99,7 +99,6 @@ class ClipOptimizer(object):
                 true_fn = lambda: tf.constant(1.0)
                 false_fn = lambda: tf.identity(norm)
                 norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)                
-                # norm = tf.case([(tf.is_nan(norm), true_fn)], default=false_fn)
                 gradients, global_norm = tf.clip_by_global_norm(gradients, self.clipping_value,
                         use_norm=norm)
                 gvs = zip(gradients, variables)
@@ -107,7 +106,7 @@ class ClipOptimizer(object):
                 raise ValueError("optimizer.clip = True but you didn't specify a valid method in ['value', 'norm']")
         return gvs
 
-    def apply_gradients(self, grads_and_vars, global_step=None):
+    def apply_gradients(self, grads_and_vars, global_step=None, name=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
 
         `apply_gradients` returns an op that calls
@@ -123,7 +122,8 @@ class ClipOptimizer(object):
 
         """
         optimize = self._optimizer.apply_gradients(grads_and_vars,
-                                                   global_step=global_step)
+                                                   global_step=global_step,
+                                                   name=name)
         return optimize
 
 
