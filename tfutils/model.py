@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 import copy
 import tensorflow as tf
-#from tfutils.crossdevice_batchnorm import crossgpu_batch_norm, CRTPUBatchNormalization
+from tfutils.crossdevice_batchnorm import crossgpu_batch_norm, CRTPUBatchNormalization
 import numpy as np
 
 def initializer(kind='xavier', *args, **kwargs):
