@@ -7,6 +7,13 @@ import tensorflow as tf
 
 from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
 
+DEFAULT_TPU_ZONE = None
+DEFAULT_NUM_SHARDS = 8
+DEFAULT_ITERATIONS_PER_LOOP = 100
+DEFAULT_TPU_LOSS_PARAMS = frozendict({'targets': ['labels'],
+                                  'loss_per_case_func': tf.nn.sparse_softmax_cross_entropy_with_logits,
+                                  'agg_func': tf.reduce_mean})
+
 BRANCH_QUEUE_NAME = 'master_w_queue'
 
 DEFAULT_HOST = '/cpu:0'

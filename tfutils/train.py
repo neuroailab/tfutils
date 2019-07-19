@@ -11,7 +11,7 @@ from tensorflow.python.ops import variables
 import numpy as np
 
 import tfutils.utils as utils
-from tfutils.error import HiLossError, NoChangeError
+from tfutils.error import NanLossError, HiLossError, NoChangeError
 from tfutils.utils import strip_prefix
 from tfutils.db_interface import DBInterface
 from tfutils.helper import \
@@ -23,6 +23,7 @@ from tfutils.defaults import \
         DEFAULT_HOST, DEFAULT_LOOP_PARAMS, \
         DEFAULT_TRAIN_THRES_LOSS, DEFAULT_PARAMS
 
+from tfutils.tpu_train import tpu_train_from_params
 
 def train_from_params(
         save_params,
@@ -36,6 +37,7 @@ def train_from_params(
         log_device_placement=DEFAULT_PARAMS['log_device_placement'], # advanced
         dont_run=DEFAULT_PARAMS['dont_run'], # advanced
         skip_check=DEFAULT_PARAMS['skip_check'], # advanced
+        use_estimator=False
         ):
     """
     Main training interface function.
@@ -297,6 +299,15 @@ def train_from_params(
             Advanced parameter. Whether skipping github check, could be useful when working in detached head
 
     """
+
+    # use tpu only if a tpu_name has been specified and not a multi-model
+    if isinstance(model_params, list): # multi-model mode
+        use_tpu = (model_params[0].get('tpu_name', None) is not None)
+        assert(use_tpu is False)
+    else:
+        use_tpu = (model_params.get('tpu_name', None) is not None)
+    if use_tpu:
+        log.info('Using tpu: %s' %model_params['tpu_name'])
     params, train_args = parse_params('train',
                                       model_params,
                                       dont_run=dont_run,
@@ -309,76 +320,80 @@ def train_from_params(
                                       validation_params=validation_params,
                                       learning_rate_params=learning_rate_params,
                                       log_device_placement=log_device_placement,
+                                      use_tpu=use_tpu or use_estimator
                                       )
 
-    with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
-        # For convenience, use list of dicts instead of dict of lists
-        _params = [{key: value[i] for (key, value) in params.items()}
-                   for i in range(len(params['model_params']))]
-        _trargs = [{key: value[i] for (key, value) in train_args.items()}
-                   for i in range(len(params['model_params']))]
+    if use_estimator or use_tpu:
+        return tpu_train_from_params(params, train_args, use_tpu=use_tpu)
+    else:
+        with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
+            # For convenience, use list of dicts instead of dict of lists
+            _params = [{key: value[i] for (key, value) in params.items()}
+                       for i in range(len(params['model_params']))]
+            _trargs = [{key: value[i] for (key, value) in train_args.items()}
+                       for i in range(len(params['model_params']))]
 
-        # Use a single dataprovider for all models.
-        data_params = _params[0]['train_params']['data_params']
+            # Use a single dataprovider for all models.
+            data_params = _params[0]['train_params']['data_params']
 
-        _params[0]['train_params']['data_params'], inputs \
-                = get_data(**data_params)
+            _params[0]['train_params']['data_params'], inputs \
+                    = get_data(**data_params)
 
-        # Build a graph for each distinct model.
-        var_manager_list = []
-        for param, trarg in zip(_params, _trargs):
-            _, _, param, trarg, var_manager \
-                    = get_model(inputs,
-                            param['model_params'],
-                            param=param,
-                            trarg=trarg)
+            # Build a graph for each distinct model.
+            var_manager_list = []
+            for param, trarg in zip(_params, _trargs):
+                _, _, param, trarg, var_manager \
+                        = get_model(inputs,
+                                param['model_params'],
+                                param=param,
+                                trarg=trarg)
 
-            trarg['validation_targets'], _ = \
-                    get_valid_targets_dict(
-                            var_manager=var_manager,
-                            **param)
-            var_manager_list.append(var_manager)
+                trarg['validation_targets'], _ = \
+                        get_valid_targets_dict(
+                                var_manager=var_manager,
+                                **param)
+                var_manager_list.append(var_manager)
 
-        # Create session.
-        gpu_options = tf.GPUOptions(allow_growth=True)
-        sess = tf.Session(
-                config=tf.ConfigProto(
-                    allow_soft_placement=True,
-                    gpu_options=gpu_options,
-                    log_device_placement=log_device_placement,
-                    ))
+            # Create session.
+            gpu_options = tf.GPUOptions(allow_growth=True)
+            sess = tf.Session(
+                    config=tf.ConfigProto(
+                        allow_soft_placement=True,
+                        gpu_options=gpu_options,
+                        log_device_placement=log_device_placement,
+                        ))
 
-        # Initialize variables here
-        init_op_global = tf.global_variables_initializer()
-        sess.run(init_op_global)
-        init_op_local = tf.local_variables_initializer()
-        sess.run(init_op_local)
-        log.info('Initialized from scratch first')
+            # Initialize variables here
+            init_op_global = tf.global_variables_initializer()
+            sess.run(init_op_global)
+            init_op_local = tf.local_variables_initializer()
+            sess.run(init_op_local)
+            log.info('Initialized from scratch first')
 
-        # Build database interface for each model
-        # This interface class will handle the records saving, model saving, and 
-        # model restoring.
-        for param, trarg, var_manager in zip(_params, _trargs, var_manager_list):
+            # Build database interface for each model
+            # This interface class will handle the records saving, model saving, and 
+            # model restoring.
+            for param, trarg, var_manager in zip(_params, _trargs, var_manager_list):
 
-            trarg['dbinterface'] = DBInterface(sess=sess,
-                                               params=param,
-                                               var_manager=var_manager,
-                                               global_step=trarg['global_step'],
-                                               save_params=param['save_params'],
-                                               load_params=param['load_params'])
-            ## Model will be restored from saved database here
-            trarg['dbinterface'].initialize()
+                trarg['dbinterface'] = DBInterface(sess=sess,
+                                                   params=param,
+                                                   var_manager=var_manager,
+                                                   global_step=trarg['global_step'],
+                                                   save_params=param['save_params'],
+                                                   load_params=param['load_params'])
+                ## Model will be restored from saved database here
+                trarg['dbinterface'].initialize()
 
-        # Convert back to a dictionary of lists
-        params = {key: [param[key] for param in _params]
-                  for key in _params[0].keys()}
-        train_args = {key: [trarg[key] for trarg in _trargs]
-                      for key in _trargs[0].keys()}
+            # Convert back to a dictionary of lists
+            params = {key: [param[key] for param in _params]
+                      for key in _params[0].keys()}
+            train_args = {key: [trarg[key] for trarg in _trargs]
+                          for key in _trargs[0].keys()}
 
-        if dont_run:
-            return train_args
+            if dont_run:
+                return train_args
 
-        return train(sess, **train_args)
+            return train(sess, **train_args)
 
 
 def train(sess,
@@ -469,6 +484,9 @@ def train(sess,
                         'Your optimizer should have incremented the global step,'
                         ' but did not: old_step=%d, new_step=%d' \
                                 % (old_step, step))
+            if np.isnan(train_res['loss']):
+                raise NanLossError(\
+                        'Loss has become NaN')
             if train_res['loss'] > trarg['thres_loss']:
                 raise HiLossError(\
                         'Loss {:.2f} exceeded the threshold {:.2f}'.format(
