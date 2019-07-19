@@ -465,7 +465,7 @@ class DBInterface(object):
 
                 # Actually load the vars.
                 log.info('Restored Vars (in ckpt, in graph):\n'
-                         str(restore_names))
+                         + str(restore_names))
                 tf_saver_restore = tf.train.Saver(restore_vars)
                 tf_saver_restore.restore(self.sess, ckpt_filename)
                 log.info('... done restoring.')
@@ -485,7 +485,7 @@ class DBInterface(object):
                         for name, var in self.var_list.items() \
                         if name not in restore_names]
                 log.info('Unrestored Vars (in graph, not in ckpt):\n'
-                         str(unrestored_var_names))
+                         + str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored
                 assert len(self.sess.run(tf.report_uninitialized_variables())) == 0, (
                     self.sess.run(tf.report_uninitialized_variables()))
