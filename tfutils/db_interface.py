@@ -28,7 +28,7 @@ from six import string_types
 from tfutils.utils import strip_prefix_from_name, \
         strip_prefix, get_var_list_wo_prefix
 from tfutils.helper import log
-from tfutils.defaults import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS
+from tfutils.defaults import DEFAULT_SAVE_PARAMS, DEFAULT_LOAD_PARAMS, OPTIMIZER_NAMES
 
 if 'TFUTILS_HOME' in os.environ:
     TFUTILS_HOME = os.environ['TFUTILS_HOME']
@@ -545,7 +545,7 @@ class DBInterface(object):
         in_ckpt_not_in_graph = [ \
                 name \
                 for name in var_shapes.keys() \
-                if name not in all_vars.keys()]
+                if (name not in all_vars.keys()) and (not any([name.endswith(s) for s in OPTIMIZER_NAMES]))]
         log.info('Vars in ckpt, not in graph:\n' + str(in_ckpt_not_in_graph))
 
         # Ensure the vars to restored have the correct shape.
