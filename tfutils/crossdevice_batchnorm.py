@@ -1,7 +1,10 @@
 import re
 import six
 import tensorflow as tf
-from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
+try:
+    from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
+except:
+    COPY_NAME_SCOPE = '__var_copy_'
 from tensorflow.contrib.tpu.python.ops import tpu_ops
 from tensorflow.contrib.tpu.python.tpu import tpu_function
 
