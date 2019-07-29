@@ -98,9 +98,11 @@ def test_from_params(load_params,
         with tf.Graph().as_default(), tf.device(DEFAULT_HOST):
 
             # create session
+            gpu_options = tf.GPUOptions(allow_growth=True)
             sess = tf.Session(
                     config=tf.ConfigProto(
                         allow_soft_placement=True,
+                        gpu_options=gpu_options,
                         log_device_placement=log_device_placement,
                         ))
 
