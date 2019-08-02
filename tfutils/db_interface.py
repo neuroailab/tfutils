@@ -340,7 +340,7 @@ class DBInterface(object):
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
         # Set some attributes only in load_params
-        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
+        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict', 'restore_global_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -453,7 +453,7 @@ class DBInterface(object):
 
             if ckpt_filename is not None:
                 # Determine which vars should be restored from the specified checkpoint.
-                restore_vars = self.get_restore_vars(ckpt_filename)
+                restore_vars = self.get_restore_vars(ckpt_filename, self.restore_global_step)
                 restore_names = [name for name, var in restore_vars.items()]
                 # remap the actually restored names
                 if self.load_param_dict:
@@ -499,7 +499,7 @@ class DBInterface(object):
             if self.var_manager:
                 self.sess.run(tf.group(*self.var_manager.get_post_init_ops()))
 
-    def get_restore_vars(self, save_file):
+    def get_restore_vars(self, save_file, restore_global_step=True):
         """Create the `var_list` init argument to tf.Saver from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
@@ -539,6 +539,9 @@ class DBInterface(object):
             restore_vars = load_var_dict
 
         restore_vars = self.filter_var_list(restore_vars)
+
+        if not self.restore_global_step:
+            restore_vars.pop('global_step')
 
         # These variables are stored in the checkpoint,
         # but do not appear in the current graph
