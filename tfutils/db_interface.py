@@ -483,7 +483,7 @@ class DBInterface(object):
                 unrestored_var_names = [\
                         name \
                         for name, var in self.var_list.items() \
-                        if name not in restore_names]
+                        if (name not in restore_names) and not(any([name.endswith(s) for s in OPTIMIZER_NAMES]))]
                 log.info('Unrestored Vars (in graph, not in ckpt):\n'
                          + str(unrestored_var_names))
                 self.sess.run(tf.variables_initializer(unrestored_vars))  # initialize variables not restored

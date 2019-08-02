@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
 
-OPTIMIZER_NAMES = ['Momentum', 'Adam', 'Adagrad', 'RMSProp']
+OPTIMIZER_NAMES = ['GradientDescent', 'Momentum', 'Adam', 'Adam_1', 'Adagrad', 'RMSProp']
 
 DEFAULT_TPU_ZONE = None
 DEFAULT_NUM_SHARDS = 8
