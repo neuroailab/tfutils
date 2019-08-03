@@ -420,6 +420,8 @@ class DBInterface(object):
         # already been done
         load = self.load_from_db({'exp_id': self.exp_id},
                                  cache_filters=True)
+        if load:
+            self.restore_global_step = True
         # if not, try loading from the loading location
         if not load and not self.sameloc:
             load = self.load_from_db(self.load_query,
@@ -453,7 +455,7 @@ class DBInterface(object):
 
             if ckpt_filename is not None:
                 # Determine which vars should be restored from the specified checkpoint.
-                restore_vars = self.get_restore_vars(ckpt_filename, self.restore_global_step)
+                restore_vars = self.get_restore_vars(ckpt_filename)
                 restore_names = [name for name, var in restore_vars.items()]
                 # remap the actually restored names
                 if self.load_param_dict:
@@ -499,7 +501,7 @@ class DBInterface(object):
             if self.var_manager:
                 self.sess.run(tf.group(*self.var_manager.get_post_init_ops()))
 
-    def get_restore_vars(self, save_file, restore_global_step=True):
+    def get_restore_vars(self, save_file):
         """Create the `var_list` init argument to tf.Saver from save_file.
 
         Extracts the subset of variables from tf.global_variables that match the
