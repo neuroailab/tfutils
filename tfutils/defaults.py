@@ -32,7 +32,8 @@ DEFAULT_LOAD_PARAMS = frozendict(
         {'do_restore': True, 
          'from_ckpt': None, 
          'to_restore': None, 
-         'load_param_dict': None})
+         'load_param_dict': None,
+         'restore_global_step': True})
 
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 

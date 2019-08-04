@@ -340,7 +340,7 @@ class DBInterface(object):
             setattr(self, _k, save_params.get(_k, DEFAULT_SAVE_PARAMS[_k]))
 
         # Set some attributes only in load_params
-        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict']:
+        for _k in ['do_restore', 'from_ckpt', 'to_restore', 'load_param_dict', 'restore_global_step']:
             setattr(self, _k, load_params.get(_k, DEFAULT_LOAD_PARAMS[_k]))
 
         self.rec_to_save = None
@@ -420,6 +420,8 @@ class DBInterface(object):
         # already been done
         load = self.load_from_db({'exp_id': self.exp_id},
                                  cache_filters=True)
+        if load:
+            self.restore_global_step = True
         # if not, try loading from the loading location
         if not load and not self.sameloc:
             load = self.load_from_db(self.load_query,
@@ -539,6 +541,9 @@ class DBInterface(object):
             restore_vars = load_var_dict
 
         restore_vars = self.filter_var_list(restore_vars)
+
+        if not self.restore_global_step:
+            restore_vars.pop('global_step')
 
         # These variables are stored in the checkpoint,
         # but do not appear in the current graph
