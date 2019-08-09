@@ -454,6 +454,11 @@ class DBInterface(object):
                     ckpt_filename = None
 
             if ckpt_filename is not None:
+                # initialize local and global variables
+                init_op_global = tf.global_variables_initializer()
+                self.sess.run(init_op_global)
+                init_op_local = tf.local_variables_initializer()
+                self.sess.run(init_op_local)                
                 # Determine which vars should be restored from the specified checkpoint.
                 restore_vars = self.get_restore_vars(ckpt_filename)
                 restore_names = [name for name, var in restore_vars.items()]
