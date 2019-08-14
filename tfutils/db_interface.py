@@ -457,13 +457,12 @@ class DBInterface(object):
                 # Determine which vars should be restored from the specified checkpoint.
                 restore_vars = self.get_restore_vars(ckpt_filename)
                 restore_names = [name for name, var in restore_vars.items()]
-                # remap the actually restored names
+                # remap the actually restored names to the new ones
                 if self.load_param_dict:
-                    new_restore_names = []
-                    for each_old_name in restore_names:
-                        new_restore_names.append(
-                                self.load_param_dict[each_old_name])
-                    restore_names = new_restore_names
+                    for each_old_name in self.load_param_dict.keys():
+                        if each_old_name in restore_names:
+                            restore_names.remove(each_old_name)
+                            restore_names.append(self.load_param_dict[each_old_name])
 
                 # Actually load the vars.
                 log.info('Restored Vars (in ckpt, in graph):\n'
@@ -528,17 +527,14 @@ class DBInterface(object):
 
         # Specify which vars are to be restored vs. reinitialized.
         all_vars = self.var_list
-        if not self.load_param_dict:
-            restore_vars = {
-                    name: var for name, var in all_vars.items() \
-                            if name in var_shapes}
-        else:
+        restore_vars = {
+                name: var for name, var in all_vars.items() \
+                        if name in var_shapes}
+        if self.load_param_dict:
             # associate checkpoint names with actual variables
-            load_var_dict = {}
             for ckpt_var_name, curr_var_name in self.load_param_dict.items():
                 if curr_var_name in all_vars:
-                    load_var_dict[ckpt_var_name] = all_vars[curr_var_name]
-            restore_vars = load_var_dict
+                    restore_vars[ckpt_var_name] = all_vars[curr_var_name]
 
         restore_vars = self.filter_var_list(restore_vars)
 
