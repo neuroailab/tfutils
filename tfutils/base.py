@@ -434,18 +434,14 @@ class DBInterface(object):
             all_vars = strip_prefix(self.params['model_params']['prefix'], all_vars)
 
         # Specify which vars are to be restored vs. reinitialized.
-        if self.load_param_dict is None:
-            restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
-        else:
+        restore_vars = {name: var for name, var in all_vars.items() if name in mapped_var_shapes}
+        if self.load_param_dict is not None:
             # associate checkpoint names with actual variables
-            load_var_dict = {}
             for ckpt_var_name, curr_var_name in self.load_param_dict.items():
                 for curr_name, curr_var in all_vars.items():
                     if curr_name == curr_var_name:
-                        load_var_dict[ckpt_var_name] = curr_var
+                        restore_vars[ckpt_var_name] = curr_var
                         break
-
-            restore_vars = load_var_dict
 
         restore_vars = self.filter_var_list(restore_vars)
 
