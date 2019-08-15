@@ -131,8 +131,9 @@ class TestDBInterface(unittest.TestCase):
 
         self.log.info('restore_vars:')
         for name, var in restore_vars.items():
-            self.log.info('(name, var.name): ({}, {})'.format(name, var.name))
-            self.assertEqual(var.op.name, mapping[name])
+            if name in mapping.keys():
+                self.log.info('(name, var.name): ({}, {})'.format(name, var.name))
+                self.assertEqual(var.op.name, mapping[name])
 
     def test_filter_var_list(self):
 
