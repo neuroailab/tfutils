@@ -54,6 +54,7 @@ def mean_and_reg_loss(loss, which_device):
         valid_reg_losses = filter(
                 lambda v: curr_name_scope in v.name, 
                 reg_losses)
+        valid_reg_losses = list(valid_reg_losses)
         l2_loss = tf.add_n(valid_reg_losses)
         loss += l2_loss
 
