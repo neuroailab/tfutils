@@ -138,7 +138,11 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                             output, which_gpu,
                             update_ops, var_manager,
                             name_scope, tower_opts[which_gpu])
-                    tower_losses.append(loss)
+                    if isinstance(loss, list): # it means we are in multi-optimizer mode, so the intention is to sum this list
+                        summed_loss = tf.add_n(loss)
+                        tower_losses.append(summed_loss)
+                    else:
+                        tower_losses.append(loss)
                     tower_grads.append(grad)
 
         model_params = new_model_params
