@@ -39,38 +39,39 @@ class ClipOptimizer(object):
 
     Args:
         optimizer_class: Returned value of this function should have `compute_gradients` and `apply_gradients` methods.
+        Alternatively, it will be a list, where each element is the optimizer_class.
         clip (bool, optional): Default is True, clipping by `[-1, 1]`.
 
     """
     def __init__(
-            self, optimizer_classes, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
+            self, optimizer_class, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
             trainable_scope=None, optimizer_args=None, optimizer_kwargs=None):
 
-        if not isinstance(optimizer_classes, list):
-            self._optimizer_classes = [optimizer_classes]
+        if not isinstance(optimizer_class, list):
+            self._optimizer_class = [optimizer_class]
         else:
-            self._optimizer_classes = optimizer_classes
+            self._optimizer_class = optimizer_class
 
         if optimizer_args is None:
-            self._optimizer_args = [{}]*len(self._optimizer_classes)
+            self._optimizer_args = [{}]*len(self._optimizer_class)
         elif not isinstance(optimizer_args, list):
-            assert(len(self._optimizer_classes) == 1)
+            assert(len(self._optimizer_class) == 1)
             self._optimizer_args = [optimizer_args]
         else:
             self._optimizer_args = optimizer_args
-        assert(len(self._optimizer_classes) == len(self._optimizer_args))
+        assert(len(self._optimizer_class) == len(self._optimizer_args))
 
         if optimizer_kwargs is None:
-            self._optimizer_kwargs = [{}]*len(self._optimizer_classes)
+            self._optimizer_kwargs = [{}]*len(self._optimizer_class)
         elif not isinstance(optimizer_kwargs, list):
-            assert(len(self._optimizer_classes) == 1)
+            assert(len(self._optimizer_class) == 1)
             self._optimizer_kwargs = [optimizer_kwargs]
         else:
             self._optimizer_kwargs = optimizer_kwargs
-        assert(len(self._optimizer_classes) == len(self._optimizer_kwargs))
+        assert(len(self._optimizer_class) == len(self._optimizer_kwargs))
 
         self._optimizers = []
-        for opt_idx, opt_cls in enumerate(self._optimizer_classes):
+        for opt_idx, opt_cls in enumerate(self._optimizer_class):
             curr_opt_args = self._optimizer_args[opt_idx]
             curr_opt_kwargs = self._optimizer_kwargs[opt_idx]
             curr_opt_func = opt_cls(*curr_opt_args, **curr_opt_kwargs)
@@ -102,7 +103,7 @@ class ClipOptimizer(object):
         # freeze all variables except those with self.trainable_scope in their names
         if not isinstance(loss, list):
             loss = [loss]
-        assert(len(loss) == len(self._optimizer_classes))
+        assert(len(loss) == len(self._optimizer_class))
 
         if self.trainable_scope is not None:
             new_var_list = [v for v in var_list if any([nm in v.name for nm in self.trainable_scope])]
@@ -160,7 +161,7 @@ class ClipOptimizer(object):
                 internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
-        assert(len(grads_and_vars) == len(self._optimizer_classes)) # make sure it is consistent
+        assert(len(grads_and_vars) == len(self._optimizer_class)) # make sure it is consistent
         optimize_op_list = []
         for opt_idx, curr_opt_func in enumerate(self._optimizers):
             optimize = curr_opt_func.apply_gradients(grads_and_vars[opt_idx],
@@ -249,7 +250,7 @@ class MinibatchOptimizer(object):
             return tf.no_op(), minibatch_grads
 
         if self._multi_mode: # list of lists, grads and vars per optimizer
-            assert(len(minibatch_grads) == len(self._optimizer._optimizer_classes))
+            assert(len(minibatch_grads) == len(self._optimizer._optimizer_class))
             for opt_idx, curr_mb_gv in enumerate(minibatch_grads):
                 self._consistency_check(curr_mb_gv)
 
@@ -302,7 +303,7 @@ class MinibatchOptimizer(object):
 
         # Zero the stored grads if needed
         if self.grads_and_vars is not None:
-            assert(len(self.grads_and_vars) == len(self._optimizer._optimizer_classes))
+            assert(len(self.grads_and_vars) == len(self._optimizer._optimizer_class))
             with tf.control_dependencies([optimize]):
                 if self._multi_mode:
                     reset_ops = []

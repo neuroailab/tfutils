@@ -264,7 +264,7 @@ def test_distributed_training():
     optimizer_params = {'func': optimizer.ClipOptimizer,
                         'optimizer_class': tf.train.MomentumOptimizer,
                         'clip': True,
-                        'momentum': 0.9}
+                        'optimizer_kwargs':{'momentum': 0.9}}
 
     load_params = {'do_restore': True}
 
