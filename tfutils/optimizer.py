@@ -43,14 +43,44 @@ class ClipOptimizer(object):
 
     """
     def __init__(
-            self, optimizer_class, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
-            trainable_scope=None, *optimizer_args, **optimizer_kwargs):
-        self._optimizer = optimizer_class(*optimizer_args, **optimizer_kwargs)
-        # The optimizer needs to have these required methods
-        required_methods = ['compute_gradients', 'apply_gradients']
-        for required_method in required_methods:
-            assert required_method in dir(self._optimizer), \
-                    "Your optimizer needs to have method %s!" % required_method
+            self, optimizer_classes, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
+            trainable_scope=None, optimizer_args=None, optimizer_kwargs=None):
+
+        if not isinstance(optimizer_classes, list):
+            self._optimizer_classes = [optimizer_classes]
+        else:
+            self._optimizer_classes = optimizer_classes
+
+        if optimizer_args is None:
+            self._optimizer_args = [{}]*len(self._optimizer_classes)
+        elif not isinstance(optimizer_args, list):
+            assert(len(self._optimizer_classes) == 1)
+            self._optimizer_args = [optimizer_args]
+        else:
+            self._optimizer_args = optimizer_args
+        assert(len(self._optimizer_classes) == len(self._optimizer_args))
+
+        if optimizer_kwargs is None:
+            self._optimizer_kwargs = [{}]*len(self._optimizer_classes)
+        elif not isinstance(optimizer_kwargs, list):
+            assert(len(self._optimizer_classes) == 1)
+            self._optimizer_kwargs = [optimizer_kwargs]
+        else:
+            self._optimizer_kwargs = optimizer_kwargs
+        assert(len(self._optimizer_classes) == len(self._optimizer_kwargs))
+
+        self._optimizers = []
+        for opt_idx, opt_cls in enumerate(self._optimizer_classes):
+            curr_opt_args = self._optimizer_args[opt_idx]
+            curr_opt_kwargs = self._optimizer_kwargs[opt_idx]
+            curr_opt_func = opt_cls(*curr_opt_args, **curr_opt_kwargs)
+            self._optimizers.insert(opt_idx, curr_opt_func)
+
+            # The optimizer needs to have these required methods
+            required_methods = ['compute_gradients', 'apply_gradients']
+            for required_method in required_methods:
+                assert required_method in dir(curr_opt_func), \
+                        "Your optimizer needs to have method %s!" % required_method
 
         self.clip = clip
         self.clipping_method = clipping_method
@@ -70,6 +100,10 @@ class ClipOptimizer(object):
 
         """
         # freeze all variables except those with self.trainable_scope in their names
+        if not isinstance(loss, list):
+            loss = [loss]
+        assert(len(loss) == len(self._optimizer_classes))
+
         if self.trainable_scope is not None:
             new_var_list = [v for v in var_list if any([nm in v.name for nm in self.trainable_scope])]
             if len(new_var_list):
@@ -81,30 +115,35 @@ class ClipOptimizer(object):
             num_trainable_params = sum([np.prod(v.shape.as_list()) for v in var_list])
             log.info("Number of Trainable Parameters: %d" % num_trainable_params)
 
-        gvs = self._optimizer.compute_gradients(loss, var_list=var_list,
-                                                *args, **kwargs)
+        gvs_list = []
+        for opt_idx, curr_opt_func in enumerate(self._optimizers):
 
-        if self.clip:
-            if self.clipping_method == "value":
-                # gradient clipping. Some gradients returned are 'None' because
-                # no relation between the variable and loss; so we skip those.
-                gvs = [(tf.clip_by_value(grad, -self.clipping_value, self.clipping_value), var)
-                        for grad, var in gvs if grad is not None]
-            elif self.clipping_method == "norm":
-                print("USING GLOBAL NORM CLIPPING with clip_value %.2f" % self.clipping_value)
-                gradients, variables = zip(*gvs)
-                norm = tf.global_norm(gradients)
-                if self.print_global_norm:
-                    norm = tf.Print(norm, [norm], message="grad_global_norm")
-                true_fn = lambda: tf.constant(1.0)
-                false_fn = lambda: tf.identity(norm)
-                norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)                
-                gradients, global_norm = tf.clip_by_global_norm(gradients, self.clipping_value,
-                        use_norm=norm)
-                gvs = zip(gradients, variables)
-            else:
-                raise ValueError("optimizer.clip = True but you didn't specify a valid method in ['value', 'norm']")
-        return gvs
+            gvs = curr_opt_func.compute_gradients(loss[opt_idx], var_list=var_list,
+                                                    *args, **kwargs)
+            if self.clip:
+                if self.clipping_method == "value":
+                    # gradient clipping. Some gradients returned are 'None' because
+                    # no relation between the variable and loss; so we skip those.
+                    gvs = [(tf.clip_by_value(grad, -self.clipping_value, self.clipping_value), var)
+                            for grad, var in gvs if grad is not None]
+                elif self.clipping_method == "norm":
+                    print("USING GLOBAL NORM CLIPPING with clip_value %.2f" % self.clipping_value)
+                    gradients, variables = zip(*gvs)
+                    norm = tf.global_norm(gradients)
+                    if self.print_global_norm:
+                        norm = tf.Print(norm, [norm], message="grad_global_norm")
+                    true_fn = lambda: tf.constant(1.0)
+                    false_fn = lambda: tf.identity(norm)
+                    norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)                
+                    gradients, global_norm = tf.clip_by_global_norm(gradients, self.clipping_value,
+                            use_norm=norm)
+                    gvs = zip(gradients, variables)
+                else:
+                    raise ValueError("optimizer.clip = True but you didn't specify a valid method in ['value', 'norm']")
+
+            gvs_list.insert(opt_idx, gvs)
+
+        return gvs_list
 
     def apply_gradients(self, grads_and_vars, global_step=None, name=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
@@ -121,11 +160,15 @@ class ClipOptimizer(object):
                 internal gradient zeroing operation to `self.grads_and_vars`.
 
         """
-        optimize = self._optimizer.apply_gradients(grads_and_vars,
+        assert(len(grads_and_vars) == len(self._optimizer_classes)) # make sure it is consistent
+        optimize_op_list = []
+        for opt_idx, curr_opt_func in enumerate(self._optimizers):
+            optimize = curr_opt_func.apply_gradients(grads_and_vars[opt_idx],
                                                    global_step=global_step,
                                                    name=name)
-        return optimize
+            optimize_op_list.insert(opt_idx, optimize)
 
+        return tf.group(*optimize_op_list)
 
 class MinibatchOptimizer(object):
     """A wrapper used by tfutils for general optimizers.
@@ -144,6 +187,15 @@ class MinibatchOptimizer(object):
                     "Your optimizer needs to have method %s!" % required_method
 
         self.grads_and_vars = None
+        self._multi_mode = (type(self._optimizer).__name__ == 'ClipOptimizer') # list of lists, grads and vars per optimizer in this case
+
+    def filter_none_vars(self, gvs):
+        gvs_wo_none = []
+        for grad, var in gvs:
+            if grad is not None:
+                gvs_wo_none.append([grad, var])
+        self.var_list = [each_var for _, each_var in gvs_wo_none] #Note: in multioptimizer case, this will be called multiple times, but the vars will be the same
+        return gvs_wo_none
 
     def compute_gradients(self, loss, *args, **kwargs):
         gvs = self._optimizer.compute_gradients(
@@ -151,13 +203,44 @@ class MinibatchOptimizer(object):
                 *args, **kwargs)
         # Get the variables to update from results of compute_gradients
         # filter out the variables with None
-        gvs_wo_none = []
-        for grad, var in gvs:
-            if grad is not None:
-                gvs_wo_none.append([grad, var])
-        gvs = gvs_wo_none
-        self.var_list = [each_var for _, each_var in gvs]
-        return gvs
+        
+        if self._multi_mode: # list of lists, grads and vars per optimizer
+            gvs_wo_none = []
+            for opt_idx, curr_gv in enumerate(gvs):
+                curr_gv_wo_none = self.filter_none_vars(curr_gv)
+                gvs_wo_none.insert(opt_idx, curr_gv_wo_none)
+        else:
+            gvs_wo_none = self.filter_none_vars(gvs)
+        return gvs_wo_none
+
+    def _consistency_check(self, curr_mb_gv):
+        # Make sure that the var_list is the same variable list with
+        # that in minibatch_grads
+        assert len(curr_mb_gv) == len(self.var_list), \
+                "Variable list length not matched!"
+        assert all((\
+                var_g.name == var_l.name \
+                for (_, var_g), var_l in zip(curr_mb_gv, self.var_list))),\
+                "Variable list should have the same variables!" 
+
+    def _zero_gvs(self):
+        zero_gvs = [(
+                    tf.Variable(
+                        tf.zeros_like(var.initialized_value()),
+                        dtype=tf.float32,
+                        trainable=False,
+                        name=NON_SAVE_SUFFIX,
+                        ),
+                    var) for var in self.var_list]
+        return zero_gvs
+
+    def _mini_ops(self, grads_and_vars, minibatch_grads, num_minibatches=1):
+        mini_ops = []
+        for (grad_v, _), (mini_grad, _) \
+                in zip(grads_and_vars, minibatch_grads):
+            mini_ops.append(
+                    tf.assign_add(grad_v, mini_grad / num_minibatches))
+        return mini_ops
 
     def accumulate_gradients(self, minibatch_grads, num_minibatches=1):
         """Accumulate gradients for `num_minibatches` minibatches."""
@@ -165,32 +248,38 @@ class MinibatchOptimizer(object):
             # No need for accumulating
             return tf.no_op(), minibatch_grads
 
-        # Make sure that the var_list is the same variable list with
-        # that in minibatch_grads
-        assert len(minibatch_grads) == len(self.var_list), \
-                "Variable list length not matched!"
-        assert all((\
-                var_g.name == var_l.name \
-                for (_, var_g), var_l in zip(minibatch_grads, self.var_list))),\
-                "Variable list should have the same variables!"
-        if self.grads_and_vars is None:
-            self.grads_and_vars = [(
-                tf.Variable(
-                    tf.zeros_like(var.initialized_value()),
-                    dtype=tf.float32,
-                    trainable=False,
-                    name=NON_SAVE_SUFFIX,
-                    ),
-                var) for var in self.var_list]
+        if self._multi_mode: # list of lists, grads and vars per optimizer
+            assert(len(minibatch_grads) == len(self._optimizer._optimizer_classes))
+            for opt_idx, curr_mb_gv in enumerate(minibatch_grads):
+                self._consistency_check(curr_mb_gv)
 
-        mini_ops = []
-        for (grad_v, _), (mini_grad, _) \
-                in zip(self.grads_and_vars, minibatch_grads):
-            mini_ops.append(
-                    tf.assign_add(grad_v, mini_grad / num_minibatches))
-        mnb_accu_grad = tf.group(*mini_ops)
+            if self.grads_and_vars is None:
+                zero_gvs_list = []
+                for opt_idx, _ in enumerate(minibatch_grads):
+                    zero_gvs_list.insert(opt_idx, self._zero_gvs())
+                self.grads_and_vars = zero_gvs_list
+
+            mini_ops_list = []
+            for opt_idx, curr_mb_gv in enumerate(minibatch_grads):
+                curr_mini_ops = self._mini_ops(grads_and_vars=self.grads_and_vars[opt_idx], minibatch_grads=curr_mb_gv, num_minibatches=num_minibatches)
+                mini_ops_list.extend(curr_mini_ops)
+            mnb_accu_grad = tf.group(*mini_ops_list)
+
+        else:
+            self._consistency_check(minibatch_grads)
+            if self.grads_and_vars is None:
+                self.grads_and_vars = self._zero_gvs()
+
+            mini_ops = self._mini_ops(grads_and_vars=self.grads_and_vars, minibatch_grads=minibatch_grads, num_minibatches=num_minibatches)
+            mnb_accu_grad = tf.group(*mini_ops)
 
         return mnb_accu_grad, self.grads_and_vars
+
+    def _reset_grads(self, grads_and_vars):
+        reset_ops = []
+        for grad_v, _ in grads_and_vars:
+            reset_ops.append(tf.assign(grad_v, tf.zeros(grad_v.shape)))
+        return reset_ops
 
     def apply_gradients(self, grads_and_vars, global_step=None):
         """Apply gradients to model variables specified in `grads_and_vars`.
@@ -213,10 +302,15 @@ class MinibatchOptimizer(object):
 
         # Zero the stored grads if needed
         if self.grads_and_vars is not None:
+            assert(len(self.grads_and_vars) == len(self._optimizer._optimizer_classes))
             with tf.control_dependencies([optimize]):
-                reset_ops = []
-                for grad_v, _ in self.grads_and_vars:
-                    reset_ops.append(tf.assign(grad_v, tf.zeros(grad_v.shape)))
+                if self._multi_mode:
+                    reset_ops = []
+                    for opt_idx, _ in enumerate(self.grads_and_vars):
+                        curr_reset_ops = self._reset_grads(grads_and_vars=self.grads_and_vars[opt_idx])
+                        reset_ops.extend(curr_reset_ops)
+                else:
+                    reset_ops = self._reset_grads(grads_and_vars=self.grads_and_vars)
                 reset_act = tf.group(*reset_ops)
             return reset_act
 
