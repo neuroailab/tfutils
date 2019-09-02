@@ -149,11 +149,12 @@ class VariableMgrLocalReplicated(VariableMgr):
         all_warmup_ops = []
         for grads_to_reduce in map(list, zip(*all_grads_to_reduce)): # each grads_to_reduce is the grads per optimizer across all devices
             curr_reduced_grads, curr_warmup_ops = algorithm.batch_all_reduce(grads_to_reduce)
-            all_reduced_grads.append(curr_reduced_grads)
+            all_reduced_grads.append(curr_reduced_grads) # nested list of lists of reduced grads per device, for a given optimizer
             all_warmup_ops.extend(curr_warmup_ops)
+            
         self._warmup_ops = all_warmup_ops
-
         reduced_grads = map(list, zip(*all_reduced_grads)) # map back to gradients for each optimizer across each device
+
         # add back variables
         reduced_device_grads = [[[
             (g, v) for g, (_, v) in zip(grads, grad_vars)
