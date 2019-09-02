@@ -70,7 +70,8 @@ def tearDownModule():
 
 class TestBase(unittest.TestCase):
 
-    port = int(os.environ.get('TFUTILS_TEST_PORT', 29101))
+#    port = int(os.environ.get('TFUTILS_TEST_PORT', 29101))
+    port = int(os.environ.get('TFUTILS_TEST_PORT', 28012))
     host = 'localhost'
     database_name = '_tfutils'
 

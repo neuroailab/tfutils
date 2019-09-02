@@ -43,7 +43,8 @@ def tearDownModule():
 
 class TestDBInterface(unittest.TestCase):
 
-    PORT = 29101
+#    PORT = 29101
+    PORT = 28012
     HOST = 'localhost'
     EXP_ID = 'TEST_EXP_ID'
     DATABASE_NAME = 'TFUTILS_TESTDB'
