@@ -80,7 +80,7 @@ class ClipOptimizer(object):
         self._optimizers = []
         for opt_idx, opt_cls in enumerate(self._optimizer_class):
             curr_opt_args = self._optimizer_args[opt_idx]
-            curr_opt_kwargs = self._optimizer_kwargs[opt_idx]
+            curr_opt_kwargs = copy.deepcopy(self._optimizer_kwargs[opt_idx])
             curr_opt_kwargs['learning_rate'] = self._learning_rate[opt_idx]
             curr_opt_func = opt_cls(*curr_opt_args, **curr_opt_kwargs)
             self._optimizers.insert(opt_idx, curr_opt_func)
