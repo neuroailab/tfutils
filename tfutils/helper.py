@@ -97,6 +97,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
             tower_losses = []
             tower_grads = []
             tower_opts = []
+            opt_multi_mode = False
 
             param['learning_rate_params'], learning_rate \
                     = get_learning_rate(
@@ -115,6 +116,9 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                                     param['train_params'].get('include_global_step'),
                                     param['optimizer_params'])
                     tower_opts.append(optimizer_base)
+                    if hasattr(optimizer_base, '_multi_mode'):
+                        if optimizer_base._multi_mode:
+                            opt_multi_mode = True
 
         # Distribute graph across desired devices.
         update_ops = []
@@ -159,7 +163,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
             with tf.variable_scope(variable_mgr.OPTIMIZER_NAME_SCOPE):
                 mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
                         var_manager, trarg,
-                        tower_grads, tower_opts)
+                        tower_grads, tower_opts, opt_multi_mode=opt_multi_mode)
             mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
             # Prepare train_targets
@@ -285,12 +289,12 @@ def get_loss_grad_updt(
     return loss, grad, update_ops, param
 
 
-def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
+def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts, opt_multi_mode):
     # Aggregate and accumulate gradients.
     ## This is setting the devices where each gradient will be summed across
     ## all gpus
     apply_gradient_devices, gradient_state = (
-            var_manager.preprocess_device_grads(tower_grads))
+            var_manager.preprocess_device_grads(tower_grads, opt_multi_mode=opt_multi_mode))
 
     ## mnb_accu_updt_list includes ops doing one minibatch,
     ## which includes accumulating gradients for this minibatch and
