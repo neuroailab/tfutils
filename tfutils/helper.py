@@ -170,7 +170,11 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
             trarg['train_targets']['loss'] = loss
             trarg['train_targets']['__grads__'] = mnb_accu_updt_list
             trarg['train_targets']['optimizer'] = optimizer_list
-            trarg['train_targets']['learning_rate'] = learning_rate
+            if isinstance(learning_rate, list):
+                for lr_idx, lr in enumerate(learning_rate):
+                    trarg['train_targets']['learning_rate_' + str(lr_idx)] = lr
+            else:
+                trarg['train_targets']['learning_rate'] = learning_rate
 
             param['model_params'] = model_params
             return model_params, output, param, trarg, var_manager
