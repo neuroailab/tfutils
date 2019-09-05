@@ -81,7 +81,10 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
 
     with tf.variable_scope(model_prefix):
         tower_outputs = []
-        multi_gpu_inputs = split_input(inputs, num_gpus)
+        if 'external_split' in model_params and model_params['external_split']:
+            multi_gpu_inputs = inputs
+        else:
+            multi_gpu_inputs = split_input(inputs, num_gpus)
 
         # DEFAULT: Prepare loss and optimizer if training.
         if model_params['train']:
@@ -200,7 +203,7 @@ def get_optimizer(
         optimizer_base = MinibatchOptimizer(
             optimizer=optimizer,
             learning_rate=learning_rate,
-            global_step=global_step, 
+            global_step=global_step,
             **optimizer_params)
     else:
         optimizer_base = MinibatchOptimizer(
@@ -344,7 +347,7 @@ def get_loss_base(
         if '_sentinel' not in loss_func_args:
             # Usual way to call the loss function:
             #   outputs will be sent as first parameter, labels will be unpacked
-            if labels_to_dict: 
+            if labels_to_dict:
                 # put labels in dictionary for certain function signatures
                 loss_func_kwargs['labels'] = [inputs[t] for t in pred_targets]
                 labels = []
