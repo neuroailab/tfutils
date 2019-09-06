@@ -44,8 +44,10 @@ class ClipOptimizer(object):
 
     """
     def __init__(
-            self, optimizer_class, learning_rate, clip=True, clipping_method='value', clipping_value=1.0, print_global_norm=False,
-            trainable_scope=None, optimizer_args=None, optimizer_kwargs=None):
+            self, optimizer_class, learning_rate, global_step=None, 
+            clip=True, clipping_method='value', clipping_value=1.0, 
+            print_global_norm=False, trainable_scope=None, 
+            optimizer_args=None, optimizer_kwargs=None):
 
         if not isinstance(optimizer_class, list):
             self._optimizer_class = [optimizer_class]
@@ -82,6 +84,9 @@ class ClipOptimizer(object):
             curr_opt_args = self._optimizer_args[opt_idx]
             curr_opt_kwargs = copy.deepcopy(self._optimizer_kwargs[opt_idx])
             curr_opt_kwargs['learning_rate'] = self._learning_rate[opt_idx]
+            if self._optimizer_kwargs[opt_idx].get('include_global_step', False):
+            	curr_opt_kwargs.pop('include_global_step', None)
+            	curr_opt_kwargs['global_step'] = global_step
             curr_opt_func = opt_cls(*curr_opt_args, **curr_opt_kwargs)
             self._optimizers.insert(opt_idx, curr_opt_func)
 
