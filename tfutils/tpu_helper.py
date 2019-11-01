@@ -3,13 +3,13 @@ import tensorflow as tf
 from tfutils.db_interface import DBInterface
 from tfutils.helper import log
 from tfutils.optimizer import ClipOptimizer
+from tfutils.tpu_optimizer import MultiCrossShardOptimizer
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP, DEFAULT_TPU_LOSS_PARAMS
 
 # tpu and estimator imports
 from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator
 from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 
 def train_estimator(cls,
                     param,
@@ -222,7 +222,7 @@ def create_train_estimator_fn(use_tpu,
                 opt_func = old_opt_func
 
             log.info('Passing optimizer class to CrossShardOptimizer')
-            optimizer_base = tpu_optimizer.CrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
+            optimizer_base = MultiCrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
