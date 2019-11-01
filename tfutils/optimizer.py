@@ -203,12 +203,21 @@ class MinibatchOptimizer(object):
         self.grads_and_vars = None
         self._multi_mode = (type(self._optimizer).__name__ == 'ClipOptimizer') # list of lists, grads and vars per optimizer in this case
 
-    def filter_none_vars(self, gvs):
+    def filter_none_vars(self, gvs, opt_idx=None):
         gvs_wo_none = []
         for grad, var in gvs:
             if grad is not None:
                 gvs_wo_none.append([grad, var])
-        self.var_list = [each_var for _, each_var in gvs_wo_none] #Note: in multioptimizer case, this will be called multiple times, but the vars will be the same
+        curr_var_list = [each_var for _, each_var in gvs_wo_none]
+        if opt_idx is None:
+            self.var_list = curr_var_list
+        else:
+            if opt_idx == 0:
+                self.var_list = [curr_var_list]
+            elif opt_idx > 0:
+                self.var_list.insert(opt_idx, curr_var_list)
+            else:
+                raise ValueError
         return gvs_wo_none
 
     def compute_gradients(self, loss, *args, **kwargs):
@@ -221,23 +230,33 @@ class MinibatchOptimizer(object):
         if self._multi_mode: # list of lists, grads and vars per optimizer
             gvs_wo_none = []
             for opt_idx, curr_gv in enumerate(gvs):
-                curr_gv_wo_none = self.filter_none_vars(curr_gv)
+                curr_gv_wo_none = self.filter_none_vars(curr_gv, opt_idx=opt_idx)
                 gvs_wo_none.insert(opt_idx, curr_gv_wo_none)
         else:
             gvs_wo_none = self.filter_none_vars(gvs)
         return gvs_wo_none
 
-    def _consistency_check(self, curr_mb_gv):
+    def _consistency_check(self, curr_mb_gv, opt_idx=None):
         # Make sure that the var_list is the same variable list with
         # that in minibatch_grads
-        assert len(curr_mb_gv) == len(self.var_list), \
+        if opt_idx is None:
+            curr_var_list = self.var_list
+        else:
+            curr_var_list = self.var_list[opt_idx]
+
+        assert len(curr_mb_gv) == len(curr_var_list), \
                 "Variable list length not matched!"
         assert all((\
                 var_g.name == var_l.name \
-                for (_, var_g), var_l in zip(curr_mb_gv, self.var_list))),\
+                for (_, var_g), var_l in zip(curr_mb_gv, curr_var_list))),\
                 "Variable list should have the same variables!" 
 
-    def _zero_gvs(self):
+    def _zero_gvs(self, opt_idx=None):
+        if opt_idx is None:
+            curr_var_list = self.var_list
+        else:
+            curr_var_list = self.var_list[opt_idx]
+
         zero_gvs = [(
                     tf.Variable(
                         tf.zeros_like(var.initialized_value()),
@@ -245,7 +264,7 @@ class MinibatchOptimizer(object):
                         trainable=False,
                         name=NON_SAVE_SUFFIX,
                         ),
-                    var) for var in self.var_list]
+                    var) for var in curr_var_list]
         return zero_gvs
 
     def _mini_ops(self, grads_and_vars, minibatch_grads, num_minibatches=1):
@@ -265,12 +284,12 @@ class MinibatchOptimizer(object):
         if self._multi_mode: # list of lists, grads and vars per optimizer
             assert(len(minibatch_grads) == len(self._optimizer._optimizer_class))
             for opt_idx, curr_mb_gv in enumerate(minibatch_grads):
-                self._consistency_check(curr_mb_gv)
+                self._consistency_check(curr_mb_gv, opt_idx=opt_idx)
 
             if self.grads_and_vars is None:
                 zero_gvs_list = []
                 for opt_idx, _ in enumerate(minibatch_grads):
-                    zero_gvs_list.insert(opt_idx, self._zero_gvs())
+                    zero_gvs_list.insert(opt_idx, self._zero_gvs(opt_idx=opt_idx))
                 self.grads_and_vars = zero_gvs_list
 
             mini_ops_list = []
