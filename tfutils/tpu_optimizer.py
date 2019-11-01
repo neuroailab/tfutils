@@ -1,3 +1,4 @@
+from tensorflow.python.framework import ops
 from tensorflow.python.ops.losses import losses
 from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 from tensorflow.contrib.tpu.python.ops import tpu_ops
