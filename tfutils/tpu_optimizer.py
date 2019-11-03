@@ -1,6 +1,7 @@
 from tensorflow.python.framework import ops
 from tensorflow.python.ops.losses import losses
 from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
+from tensorflow.contrib.tpu.python.tpu import tpu_function
 from tensorflow.contrib.tpu.python.ops import tpu_ops
 
 class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
@@ -32,7 +33,7 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
                                                            num_shards)
 
         scaled_losses= []
-        for loss_idx, curr_loss in enummerate(loss):
+        for loss_idx, curr_loss in enumerate(loss):
             if num_shards > 1 and self._reduction == losses.Reduction.MEAN:
                 if self._group_assignment:
                     scale = 1.0 / subgroup_size
