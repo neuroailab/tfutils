@@ -22,6 +22,9 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
         Therefore, for each optimizer's loss, we multiply each loss by the
         scale
         """
+        if not isinstance(loss, list):
+            loss = [loss]
+
         num_shards = tpu_function.get_tpu_context().number_of_shards
         if num_shards is None:
             logging.warning(
@@ -53,6 +56,8 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
         Therefore, for each optimizer's grads and vars, we compute the
         cross_replica_sum of those gradients across replicas.
         """
+        if not isinstance(grads_and_vars, list):
+            grads_and_vars = [grads_and_vars]
 
         summed_grads_and_vars = []
         for opt_idx, curr_gv in enumerate(grads_and_vars):
@@ -86,6 +91,9 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
             aggregation_method=aggregation_method,
             colocate_gradients_with_ops=colocate_gradients_with_ops,
             grad_loss=grad_loss)
+
+        if not isinstance(grads_and_vars, list):
+            grads_and_vars = [grads_and_vars]
 
         for opt_idx, curr_gv in enumerate(grads_and_vars):
             curr_gv_wo_none = [v for g, v in curr_gv if g is not None]
