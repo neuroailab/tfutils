@@ -4,13 +4,13 @@ from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 from tensorflow.contrib.tpu.python.tpu import tpu_function
 from tensorflow.contrib.tpu.python.ops import tpu_ops
 
-class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
+class CrossShardMultiOptimizer(tpu_optimizer.CrossShardOptimizer):
     def __init__(self,
                  opt,
                  reduction=losses.Reduction.MEAN,
-                 name='MultiCrossShardOptimizer',
+                 name='CrossShardMultiOptimizer',
                  group_assignment=None):
-        super(MultiCrossShardOptimizer, self).__init__(opt,
+        super(CrossShardMultiOptimizer, self).__init__(opt,
                                            reduction=reduction,
                                            name=name,
                                            group_assignment=group_assignment)
@@ -35,7 +35,7 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
         num_shards = tpu_function.get_tpu_context().number_of_shards
         if num_shards is None:
             logging.warning(
-                    "CrossShardOptimizer should be used within a tpu_shard_context, but "
+                    "CrossShardMultiOptimizer should be used within a tpu_shard_context, but "
                     "got unset number_of_shards. Assuming 1.")
             num_shards = 1
 
