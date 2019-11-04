@@ -14,6 +14,16 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
                                            reduction=reduction,
                                            name=name,
                                            group_assignment=group_assignment)
+        self._multi_mode = (type(opt).__name__ == 'ClipOptimizer')
+
+    def _rescale_loss(self, loss, num_shards, subgroup_size):
+        if num_shards > 1 and self._reduction == losses.Reduction.MEAN:
+            if self._group_assignment:
+                scale = 1.0 / subgroup_size
+            else:
+                scale = 1.0 / num_shards
+            loss *= scale
+        return loss
 
     def compute_gradients(self, loss, var_list=None, **kwargs):
         """ This is adapted from:
@@ -22,9 +32,6 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
         Therefore, for each optimizer's loss, we multiply each loss by the
         scale
         """
-        if not isinstance(loss, list):
-            loss = [loss]
-
         num_shards = tpu_function.get_tpu_context().number_of_shards
         if num_shards is None:
             logging.warning(
@@ -35,17 +42,26 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
         subgroup_size = self._verify_and_get_subgroup_size(self._group_assignment,
                                                            num_shards)
 
-        scaled_losses= []
-        for loss_idx, curr_loss in enumerate(loss):
-            if num_shards > 1 and self._reduction == losses.Reduction.MEAN:
-                if self._group_assignment:
-                    scale = 1.0 / subgroup_size
-                else:
-                    scale = 1.0 / num_shards
-                curr_loss *= scale
-            scaled_losses.insert(loss_idx, curr_loss)
+        if self._multi_mode:
+            scaled_losses = []
+            for opt_idx, curr_loss in enumerate(loss):
+                scaled_loss = self._rescale_loss(curr_loss, num_shards, subgroup_size)
+                scaled_losses.insert(opt_idx, scaled_loss)
+        else:
+            scaled_losses = self._rescale_loss(loss, num_shards, subgroup_size)
 
         return self._opt.compute_gradients(scaled_losses, var_list=var_list, **kwargs)
+
+    def _cross_replica_sum(self, grads_and_vars):
+        summed_grads_and_vars = []
+        for (grad, var) in grads_and_vars:
+            if grad is None:
+                summed_grads_and_vars.append((grad, var))
+            else:
+                with ops.colocate_with(grad):
+                    summed_grads_and_vars.append((tpu_ops.cross_replica_sum(
+                            grad, self._group_assignment), var))
+        return summed_grads_and_vars
 
     def apply_gradients(self, grads_and_vars, global_step=None, name=None):
         """ This is adapted from:
@@ -56,23 +72,23 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
         Therefore, for each optimizer's grads and vars, we compute the
         cross_replica_sum of those gradients across replicas.
         """
-        if not isinstance(grads_and_vars, list):
-            grads_and_vars = [grads_and_vars]
-
-        summed_grads_and_vars = []
-        for opt_idx, curr_gv in enumerate(grads_and_vars):
-            curr_summed_grads_and_vars = []
-            for (grad, var) in curr_gv:
-                if grad is None:
-                    curr_summed_grads_and_vars.append((grad, var))
-                else:
-                    with ops.colocate_with(grad):
-                        curr_summed_grads_and_vars.append((tpu_ops.cross_replica_sum(
-                                grad, self._group_assignment), var))
-
-            summed_grads_and_vars.insert(opt_idx, curr_summed_grads_and_vars)
+        if self._multi_mode:
+            summed_grads_and_vars = []
+            for opt_idx, curr_gv in enumerate(grads_and_vars):
+                curr_summed_grads_and_vars = self._cross_replica_sum(curr_gv)
+                summed_grads_and_vars.insert(opt_idx, curr_summed_grads_and_vars)
+        else:
+            summed_grads_and_vars = self._cross_replica_sum(grads_and_vars)
 
         return self._opt.apply_gradients(summed_grads_and_vars, global_step, name)
+
+    def _check_no_gradients(self, grads_and_vars, loss):
+        curr_gv_wo_none = [v for g, v in grads_and_vars if g is not None]
+        if not curr_gv_wo_none:
+            raise ValueError(
+                "No gradients provided for any variable, check your graph for ops"
+                " that do not support gradients, between variables %s and loss %s." %
+                ([str(v) for _, v in grads_and_vars], loss))
 
     def minimize(self, loss, global_step=None, var_list=None,
                gate_gradients=1, aggregation_method=None,
@@ -92,16 +108,13 @@ class MultiCrossShardOptimizer(tpu_optimizer.CrossShardOptimizer):
             colocate_gradients_with_ops=colocate_gradients_with_ops,
             grad_loss=grad_loss)
 
-        if not isinstance(grads_and_vars, list):
-            grads_and_vars = [grads_and_vars]
-
-        for opt_idx, curr_gv in enumerate(grads_and_vars):
-            curr_gv_wo_none = [v for g, v in curr_gv if g is not None]
-            if not curr_gv_wo_none:
-              raise ValueError(
-                  "No gradients provided for any variable, check your graph for ops"
-                  " that do not support gradients, between variables %s and loss %s." %
-                  ([str(v) for _, v in curr_gv], loss[opt_idx]))
+        if self._multi_mode:
+            if not isinstance(loss, list):
+                loss = [loss]
+            for opt_idx, curr_gv in enumerate(grads_and_vars):
+                self._check_no_gradients(curr_gv, loss[opt_idx])
+        else:
+            self._check_no_gradients(grads_and_vars, loss)
 
         return self.apply_gradients(grads_and_vars, global_step=global_step,
                                     name=name)
