@@ -3,13 +3,13 @@ import tensorflow as tf
 from tfutils.db_interface import DBInterface
 from tfutils.helper import log
 from tfutils.optimizer import ClipOptimizer
+from tfutils.tpu_optimizer import CrossShardMultiOptimizer
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP, DEFAULT_TPU_LOSS_PARAMS
 
 # tpu and estimator imports
 from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator
 from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 
 def train_estimator(cls,
                     param,
@@ -35,7 +35,7 @@ def train_estimator(cls,
                 assert(steps_per_eval == save_filters_freq)
             else:
                 param['save_params']['save_filters_freq'] = steps_per_eval
-    train_fn = param['train_params']['data_params']['func'] 
+    train_fn = param['train_params']['data_params']['func']
 
     model_params = param['model_params']
     iterations_per_loop = model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP)
@@ -96,7 +96,7 @@ def train_estimator(cls,
 
         if need_val:
             eval_results = do_tpu_validation()
-    
+
     # sync with hosts
     res = []
     trarg['dbinterface'].sync_with_host()
@@ -129,8 +129,8 @@ def test_estimator(cls_dict,
         cls = cls_dict[valid_k]
         validation_data_params = param['validation_params'][valid_k]['data_params']
         # can use to filter particular params to save, if not there will set to None and all saved
-        filter_keys = param['validation_params'][valid_k].get('keys_to_save') 
-        session_hooks = param['validation_params'][valid_k].get('hooks') 
+        filter_keys = param['validation_params'][valid_k].get('keys_to_save')
+        session_hooks = param['validation_params'][valid_k].get('hooks')
         valid_fn = validation_data_params['func']
         log.info('Starting to evaluate ({}).'.format(valid_k))
         eval_results = cls.predict(
@@ -144,7 +144,7 @@ def test_estimator(cls_dict,
     # set validation only to be True to just save the results and not filters
     ttarg['dbinterface'].save(valid_res=m_predictions, validation_only=True)
     log.info('Done saving eval results to database.')
-    
+
     # sync with hosts
     res = []
     ttarg['dbinterface'].sync_with_host()
@@ -152,7 +152,7 @@ def test_estimator(cls_dict,
     # returning final eval results for convenience
     return eval_results, res
 
-def create_train_estimator_fn(use_tpu, 
+def create_train_estimator_fn(use_tpu,
                         model_params,
                         lr_params,
                         opt_params,
@@ -162,7 +162,7 @@ def create_train_estimator_fn(use_tpu,
     """
     Creates a model_fn for use with tf.Estimator for training and eval.
     """
-    # set up loss params 
+    # set up loss params
     loss_agg_func = loss_params.get('agg_func', DEFAULT_TPU_LOSS_PARAMS['agg_func'])
 
     loss_per_case_func = loss_params.get('loss_per_case_func', DEFAULT_TPU_LOSS_PARAMS['loss_per_case_func'])
@@ -202,10 +202,17 @@ def create_train_estimator_fn(use_tpu,
             logits = outputs[logit_key]
         else:
             logits = outputs
-            
+
         loss_args = (outputs, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
         loss = loss_agg_func(loss, **loss_agg_func_kwargs)
+
+        if isinstance(loss, list):
+            optimizer_loss = loss
+            spec_loss = tf.add_n(loss)
+        else:
+            optimizer_loss = loss
+            spec_loss = loss
 
         global_step = tf.train.get_global_step()
 
@@ -221,12 +228,12 @@ def create_train_estimator_fn(use_tpu,
                         'please use optimizer')
                 opt_func = old_opt_func
 
-            log.info('Passing optimizer class to CrossShardOptimizer')
-            optimizer_base = tpu_optimizer.CrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
+            log.info('Passing optimizer class to CrossShardMultiOptimizer')
+            optimizer_base = CrossShardMultiOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                train_op = optimizer_base.minimize(loss, global_step)
+                train_op = optimizer_base.minimize(optimizer_loss, global_step)
         else:
             train_op = None
 
@@ -268,26 +275,26 @@ def create_train_estimator_fn(use_tpu,
                        if kw != 'func':
                            # add any additional kwargs
                            kw_val = k_target[kw]
-                           k_metric_fn_kwargs[kw] = kw_val                       
+                           k_metric_fn_kwargs[kw] = kw_val
                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
                eval_metrics = eval_dict
 
         if use_tpu:
             return tpu_estimator.TPUEstimatorSpec(
               mode=mode,
-              loss=loss,
+              loss=spec_loss,
               train_op=train_op,
               eval_metrics=eval_metrics)
         else:
             return tf.estimator.EstimatorSpec(
                 mode=mode,
-                loss=loss,
+                loss=spec_loss,
                 train_op=train_op,
                 eval_metric_ops=eval_metrics)
 
     return model_fn, params_to_pass
 
-def create_test_estimator_fn(use_tpu, 
+def create_test_estimator_fn(use_tpu,
                         model_params,
                         target_params):
 
@@ -328,8 +335,8 @@ def create_test_estimator_fn(use_tpu,
                if kw != 'func':
                    # add any additional kwargs
                    kw_val = k_target[kw]
-                   k_metric_fn_kwargs[kw] = kw_val   
-           k_target_func = k_target.pop('func')                       
+                   k_metric_fn_kwargs[kw] = kw_val
+           k_target_func = k_target.pop('func')
            eval_dict['predictions'] = k_target_func(**k_metric_fn_kwargs)
            predictions = eval_dict
 
