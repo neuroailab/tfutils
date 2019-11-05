@@ -43,6 +43,8 @@ class CrossShardMultiOptimizer(tpu_optimizer.CrossShardOptimizer):
                                                            num_shards)
 
         if self._multi_mode:
+            if not isinstance(loss, list):
+                loss = [loss]
             scaled_losses = []
             for opt_idx, curr_loss in enumerate(loss):
                 scaled_loss = self._rescale_loss(curr_loss, num_shards, subgroup_size)
