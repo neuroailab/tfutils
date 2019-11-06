@@ -20,7 +20,6 @@ import os
 import sys
 import numpy as np
 
-
 def fetch_dataset(filename):
     """
     Useful util function for fetching records
@@ -243,7 +242,7 @@ class ImageNet(object):
             else:
                 inception_image_size = self.resize
 
-            import inception_preprocessing
+            import tfutils.inception_preprocessing as inception_preprocessing
             image = tf.image.decode_jpeg(image_string, channels=3)
             image = inception_preprocessing.preprocess_image(image,
                                                              is_training=self.is_train,
