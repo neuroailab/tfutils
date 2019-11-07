@@ -56,7 +56,7 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
                                      iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
                                      model_params=model_params)
 
-        estimator_classifier = tf.estimator.tpu.TPUEstimator(
+        estimator_classifier = tf.contrib.tpu.TPUEstimator(
                                     use_tpu=True,
                                     model_fn=estimator_fn,
                                     config=m_config,
