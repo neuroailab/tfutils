@@ -31,7 +31,7 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
     validation_params = param['validation_params']
     save_params = param['save_params']
     # set up estimator func
-    estimator_fn, params_to_pass = create_train_estimator_fn(use_tpu=use_tpu, 
+    estimator_fn, params_to_pass = create_train_estimator_fn(use_tpu=use_tpu,
                                        model_params=model_params,
                                        lr_params=lr_params,
                                        opt_params=opt_params,
@@ -47,22 +47,23 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
             eval_batch_size = None
         # grab tpu name and gcp, etc from model params
         m_config = create_train_tpu_config(model_dir=save_params.get('cache_dir', ''),
-                                     tpu_name=model_params.get('tpu_name', None), 
-                                     gcp_project=model_params.get('gcp_project', None), 
+                                     tpu_name=model_params.get('tpu_name', None),
+                                     gcp_project=model_params.get('gcp_project', None),
                                      steps_per_checkpoint=save_params.get('save_filters_freq', None),
-                                     tpu_zone=model_params.get('tpu_zone', DEFAULT_TPU_ZONE), 
+                                     tpu_zone=model_params.get('tpu_zone', DEFAULT_TPU_ZONE),
                                      num_shards=model_params.get('num_shards', DEFAULT_NUM_SHARDS),
                                      keep_checkpoint_max=save_params.get('checkpoint_max', 5),
                                      iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
                                      model_params=model_params)
 
-        estimator_classifier = tpu_estimator.TPUEstimator(
+        estimator_classifier = tf.estimator.tpu.TPUEstimator(
                                     use_tpu=True,
                                     model_fn=estimator_fn,
                                     config=m_config,
                                     train_batch_size=train_data_params['batch_size'],
                                     eval_batch_size=eval_batch_size,
-                                    params=params_to_pass)
+                                    params=params_to_pass,
+                                    export_to_tpu=False)
 
     else:
         estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn, params=params_to_pass)

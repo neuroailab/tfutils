@@ -273,7 +273,7 @@ def create_train_estimator_fn(use_tpu,
                eval_metrics = eval_dict
 
         if use_tpu:
-            return tpu_estimator.TPUEstimatorSpec(
+            return tf.contrib.tpu.TPUEstimatorSpec(
               mode=mode,
               loss=loss,
               train_op=train_op,
@@ -359,25 +359,26 @@ def create_train_tpu_config(model_dir,
             tpu=[tpu_name],
             zone=tpu_zone,
             project=gcp_project))
-    tpu_grpc_url = tpu_cluster_resolver.get_master()
+    tpu_grpc_url = tpu_cluster_resolver.get_master() # might not need this
 
     if iterations_per_loop == -1 or (steps_per_checkpoint is not None and steps_per_checkpoint < iterations_per_loop):
         log.info('Setting iterations_per_loop ({}) to be the same as steps_per_checkpoint ({}).'.format(iterations_per_loop, steps_per_checkpoint))
         iterations_per_loop = steps_per_checkpoint
         model_params['iterations_per_loop'] = iterations_per_loop
 
-    config = tpu_config.RunConfig(
-        master=tpu_grpc_url,
-        evaluation_master=tpu_grpc_url,
+    config = tf.estimator.tpu.RunConfig(
+        #master=tpu_grpc_url,
+        #evaluation_master=tpu_grpc_url,
+        cluster=tpu_cluster_resolver,
         model_dir=model_dir,
         save_checkpoints_steps=steps_per_checkpoint,
-        save_checkpoints_secs=None,
-        keep_checkpoint_max=keep_checkpoint_max,
-        log_step_count_steps=iterations_per_loop,
-        tpu_config=tpu_config.TPUConfig(
+        save_checkpoints_secs=None, # check
+        keep_checkpoint_max=keep_checkpoint_max, # check
+        log_step_count_steps=iterations_per_loop, # check
+        tpu_config=tf.estimator.tpu.TPUConfig(
             iterations_per_loop=iterations_per_loop,
             num_shards=num_shards,
-            per_host_input_for_training=tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2))
+            per_host_input_for_training=tf.estimator.tpu.InputPipelineConfig.PER_HOST_V2))
 
     return config
 
