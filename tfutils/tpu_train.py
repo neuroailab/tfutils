@@ -1,8 +1,19 @@
 import tensorflow as tf
 
+from tfutils.helper import log
 from tfutils.tpu_helper import create_train_estimator_fn, create_train_tpu_config, train_estimator
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP
-from tensorflow.contrib.tpu.python.tpu import tpu_estimator
+
+if tf.__version__ < '1.11':
+    # TF 1.9 and below
+    from tensorflow.contrib.tpu.python.tpu import tpu_estimator
+    tpu_estimator_lib = tpu_estimator
+elif tf.__version__ < '2':
+    # TF 1.11 and above
+    tpu_estimator_lib = tf.contrib.tpu
+else:
+    # TF 2.0 and above
+    tpu_estimator_lib = tf.estimator.tpu
 
 def tpu_train_from_params(params, train_args, use_tpu=False):
     """
@@ -55,18 +66,19 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
                             keep_checkpoint_max=save_params.get('checkpoint_max', 5),
                             iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
                             model_params=model_params)
-        train_estimator_classifier = tf.contrib.tpu.TPUEstimator(
+        train_estimator_classifier = tpu_estimator_lib.TPUEstimator(
                                     use_tpu=True,
                                     model_fn=estimator_fn,
                                     config=train_m_config,
                                     train_batch_size=train_data_params['batch_size'],
                                     eval_batch_size=eval_batch_size,
-                                    params=params_to_pass,
-                                    export_to_tpu=False)
+                                    params=params_to_pass)
         val_estimator_classifier = None
 
         if model_params.get('num_shards', DEFAULT_NUM_SHARDS) > 8:
-            print("You are running in pod mode")
+            log.info("You are training in pod mode")
+            log.info("Setting up validation on a single independent TPU device")
+            assert model_params.get('val_tpu_name') is not None
             val_m_config = create_train_tpu_config(model_dir=save_params.get('cache_dir', ''),
                                 tpu_name=model_params.get('val_tpu_name', None),
                                 gcp_project=model_params.get('gcp_project', None),
@@ -77,14 +89,13 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
                                 iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
                                 model_params=model_params)
 
-            val_estimator_classifier = tf.contrib.tpu.TPUEstimator(
+            val_estimator_classifier = tpu_estimator_lib.TPUEstimator(
                                         use_tpu=True,
                                         model_fn=estimator_fn,
                                         config=val_m_config,
                                         train_batch_size=train_data_params['batch_size'],
                                         eval_batch_size=eval_batch_size,
-                                        params=params_to_pass,
-                                        export_to_tpu=False)
+                                        params=params_to_pass)
 
     else:
         train_estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn,
