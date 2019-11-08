@@ -11,9 +11,12 @@ from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
 from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 
-def train_estimator(cls,
+def train_estimator(train_cls,
+                    eval_cls,
                     param,
                     trarg):
+    if eval_cls is None:
+        eval_cls = train_cls
 
     model_dir = param['save_params'].get('cache_dir', '')
     train_steps = param['train_params']['num_steps']
@@ -72,7 +75,7 @@ def train_estimator(cls,
     tpu_validate_first = param['train_params'].get('tpu_validate_first', False)
     def do_tpu_validation():
         log.info('Starting to evaluate.')
-        eval_results = cls.evaluate(
+        eval_results = eval_cls.evaluate(
           input_fn=valid_fn,
           hooks=valid_hooks,
           steps=valid_steps)
@@ -90,7 +93,7 @@ def train_estimator(cls,
                             train_steps)
 
         log.info('Training until step %d' % next_eval)
-        cls.train(
+        train_cls.train(
         input_fn=train_fn, max_steps=next_eval, hooks=train_hooks)
         current_step = next_eval
 
