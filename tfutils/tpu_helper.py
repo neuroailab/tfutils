@@ -6,14 +6,34 @@ from tfutils.optimizer import ClipOptimizer
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP, DEFAULT_TPU_LOSS_PARAMS
 
 # tpu and estimator imports
-from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator
-from tensorflow.contrib.training.python.training import evaluation
 from tensorflow.python.estimator import estimator
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
 
-def train_estimator(cls,
+if tf.__version__ < '1.11':
+    # TF 1.9 and below
+    from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator, tpu_optimizer
+    tpu_estimator_lib = tpu_estimator
+    tpu_config_lib = tpu_config
+    tpu_optimizer_lib = tpu_optimizer
+    tpu_cluster_resolver_lib = tf.contrib.cluster_resolver
+elif tf.__version__ < '2':
+    # TF 1.11 and above
+    tpu_estimator_lib = tf.contrib.tpu
+    tpu_config_lib = tf.contrib.tpu
+    tpu_optimizer_lib = tf.contrib.tpu
+    tpu_cluster_resolver_lib = tf.contrib.cluster_resolver
+else:
+    # TF 2.0 and above
+    tpu_estimator_lib = tf.estimator.tpu
+    tpu_config_lib = tf.estimator.tpu
+    tpu_optimizer_lib = tf.tpu
+    tpu_cluster_resolver_lib = tf.distribute.cluster_resolver
+
+def train_estimator(train_cls,
+                    eval_cls,
                     param,
                     trarg):
+    if eval_cls is None:
+        eval_cls = train_cls
 
     model_dir = param['save_params'].get('cache_dir', '')
     train_steps = param['train_params']['num_steps']
@@ -35,7 +55,7 @@ def train_estimator(cls,
                 assert(steps_per_eval == save_filters_freq)
             else:
                 param['save_params']['save_filters_freq'] = steps_per_eval
-    train_fn = param['train_params']['data_params']['func'] 
+    train_fn = param['train_params']['data_params']['func']
 
     model_params = param['model_params']
     iterations_per_loop = model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP)
@@ -61,7 +81,6 @@ def train_estimator(cls,
                                    load_params=param['load_params'],
                                    cache_dir=model_dir)
 
-
     log.info('Training beginning ...')
     log.info('Training for %d steps. Current '
                     'step %d' % (train_steps,
@@ -72,14 +91,14 @@ def train_estimator(cls,
     tpu_validate_first = param['train_params'].get('tpu_validate_first', False)
     def do_tpu_validation():
         log.info('Starting to evaluate.')
-        eval_results = cls.evaluate(
-          input_fn=valid_fn,
-          hooks=valid_hooks,
-          steps=valid_steps)
+        eval_results = eval_cls.evaluate(
+            input_fn=valid_fn,
+            hooks=valid_hooks,
+            steps=valid_steps)
         log.info('Saving eval results to database.')
-        trarg['dbinterface'].save(valid_res={valid_k: eval_results}, validation_only=True)
+        trarg['dbinterface'].save(valid_res={valid_k: eval_results},
+                                  validation_only=True)
         log.info('Done saving eval results to database.')
-
         return eval_results
 
     if tpu_validate_first:
@@ -88,15 +107,14 @@ def train_estimator(cls,
     while current_step < train_steps:
         next_eval = min(current_step + steps_per_eval,
                             train_steps)
-
         log.info('Training until step %d' % next_eval)
-        cls.train(
+        train_cls.train(
         input_fn=train_fn, max_steps=next_eval, hooks=train_hooks)
         current_step = next_eval
 
         if need_val:
             eval_results = do_tpu_validation()
-    
+
     # sync with hosts
     res = []
     trarg['dbinterface'].sync_with_host()
@@ -107,7 +125,6 @@ def train_estimator(cls,
 def test_estimator(cls_dict,
                     param,
                     ttarg):
-
     # load params query stores path to checkpoint
     if param['load_params']['do_restore'] and (param['load_params']['query'] is not None):
         # path to specific checkpoint
@@ -121,7 +138,6 @@ def test_estimator(cls_dict,
                                    save_params=param['save_params'],
                                    load_params=param['load_params'])
 
-
     ttarg['dbinterface'].start_time_step = time.time()
 
     m_predictions = {}
@@ -129,22 +145,22 @@ def test_estimator(cls_dict,
         cls = cls_dict[valid_k]
         validation_data_params = param['validation_params'][valid_k]['data_params']
         # can use to filter particular params to save, if not there will set to None and all saved
-        filter_keys = param['validation_params'][valid_k].get('keys_to_save') 
-        session_hooks = param['validation_params'][valid_k].get('hooks') 
+        filter_keys = param['validation_params'][valid_k].get('keys_to_save')
+        session_hooks = param['validation_params'][valid_k].get('hooks')
         valid_fn = validation_data_params['func']
         log.info('Starting to evaluate ({}).'.format(valid_k))
         eval_results = cls.predict(
-          input_fn=valid_fn,
-          predict_keys=filter_keys,
-          hooks=session_hooks,
-          checkpoint_path=load_dir)
+            input_fn=valid_fn,
+            predict_keys=filter_keys,
+            hooks=session_hooks,
+            checkpoint_path=load_dir)
         m_predictions[valid_k] = list(eval_results)
 
     log.info('Saving eval results to database.')
     # set validation only to be True to just save the results and not filters
     ttarg['dbinterface'].save(valid_res=m_predictions, validation_only=True)
     log.info('Done saving eval results to database.')
-    
+
     # sync with hosts
     res = []
     ttarg['dbinterface'].sync_with_host()
@@ -152,17 +168,16 @@ def test_estimator(cls_dict,
     # returning final eval results for convenience
     return eval_results, res
 
-def create_train_estimator_fn(use_tpu, 
+def create_train_estimator_fn(use_tpu,
                         model_params,
                         lr_params,
                         opt_params,
                         loss_params,
                         validation_params):
-
     """
     Creates a model_fn for use with tf.Estimator for training and eval.
     """
-    # set up loss params 
+    # set up loss params
     loss_agg_func = loss_params.get('agg_func', DEFAULT_TPU_LOSS_PARAMS['agg_func'])
 
     loss_per_case_func = loss_params.get('loss_per_case_func', DEFAULT_TPU_LOSS_PARAMS['loss_per_case_func'])
@@ -202,7 +217,7 @@ def create_train_estimator_fn(use_tpu,
             logits = outputs[logit_key]
         else:
             logits = outputs
-            
+
         loss_args = (outputs, labels)
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
         loss = loss_agg_func(loss, **loss_agg_func_kwargs)
@@ -222,7 +237,7 @@ def create_train_estimator_fn(use_tpu,
                 opt_func = old_opt_func
 
             log.info('Passing optimizer class to CrossShardOptimizer')
-            optimizer_base = tpu_optimizer.CrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
+            optimizer_base = tpu_optimizer_lib.CrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
@@ -230,54 +245,53 @@ def create_train_estimator_fn(use_tpu,
         else:
             train_op = None
 
-
         eval_metrics = None
         if mode == tf.estimator.ModeKeys.EVAL:
-           num_valid_targets = len(validation_params.keys())
-           metric_fn_kwargs = {'labels': labels, 'logits': logits}
-           if use_tpu:
-               assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
-               first_valid = validation_params.keys()[0]
-               valid_target = validation_params[first_valid]['targets']
-               metric_fn = valid_target['func']
-               if isinstance(outputs, dict):
-                   for kw in outputs.keys():
-                       if kw != logit_key:
-                           kw_val = outputs[kw]
-                           new_kw = kw
-                           if isinstance(new_kw, int):
-                               new_kw = 'i%i' % new_kw
-                           metric_fn_kwargs.update({new_kw:kw_val})
+            num_valid_targets = len(validation_params.keys())
+            metric_fn_kwargs = {'labels': labels, 'logits': logits}
+            if use_tpu:
+                assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
+                first_valid = validation_params.keys()[0]
+                valid_target = validation_params[first_valid]['targets']
+                metric_fn = valid_target['func']
+                if isinstance(outputs, dict):
+                    for kw in outputs.keys():
+                        if kw != logit_key:
+                            kw_val = outputs[kw]
+                            new_kw = kw
+                            if isinstance(new_kw, int):
+                                new_kw = 'i%i' % new_kw
+                            metric_fn_kwargs.update({new_kw:kw_val})
 
-               for kw in valid_target.keys():
-                   v = valid_target[kw]
-                   if isinstance(v, dict):
-                       for kw1 in v.keys():
-                           # add any additional kwargs
-                           kw_val = v[kw1]
-                           metric_fn_kwargs.update({kw1: kw_val})
-                           #metric_fn_kwargs[kw] = kw_val
-               eval_metrics = (metric_fn, metric_fn_kwargs)
-           else:
-               # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
-               eval_dict = {}
-               for k in validation_params.keys():
-                   k_metric_fn_kwargs = metric_fn_kwargs
-                   k_target = k['targets']
-                   for kw in k_target.keys():
-                       if kw != 'func':
-                           # add any additional kwargs
-                           kw_val = k_target[kw]
-                           k_metric_fn_kwargs[kw] = kw_val                       
-                   eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
-               eval_metrics = eval_dict
+                for kw in valid_target.keys():
+                    v = valid_target[kw]
+                    if isinstance(v, dict):
+                        for kw1 in v.keys():
+                            # add any additional kwargs
+                            kw_val = v[kw1]
+                            metric_fn_kwargs.update({kw1: kw_val})
+                            #metric_fn_kwargs[kw] = kw_val
+                eval_metrics = (metric_fn, metric_fn_kwargs)
+            else:
+                # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
+                eval_dict = {}
+                for k in validation_params.keys():
+                    k_metric_fn_kwargs = metric_fn_kwargs
+                    k_target = k['targets']
+                    for kw in k_target.keys():
+                        if kw != 'func':
+                            # add any additional kwargs
+                            kw_val = k_target[kw]
+                            k_metric_fn_kwargs[kw] = kw_val
+                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
+                eval_metrics = eval_dict
 
         if use_tpu:
-            return tpu_estimator.TPUEstimatorSpec(
-              mode=mode,
-              loss=loss,
-              train_op=train_op,
-              eval_metrics=eval_metrics)
+            return tpu_estimator_lib.TPUEstimatorSpec(
+                mode=mode,
+                loss=loss,
+                train_op=train_op,
+                eval_metrics=eval_metrics)
         else:
             return tf.estimator.EstimatorSpec(
                 mode=mode,
@@ -287,12 +301,11 @@ def create_train_estimator_fn(use_tpu,
 
     return model_fn, params_to_pass
 
-def create_test_estimator_fn(use_tpu, 
-                        model_params,
-                        target_params):
-
-    """
-    Creates a model_fn for use with tf.Estimator for eval only. Uses predict mode.
+def create_test_estimator_fn(use_tpu,
+                             model_params,
+                             target_params):
+    """ Creates a model_fn for use with tf.Estimator for eval only.
+    Uses predict mode.
     """
     # build params dictionary to be instantiated with the model_fn
     params_to_pass = {}
@@ -319,24 +332,24 @@ def create_test_estimator_fn(use_tpu,
 
         predictions = None
         if mode == tf.estimator.ModeKeys.PREDICT:
-           metric_fn_kwargs = {'labels': labels, 'logits': logits}
+            metric_fn_kwargs = {'labels': labels, 'logits': logits}
 
-           eval_dict = {}
-           k_metric_fn_kwargs = metric_fn_kwargs
-           k_target = target_params['targets']
-           for kw in k_target.keys():
-               if kw != 'func':
-                   # add any additional kwargs
-                   kw_val = k_target[kw]
-                   k_metric_fn_kwargs[kw] = kw_val   
-           k_target_func = k_target.pop('func')                       
-           eval_dict['predictions'] = k_target_func(**k_metric_fn_kwargs)
-           predictions = eval_dict
+            eval_dict = {}
+            k_metric_fn_kwargs = metric_fn_kwargs
+            k_target = target_params['targets']
+            for kw in k_target.keys():
+                if kw != 'func':
+                    # add any additional kwargs
+                    kw_val = k_target[kw]
+                    k_metric_fn_kwargs[kw] = kw_val
+            k_target_func = k_target.pop('func')
+            eval_dict['predictions'] = k_target_func(**k_metric_fn_kwargs)
+            predictions = eval_dict
 
         if params['use_tpu']:
-            return tpu_estimator.TPUEstimatorSpec(
-              mode=mode,
-              predictions=predictions)
+            return tpu_estimator_lib.TPUEstimatorSpec(
+                mode=mode,
+                predictions=predictions)
         else:
             return tf.Estimator.EstimatorSpec(
                 mode=mode,
@@ -345,62 +358,56 @@ def create_test_estimator_fn(use_tpu,
     return model_fn, params_to_pass
 
 def create_train_tpu_config(model_dir,
-                      model_params,
-                      tpu_name,
-                      gcp_project,
-                      steps_per_checkpoint,
-                      tpu_zone=DEFAULT_TPU_ZONE,
-                      num_shards=DEFAULT_NUM_SHARDS,
-                      keep_checkpoint_max=5,
-                      iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
-
+                            model_params,
+                            tpu_name,
+                            gcp_project,
+                            steps_per_checkpoint,
+                            tpu_zone=DEFAULT_TPU_ZONE,
+                            num_shards=DEFAULT_NUM_SHARDS,
+                            keep_checkpoint_max=5,
+                            iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
     tpu_cluster_resolver = (
-        tf.contrib.cluster_resolver.TPUClusterResolver(
+        tpu_cluster_resolver_lib.TPUClusterResolver(
             tpu=[tpu_name],
             zone=tpu_zone,
             project=gcp_project))
-    tpu_grpc_url = tpu_cluster_resolver.get_master()
 
     if iterations_per_loop == -1 or (steps_per_checkpoint is not None and steps_per_checkpoint < iterations_per_loop):
         log.info('Setting iterations_per_loop ({}) to be the same as steps_per_checkpoint ({}).'.format(iterations_per_loop, steps_per_checkpoint))
         iterations_per_loop = steps_per_checkpoint
         model_params['iterations_per_loop'] = iterations_per_loop
 
-    config = tpu_config.RunConfig(
-        master=tpu_grpc_url,
-        evaluation_master=tpu_grpc_url,
+    config = tpu_config_lib.RunConfig(
+        cluster=tpu_cluster_resolver,
         model_dir=model_dir,
         save_checkpoints_steps=steps_per_checkpoint,
         save_checkpoints_secs=None,
         keep_checkpoint_max=keep_checkpoint_max,
         log_step_count_steps=iterations_per_loop,
-        tpu_config=tpu_config.TPUConfig(
+        tpu_config=tpu_config_lib.TPUConfig(
             iterations_per_loop=iterations_per_loop,
             num_shards=num_shards))
 
     return config
 
 def create_test_tpu_config(model_dir,
-                      eval_steps,
-                      tpu_name,
-                      gcp_project,
-                      tpu_zone=DEFAULT_TPU_ZONE,
-                      num_shards=DEFAULT_NUM_SHARDS,
-                      iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
-
+                           eval_steps,
+                           tpu_name,
+                           gcp_project,
+                           tpu_zone=DEFAULT_TPU_ZONE,
+                           num_shards=DEFAULT_NUM_SHARDS,
+                           iterations_per_loop=DEFAULT_ITERATIONS_PER_LOOP):
     tpu_cluster_resolver = (
-        tf.contrib.cluster_resolver.TPUClusterResolver(
+        tpu_cluster_resolver_lib.TPUClusterResolver(
             tpu=[tpu_name],
             zone=tpu_zone,
             project=gcp_project))
-    tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-    config = tpu_config.RunConfig(
-        master=tpu_grpc_url,
-        evaluation_master=tpu_grpc_url,
+    config = tpu_config_lib.RunConfig(
+        cluster=tpu_cluster_resolver,
         model_dir=model_dir,
         log_step_count_steps=iterations_per_loop,
-        tpu_config=tpu_config.TPUConfig(
+        tpu_config=tpu_config_lib.TPUConfig(
             iterations_per_loop=eval_steps,
             num_shards=num_shards))
 
