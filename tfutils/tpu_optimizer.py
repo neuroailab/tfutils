@@ -1,10 +1,29 @@
 from tensorflow.python.framework import ops
 from tensorflow.python.ops.losses import losses
-from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
-from tensorflow.contrib.tpu.python.tpu import tpu_function
-from tensorflow.contrib.tpu.python.ops import tpu_ops
 
-class CrossShardMultiOptimizer(tpu_optimizer.CrossShardOptimizer):
+if tf.__version__ < '1.11':
+    # TF 1.9 and below
+    from tensorflow.contrib.tpu.python.tpu import tpu_optimizer
+    from tensorflow.contrib.tpu.python.tpu import tpu_function
+    from tensorflow.contrib.tpu.python.ops import tpu_ops
+    tpu_optimizer_lib = tpu_optimizer
+elif tf.__version__ < '1.14':
+    # TF 1.11 and above
+    from tensorflow.contrib.tpu.python.tpu import tpu_function
+    from tensorflow.contrib.tpu.python.ops import tpu_ops
+    tpu_optimizer_lib = tf.contrib.tpu
+elif tf.__version__ < '2':
+    # TF 1.14 and above
+    from tensorflow.python.tpu import tpu_function
+    from tensorflow.python.tpu.ops import tpu_ops
+    tpu_optimizer_lib = tf.contrib.tpu
+else:
+    # TF 2.0 and above
+    from tensorflow.python.tpu import tpu_function
+    from tensorflow.python.tpu.ops import tpu_ops
+    tpu_optimizer_lib = tf.tpu
+
+class CrossShardMultiOptimizer(tpu_optimizer_lib.CrossShardOptimizer):
     def __init__(self,
                  opt,
                  reduction=losses.Reduction.MEAN,
