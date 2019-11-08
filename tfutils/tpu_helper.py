@@ -236,44 +236,44 @@ def create_train_estimator_fn(use_tpu,
 
         eval_metrics = None
         if mode == tf.estimator.ModeKeys.EVAL:
-           num_valid_targets = len(validation_params.keys())
-           metric_fn_kwargs = {'labels': labels, 'logits': logits}
-           if use_tpu:
-               assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
-               first_valid = validation_params.keys()[0]
-               valid_target = validation_params[first_valid]['targets']
-               metric_fn = valid_target['func']
-               if isinstance(outputs, dict):
-                   for kw in outputs.keys():
-                       if kw != logit_key:
-                           kw_val = outputs[kw]
-                           new_kw = kw
-                           if isinstance(new_kw, int):
-                               new_kw = 'i%i' % new_kw
-                           metric_fn_kwargs.update({new_kw:kw_val})
+            num_valid_targets = len(validation_params.keys())
+            metric_fn_kwargs = {'labels': labels, 'logits': logits}
+            if use_tpu:
+                assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
+                first_valid = validation_params.keys()[0]
+                valid_target = validation_params[first_valid]['targets']
+                metric_fn = valid_target['func']
+                if isinstance(outputs, dict):
+                    for kw in outputs.keys():
+                        if kw != logit_key:
+                            kw_val = outputs[kw]
+                            new_kw = kw
+                            if isinstance(new_kw, int):
+                                new_kw = 'i%i' % new_kw
+                            metric_fn_kwargs.update({new_kw:kw_val})
 
-               for kw in valid_target.keys():
-                   v = valid_target[kw]
-                   if isinstance(v, dict):
-                       for kw1 in v.keys():
-                           # add any additional kwargs
-                           kw_val = v[kw1]
-                           metric_fn_kwargs.update({kw1: kw_val})
-                           #metric_fn_kwargs[kw] = kw_val
-               eval_metrics = (metric_fn, metric_fn_kwargs)
-           else:
-               # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
-               eval_dict = {}
-               for k in validation_params.keys():
-                   k_metric_fn_kwargs = metric_fn_kwargs
-                   k_target = k['targets']
-                   for kw in k_target.keys():
-                       if kw != 'func':
-                           # add any additional kwargs
-                           kw_val = k_target[kw]
-                           k_metric_fn_kwargs[kw] = kw_val
-                   eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
-               eval_metrics = eval_dict
+                for kw in valid_target.keys():
+                    v = valid_target[kw]
+                    if isinstance(v, dict):
+                        for kw1 in v.keys():
+                            # add any additional kwargs
+                            kw_val = v[kw1]
+                            metric_fn_kwargs.update({kw1: kw_val})
+                            #metric_fn_kwargs[kw] = kw_val
+                eval_metrics = (metric_fn, metric_fn_kwargs)
+            else:
+                # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
+                eval_dict = {}
+                for k in validation_params.keys():
+                    k_metric_fn_kwargs = metric_fn_kwargs
+                    k_target = k['targets']
+                    for kw in k_target.keys():
+                        if kw != 'func':
+                            # add any additional kwargs
+                            kw_val = k_target[kw]
+                            k_metric_fn_kwargs[kw] = kw_val
+                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
+                eval_metrics = eval_dict
 
         if use_tpu:
             return tf.contrib.tpu.TPUEstimatorSpec(

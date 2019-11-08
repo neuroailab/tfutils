@@ -76,7 +76,7 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
                                 keep_checkpoint_max=save_params.get('checkpoint_max', 5),
                                 iterations_per_loop=model_params.get('iterations_per_loop', DEFAULT_ITERATIONS_PER_LOOP),
                                 model_params=model_params)
-            if model_params.get('num_shards', DEFAULT_NUM_SHARDS) > 8:
+
             val_estimator_classifier = tf.contrib.tpu.TPUEstimator(
                                         use_tpu=True,
                                         model_fn=estimator_fn,
@@ -86,11 +86,9 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
                                         params=params_to_pass,
                                         export_to_tpu=False)
 
-
-
-
     else:
-        train_estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn, params=params_to_pass)
+        train_estimator_classifier = tf.estimator.Estimator(model_fn=estimator_fn,
+                                                            params=params_to_pass)
 
     return train_estimator(train_cls=train_estimator_classifier,
                            eval_cls=val_estimator_classifier,
