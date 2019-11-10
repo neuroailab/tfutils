@@ -294,7 +294,7 @@ def create_train_estimator_fn(use_tpu,
         if use_tpu:
             return tpu_estimator_lib.TPUEstimatorSpec(
                 mode=mode,
-                loss=loss,
+                loss=spec_loss,
                 train_op=train_op,
                 eval_metrics=eval_metrics)
         else:
