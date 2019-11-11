@@ -20,7 +20,6 @@ import os
 import sys
 import numpy as np
 
-
 def fetch_dataset(filename):
     """
     Useful util function for fetching records
@@ -237,16 +236,28 @@ class ImageNet(object):
 
             return image
 
-        if self.is_train:
-            image = _rand_crop(image_string)
-            image = tf.image.random_flip_left_right(image)
+        if self.prep_type == "inception":
+            if self.resize is None:
+                inception_image_size = 299
+            else:
+                inception_image_size = self.resize
+
+            import tfutils.inception_preprocessing as inception_preprocessing
+            image = tf.image.decode_jpeg(image_string, channels=3)
+            image = inception_preprocessing.preprocess_image(image,
+                                                             is_training=self.is_train,
+                                                             image_size=inception_image_size)
         else:
-            image = self.central_crop_from_jpg(image_string)
+            if self.is_train:
+                image = _rand_crop(image_string)
+                image = tf.image.random_flip_left_right(image)
+            else:
+                image = self.central_crop_from_jpg(image_string)
 
-        image = color_normalize(image)
+            image = color_normalize(image)
 
-        if self.resize is not None:
-            image = tf.image.resize_images(image, [self.resize, self.resize], align_corners=True)
+            if self.resize is not None:
+                image = tf.image.resize_images(image, [self.resize, self.resize], align_corners=True)
         return image
 
     def data_parser(self, value):
