@@ -44,9 +44,9 @@ class ClipOptimizer(object):
 
     """
     def __init__(
-            self, optimizer_class, learning_rate, global_step=None, 
-            clip=True, clipping_method='value', clipping_value=1.0, 
-            print_global_norm=False, trainable_scope=None, 
+            self, optimizer_class, learning_rate, global_step=None,
+            clip=True, clipping_method='value', clipping_value=1.0,
+            print_global_norm=False, trainable_scope=None,
             optimizer_args=None, optimizer_kwargs=None):
 
         if not isinstance(optimizer_class, list):
@@ -85,8 +85,8 @@ class ClipOptimizer(object):
             curr_opt_kwargs = copy.deepcopy(self._optimizer_kwargs[opt_idx])
             curr_opt_kwargs['learning_rate'] = self._learning_rate[opt_idx]
             if self._optimizer_kwargs[opt_idx].get('include_global_step', False):
-            	curr_opt_kwargs.pop('include_global_step', None)
-            	curr_opt_kwargs['global_step'] = global_step
+                curr_opt_kwargs.pop('include_global_step', None)
+                curr_opt_kwargs['global_step'] = global_step
             curr_opt_func = opt_cls(*curr_opt_args, **curr_opt_kwargs)
             self._optimizers.insert(opt_idx, curr_opt_func)
 
@@ -148,7 +148,7 @@ class ClipOptimizer(object):
                         norm = tf.Print(norm, [norm], message="grad_global_norm")
                     true_fn = lambda: tf.constant(1.0)
                     false_fn = lambda: tf.identity(norm)
-                    norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)                
+                    norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)
                     gradients, global_norm = tf.clip_by_global_norm(gradients, self.clipping_value,
                             use_norm=norm)
                     gvs = zip(gradients, variables)
@@ -172,14 +172,28 @@ class ClipOptimizer(object):
         Returns:
             (tf.Operation): Applies gradient update to model followed by an
                 internal gradient zeroing operation to `self.grads_and_vars`.
+                If global_step is not None, this op also increments the
+                global_step.
+                In general, for GPU mode, global_step is always None, since the
+                increment is performed by helper.aggr_accu_apply_grads
+                On TPU, the increment to the global step is delegated to the
+                base optimizer's apply_gradients function.
+                Further, in multioptimizer mode, we only pass the global step
+                to the *last* optimizer, ensuring per batch the global step is
+                oonly incremented once.
 
         """
         assert(len(grads_and_vars) == len(self._optimizer_class)) # make sure it is consistent
         optimize_op_list = []
         for opt_idx, curr_opt_func in enumerate(self._optimizers):
-            optimize = curr_opt_func.apply_gradients(grads_and_vars[opt_idx],
-                                                   global_step=global_step,
-                                                   name=name)
+            if opt_idx == (len(self._optimizers)-1):
+                optimize = curr_opt_func.apply_gradients(grads_and_vars[opt_idx],
+                                                       global_step=global_step,
+                                                       name=name)
+            else:
+                optimize = curr_opt_func.apply_gradients(grads_and_vars[opt_idx],
+                                                         global_step=None,
+                                                         name=name)
             optimize_op_list.insert(opt_idx, optimize)
 
         return tf.group(*optimize_op_list)
@@ -226,7 +240,7 @@ class MinibatchOptimizer(object):
                 *args, **kwargs)
         # Get the variables to update from results of compute_gradients
         # filter out the variables with None
-        
+
         if self._multi_mode: # list of lists, grads and vars per optimizer
             gvs_wo_none = []
             for opt_idx, curr_gv in enumerate(gvs):
@@ -249,7 +263,7 @@ class MinibatchOptimizer(object):
         assert all((\
                 var_g.name == var_l.name \
                 for (_, var_g), var_l in zip(curr_mb_gv, curr_var_list))),\
-                "Variable list should have the same variables!" 
+                "Variable list should have the same variables!"
 
     def _zero_gvs(self, opt_idx=None):
         if opt_idx is None:
