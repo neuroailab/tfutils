@@ -309,6 +309,7 @@ class MinibatchOptimizer(object):
             mini_ops_list = []
             for opt_idx, curr_mb_gv in enumerate(minibatch_grads):
                 curr_mini_ops = self._mini_ops(grads_and_vars=self.grads_and_vars[opt_idx], minibatch_grads=curr_mb_gv, num_minibatches=num_minibatches)
+                # note: we use extend here to have a single list of ops to run simultaneously
                 mini_ops_list.extend(curr_mini_ops)
             mnb_accu_grad = tf.group(*mini_ops_list)
 
@@ -355,6 +356,7 @@ class MinibatchOptimizer(object):
                     reset_ops = []
                     for opt_idx, _ in enumerate(self.grads_and_vars):
                         curr_reset_ops = self._reset_grads(grads_and_vars=self.grads_and_vars[opt_idx])
+                        # note: we use extend here to have a single list of ops to run simultaneously
                         reset_ops.extend(curr_reset_ops)
                 else:
                     reset_ops = self._reset_grads(grads_and_vars=self.grads_and_vars)
