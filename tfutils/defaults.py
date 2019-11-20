@@ -4,7 +4,6 @@ All default values used in tfutils
 
 from tfutils.utils import frozendict
 import tensorflow as tf
-import pdb
 
 from tfutils.multi_gpu.easy_variable_mgr import COPY_NAME_SCOPE
 
