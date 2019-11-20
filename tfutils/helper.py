@@ -219,7 +219,7 @@ def get_data(func, **data_params):
 
 def get_loss(train_inputs,
              train_outputs,
-             model_prefix,
+             model_prefix=None,
              pred_targets=DEFAULT_PARAMS['loss_params']['pred_targets'],
              agg_func=DEFAULT_PARAMS['loss_params']['agg_func'],
              loss_func=DEFAULT_PARAMS['loss_params']['loss_func'],
@@ -242,7 +242,7 @@ def get_loss(train_inputs,
     loss_params['agg_func'] = agg_func
     loss_params['loss_func'] = loss_func
     loss = get_loss_base(
-            train_inputs, train_outputs, model_prefix, 
+            train_inputs, train_outputs, model_prefix=model_prefix, 
             **loss_params)
     return loss_params, loss
 
@@ -324,7 +324,6 @@ def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
 def get_loss_base(
         inputs,
         outputs,
-        model_prefix,
         pred_targets,
         loss_func,
         loss_func_kwargs={},
@@ -333,6 +332,7 @@ def get_loss_base(
         which_device=0,
         labels_to_dict=False,
         inputs_as_dict=False,
+        model_prefix=None,
         **loss_params):
     # Process some parameters
     loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
