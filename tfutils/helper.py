@@ -137,7 +137,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                             param, each_input,
                             output, which_gpu,
                             update_ops, var_manager,
-                            name_scope, tower_opts[which_gpu])
+                            name_scope, tower_opts[which_gpu], model_prefix)
                     tower_losses.append(loss)
                     tower_grads.append(grad)
 
@@ -219,6 +219,7 @@ def get_data(func, **data_params):
 
 def get_loss(train_inputs,
              train_outputs,
+             model_prefix=None,
              pred_targets=DEFAULT_PARAMS['loss_params']['pred_targets'],
              agg_func=DEFAULT_PARAMS['loss_params']['agg_func'],
              loss_func=DEFAULT_PARAMS['loss_params']['loss_func'],
@@ -240,7 +241,9 @@ def get_loss(train_inputs,
     loss_params['pred_targets'] = pred_targets
     loss_params['agg_func'] = agg_func
     loss_params['loss_func'] = loss_func
-    loss = get_loss_base(train_inputs, train_outputs, **loss_params)
+    loss = get_loss_base(
+            train_inputs, train_outputs, model_prefix=model_prefix, 
+            **loss_params)
     return loss_params, loss
 
 
@@ -261,10 +264,10 @@ def get_train_targets(param, inputs, output, trarg):
 def get_loss_grad_updt(
         param, each_input, output, which_gpu,
         update_ops, var_manager,
-        name_scope, curr_opt):
+        name_scope, curr_opt, model_prefix):
     param['loss_params']['which_device'] = which_gpu
     param['loss_params'], loss = get_loss(
-            each_input, output,
+            each_input, output, model_prefix,
             **param['loss_params'])
 
     update_ops.extend(
@@ -329,6 +332,7 @@ def get_loss_base(
         which_device=0,
         labels_to_dict=False,
         inputs_as_dict=False,
+        model_prefix=None,
         **loss_params):
     # Process some parameters
     loss_func_kwargs = copy.deepcopy(loss_func_kwargs)
@@ -370,15 +374,26 @@ def get_loss_base(
     if agg_func:
         # Check whether which_device is required for agg_func
         agg_func_args = agg_func.__code__.co_varnames
-        if 'which_device' in agg_func_args:
-            loss = agg_func(loss, which_device=which_device, **agg_func_kwargs)
-        else:
+        combined_agg_func_kwargs = {}
+        combined_agg_func_kwargs.update(agg_func_kwargs)
+        if not 'which_device' in agg_func_args:
             log.info('You are not requiring which_device parameter in your '\
                     + 'agg_func, if you are using multi-gpu training, '\
                     + 'please check function mean_and_reg_loss in '\
                     + 'tfutils.defaults to make sure your '\
                     + 'regularization loss is multi-gpu safe!')
-            loss = agg_func(loss, **agg_func_kwargs)
+        else:
+            combined_agg_func_kwargs['which_device'] = which_device
+        if not 'model_prefix' in agg_func_args:
+            log.info('You are not requiring model_prefix parameter in your '\
+                    + 'agg_func, if you are using multi-model training, '\
+                    + 'please check function mean_and_reg_loss in '\
+                    + 'tfutils.defaults to make sure your '\
+                    + 'regularization loss is multi-model safe!')
+        else:
+            combined_agg_func_kwargs['model_prefix'] = model_prefix
+
+        loss = agg_func(loss, **combined_agg_func_kwargs)
     return loss
 
 

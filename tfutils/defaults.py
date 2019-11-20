@@ -38,9 +38,9 @@ DEFAULT_LOAD_PARAMS = frozendict(
 DEFAULT_LEARNING_RATE_PARAMS = frozendict({'func': tf.train.exponential_decay})
 
 
-# Provide multi-gpu safe regularization loss computation.
+# Provide multi-gpu and multi-model safe regularization loss computation.
 # Used as agg_func in loss_params
-def mean_and_reg_loss(loss, which_device):
+def mean_and_reg_loss(loss, which_device, model_prefix=None):
     """
     if tf.GraphKeys.REGULARIZATION_LOSSES is not empty, will only consider 
     the losses there that are defined on this gpu. This is useful for L2  
@@ -50,7 +50,11 @@ def mean_and_reg_loss(loss, which_device):
 
     reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
     if len(reg_losses) > 0:
-        curr_name_scope = '%s%i' % (COPY_NAME_SCOPE, which_device)
+        if model_prefix is None:
+            curr_name_scope = '%s%i' % (COPY_NAME_SCOPE, which_device)
+        else:
+            curr_name_scope = '%s/%s%i' \
+                    % (model_prefix, COPY_NAME_SCOPE, which_device)
         valid_reg_losses = filter(
                 lambda v: curr_name_scope in v.name, 
                 reg_losses)
