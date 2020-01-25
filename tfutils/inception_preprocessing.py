@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow.python.ops import control_flow_ops
 
 
-def apply_with_random_selector(x, func, num_cases):
+def apply_with_random_selector(x, func, num_cases, seed=None):
     """Computes func(x, sel), with sel sampled from [0...num_cases-1].
 
     Args:
@@ -35,14 +35,18 @@ def apply_with_random_selector(x, func, num_cases):
         The result of func(x, sel), where func receives the value of the
         selector as a python integer, but sel is sampled dynamically.
     """
-    sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32)
+    sel = tf.random_uniform([], maxval=num_cases, dtype=tf.int32, seed=seed)
     # Pass the real x only to one of the func calls.
     return control_flow_ops.merge([
             func(control_flow_ops.switch(x, tf.equal(sel, case))[1], case)
             for case in range(num_cases)])[0]
 
 
-def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
+def distort_color(image,
+                  color_ordering=0,
+                  fast_mode=True,
+                  scope=None,
+                  seed=None):
     """Distort the color of a Tensor image.
 
     Each color distortion is non-commutative and thus ordering of the color ops
@@ -63,32 +67,32 @@ def distort_color(image, color_ordering=0, fast_mode=True, scope=None):
     with tf.name_scope(scope, 'distort_color', [image]):
         if fast_mode:
             if color_ordering == 0:
-                image = tf.image.random_brightness(image, max_delta=32. / 255.)
-                image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+                image = tf.image.random_brightness(image, max_delta=32. / 255., seed=seed)
+                image = tf.image.random_saturation(image, lower=0.5, upper=1.5, seed=seed)
             else:
-                image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-                image = tf.image.random_brightness(image, max_delta=32. / 255.)
+                image = tf.image.random_saturation(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_brightness(image, max_delta=32. / 255., seed=seed)
         else:
             if color_ordering == 0:
-                image = tf.image.random_brightness(image, max_delta=32. / 255.)
-                image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-                image = tf.image.random_hue(image, max_delta=0.2)
-                image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+                image = tf.image.random_brightness(image, max_delta=32. / 255., seed=seed)
+                image = tf.image.random_saturation(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_hue(image, max_delta=0.2, seed=seed)
+                image = tf.image.random_contrast(image, lower=0.5, upper=1.5, seed=seed)
             elif color_ordering == 1:
-                image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-                image = tf.image.random_brightness(image, max_delta=32. / 255.)
-                image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-                image = tf.image.random_hue(image, max_delta=0.2)
+                image = tf.image.random_saturation(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_brightness(image, max_delta=32. / 255., seed=seed)
+                image = tf.image.random_contrast(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_hue(image, max_delta=0.2, seed=seed)
             elif color_ordering == 2:
-                image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-                image = tf.image.random_hue(image, max_delta=0.2)
-                image = tf.image.random_brightness(image, max_delta=32. / 255.)
-                image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+                image = tf.image.random_contrast(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_hue(image, max_delta=0.2, seed=seed)
+                image = tf.image.random_brightness(image, max_delta=32. / 255., seed=seed)
+                image = tf.image.random_saturation(image, lower=0.5, upper=1.5, seed=seed)
             elif color_ordering == 3:
-                image = tf.image.random_hue(image, max_delta=0.2)
-                image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-                image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-                image = tf.image.random_brightness(image, max_delta=32. / 255.)
+                image = tf.image.random_hue(image, max_delta=0.2, seed=seed)
+                image = tf.image.random_saturation(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_contrast(image, lower=0.5, upper=1.5, seed=seed)
+                image = tf.image.random_brightness(image, max_delta=32. / 255., seed=seed)
             else:
                 raise ValueError('color_ordering must be in [0, 3]')
 
@@ -102,7 +106,8 @@ def distorted_bounding_box_crop(image,
                                 aspect_ratio_range=(0.75, 1.33),
                                 area_range=(0.05, 1.0),
                                 max_attempts=100,
-                                scope=None):
+                                scope=None,
+                                seed=None):
     """Generates cropped_image using a one of the bboxes randomly distorted.
 
     See `tf.image.sample_distorted_bounding_box` for more documentation.
@@ -145,7 +150,8 @@ def distorted_bounding_box_crop(image,
                 aspect_ratio_range=aspect_ratio_range,
                 area_range=area_range,
                 max_attempts=max_attempts,
-                use_image_if_no_bounding_boxes=True)
+                use_image_if_no_bounding_boxes=True,
+                seed=seed)
         bbox_begin, bbox_size, distort_bbox = sample_distorted_bounding_box
 
         # Crop the image to the specified bounding box.
@@ -160,7 +166,8 @@ def preprocess_for_train(image,
                          fast_mode=True,
                          scope=None,
                          add_image_summaries=True,
-                         random_crop=True):
+                         random_crop=True,
+                         seed=None):
     """Distort one image for training a network.
 
     Distorting images provides a useful technique for augmenting the data
@@ -213,7 +220,7 @@ def preprocess_for_train(image,
                     tf.expand_dims(image, 0), distorted_bbox)
             if add_image_summaries:
                 tf.summary.image('images_with_distorted_bounding_box',
-                                                 image_with_distorted_box)
+                                 image_with_distorted_box)
 
         # This resizing operation may distort the images because the aspect
         # ratio is not respected. We select a resize method in a round robin
@@ -225,21 +232,24 @@ def preprocess_for_train(image,
         distorted_image = apply_with_random_selector(
                 distorted_image,
                 lambda x, method: tf.image.resize_images(x, [height, width], method),
-                num_cases=num_resize_cases)
+                num_cases=num_resize_cases,
+                seed=seed)
 
         if add_image_summaries:
             tf.summary.image(('cropped_' if random_crop else '') + 'resized_image',
                             tf.expand_dims(distorted_image, 0))
 
         # Randomly flip the image horizontally.
-        distorted_image = tf.image.random_flip_left_right(distorted_image)
+        distorted_image = tf.image.random_flip_left_right(distorted_image,
+                                                          seed=seed)
 
         # Randomly distort the colors. There are 1 or 4 ways to do it.
         num_distort_cases = 1 if fast_mode else 4
         distorted_image = apply_with_random_selector(
                 distorted_image,
-                lambda x, ordering: distort_color(x, ordering, fast_mode),
-                num_cases=num_distort_cases)
+                lambda x, ordering: distort_color(x, ordering, fast_mode, seed=seed),
+                num_cases=num_distort_cases,
+                seed=seed)
 
         if add_image_summaries:
             tf.summary.image('final_distorted_image',
@@ -302,7 +312,8 @@ def preprocess_image(image,
                      bbox=None,
                      fast_mode=True,
                      add_image_summaries=True,
-                     crop_image=True):
+                     crop_image=True,
+                     seed=None):
     """Pre-process one image for training or evaluation.
 
     Args:
@@ -337,6 +348,10 @@ def preprocess_image(image,
                 bbox=bbox,
                 fast_mode=fast_mode,
                 add_image_summaries=add_image_summaries,
-                random_crop=crop_image)
+                random_crop=crop_image,
+                seed=seed)
     else:
-        return preprocess_for_eval(image, height=image_size, width=image_size, central_crop=crop_image)
+        return preprocess_for_eval(image,
+                                   height=image_size,
+                                   width=image_size,
+                                   central_crop=crop_image)
