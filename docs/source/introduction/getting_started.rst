@@ -133,7 +133,7 @@ Defining a Model
                              'agg_func': tf.reduce_mean})
 
     params['optimizer_params'] = {'optimizer_class': tf.train.MomentumOptimizer,
-                                  'momentum': 0.9})
+                                  'optimizer_kwargs':{'momentum': 0.9}})
 
     params['train_params'] = {'data_params': {'func': data.build_data,
                                               'batch_size': 100,

@@ -97,6 +97,7 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
             tower_losses = []
             tower_grads = []
             tower_opts = []
+            opt_multi_mode = False
 
             param['learning_rate_params'], learning_rate \
                     = get_learning_rate(
@@ -115,6 +116,9 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                                     param['train_params'].get('include_global_step'),
                                     param['optimizer_params'])
                     tower_opts.append(optimizer_base)
+                    if hasattr(optimizer_base, '_multi_mode'):
+                        if optimizer_base._multi_mode:
+                            opt_multi_mode = True
 
         # Distribute graph across desired devices.
         update_ops = []
@@ -138,7 +142,11 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
                             output, which_gpu,
                             update_ops, var_manager,
                             name_scope, tower_opts[which_gpu], model_prefix)
-                    tower_losses.append(loss)
+                    if isinstance(loss, list): # it means we are in multi-optimizer mode, so the intention is to sum this list
+                        summed_loss = tf.add_n(loss)
+                        tower_losses.append(summed_loss)
+                    else:
+                        tower_losses.append(loss)
                     tower_grads.append(grad)
 
         model_params = new_model_params
@@ -155,14 +163,18 @@ def get_model(inputs, model_params, var_manager=None, param=None, trarg=None):
             with tf.variable_scope(variable_mgr.OPTIMIZER_NAME_SCOPE):
                 mnb_accu_updt_list, optimizer_list = aggr_accu_apply_grads(
                         var_manager, trarg,
-                        tower_grads, tower_opts)
+                        tower_grads, tower_opts, opt_multi_mode=opt_multi_mode)
             mnb_accu_updt_list = tf.group(*(mnb_accu_updt_list + update_ops))
 
             # Prepare train_targets
             trarg['train_targets']['loss'] = loss
             trarg['train_targets']['__grads__'] = mnb_accu_updt_list
             trarg['train_targets']['optimizer'] = optimizer_list
-            trarg['train_targets']['learning_rate'] = learning_rate
+            if isinstance(learning_rate, list):
+                for lr_idx, lr in enumerate(learning_rate):
+                    trarg['train_targets']['learning_rate_' + str(lr_idx)] = lr
+            else:
+                trarg['train_targets']['learning_rate'] = learning_rate
 
             param['model_params'] = model_params
             return model_params, output, param, trarg, var_manager
@@ -284,12 +296,12 @@ def get_loss_grad_updt(
     return loss, grad, update_ops, param
 
 
-def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts):
+def aggr_accu_apply_grads(var_manager, trarg, tower_grads, tower_opts, opt_multi_mode):
     # Aggregate and accumulate gradients.
     ## This is setting the devices where each gradient will be summed across
     ## all gpus
     apply_gradient_devices, gradient_state = (
-            var_manager.preprocess_device_grads(tower_grads))
+            var_manager.preprocess_device_grads(tower_grads, opt_multi_mode=opt_multi_mode))
 
     ## mnb_accu_updt_list includes ops doing one minibatch,
     ## which includes accumulating gradients for this minibatch and

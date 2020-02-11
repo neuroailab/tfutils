@@ -3,6 +3,7 @@ import tensorflow as tf
 from tfutils.db_interface import DBInterface
 from tfutils.helper import log
 from tfutils.optimizer import ClipOptimizer
+from tfutils.tpu_optimizer import CrossShardMultiOptimizer
 from tfutils.defaults import DEFAULT_TPU_ZONE, DEFAULT_NUM_SHARDS, DEFAULT_ITERATIONS_PER_LOOP, DEFAULT_TPU_LOSS_PARAMS
 
 # tpu and estimator imports
@@ -13,19 +14,16 @@ if tf.__version__ < '1.11':
     from tensorflow.contrib.tpu.python.tpu import tpu_config, tpu_estimator, tpu_optimizer
     tpu_estimator_lib = tpu_estimator
     tpu_config_lib = tpu_config
-    tpu_optimizer_lib = tpu_optimizer
     tpu_cluster_resolver_lib = tf.contrib.cluster_resolver
 elif tf.__version__ < '2':
     # TF 1.11 and above
     tpu_estimator_lib = tf.contrib.tpu
     tpu_config_lib = tf.contrib.tpu
-    tpu_optimizer_lib = tf.contrib.tpu
     tpu_cluster_resolver_lib = tf.contrib.cluster_resolver
 else:
     # TF 2.0 and above
     tpu_estimator_lib = tf.estimator.tpu
     tpu_config_lib = tf.estimator.tpu
-    tpu_optimizer_lib = tf.tpu
     tpu_cluster_resolver_lib = tf.distribute.cluster_resolver
 
 def train_estimator(train_cls,
@@ -222,6 +220,13 @@ def create_train_estimator_fn(use_tpu,
         loss = loss_per_case_func(*loss_args, **loss_func_kwargs)
         loss = loss_agg_func(loss, **loss_agg_func_kwargs)
 
+        if isinstance(loss, list):
+            optimizer_loss = loss
+            spec_loss = tf.add_n(loss)
+        else:
+            optimizer_loss = loss
+            spec_loss = loss
+
         global_step = tf.train.get_global_step()
 
         lr_func = lr_params.pop('func')
@@ -236,12 +241,12 @@ def create_train_estimator_fn(use_tpu,
                         'please use optimizer')
                 opt_func = old_opt_func
 
-            log.info('Passing optimizer class to CrossShardOptimizer')
-            optimizer_base = tpu_optimizer_lib.CrossShardOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
+            log.info('Passing optimizer class to CrossShardMultiOptimizer')
+            optimizer_base = CrossShardMultiOptimizer(opt_func(learning_rate=learning_rate, **opt_params))
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                train_op = optimizer_base.minimize(loss, global_step)
+                train_op = optimizer_base.minimize(optimizer_loss, global_step)
         else:
             train_op = None
 
@@ -289,13 +294,13 @@ def create_train_estimator_fn(use_tpu,
         if use_tpu:
             return tpu_estimator_lib.TPUEstimatorSpec(
                 mode=mode,
-                loss=loss,
+                loss=spec_loss,
                 train_op=train_op,
                 eval_metrics=eval_metrics)
         else:
             return tf.estimator.EstimatorSpec(
                 mode=mode,
-                loss=loss,
+                loss=spec_loss,
                 train_op=train_op,
                 eval_metric_ops=eval_metrics)
 

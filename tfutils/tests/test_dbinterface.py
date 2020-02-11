@@ -305,7 +305,7 @@ class TestDBInterface(unittest.TestCase):
         cls.optimizer_params = {'func': optimizer.ClipOptimizer,
                                 'optimizer_class': tf.train.MomentumOptimizer,
                                 'clip': True,
-                                'momentum': 0.9}
+                                'optimizer_kwargs':{'momentum': 0.9}}
 
         cls.learning_rate_params = {'learning_rate': 0.05,
                                     'decay_steps': 10000 // 256,

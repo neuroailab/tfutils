@@ -72,7 +72,7 @@ DEFAULT_LOSS_PARAMS = frozendict(
 
 DEFAULT_OPTIMIZER_PARAMS = frozendict(
         {'optimizer_class': tf.train.MomentumOptimizer,
-         'momentum': 0.9})
+            'optimizer_kwargs':{'momentum': 0.9}})
 
 DEFAULT_SAVE_PARAMS = frozendict({'save_metrics_freq': 100,
                                   'save_valid_freq': 3000,
