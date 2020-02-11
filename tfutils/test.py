@@ -140,7 +140,7 @@ def test_from_params(load_params,
             param['load_params']['do_restore'] = True
             param['model_params']['cfg_final'] = cfg_final
 
-            # Build database interface class, loading model 
+            # Build database interface class, loading model
             ttarg['dbinterface'] = DBInterface(sess=sess,
                                                params=param,
                                                var_manager=var_manager,
