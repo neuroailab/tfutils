@@ -201,9 +201,22 @@ def conv(inp,
                            weight_decay=weight_decay,
                            gamma_init=(0.0 if init_zero else 1.0),
                            epsilon=batch_norm_epsilon)
+
         
+    # if activation is not None:
+    #     output = getattr(tf.nn, activation)(output, name=activation)
+
     if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
+        if activation == 'relu':
+            output = tf.nn.relu(output)
+        elif activation == 'elu':
+            output = tf.nn.elu(output)
+        elif activation == 'swish':
+            output = tf.nn.swish(output)
+        elif activation == 'sigmoid':
+            output = tf.nn.sigmoid(output)
+        else:
+            raise NotImplementedError("activation is %s" % activation)        
 
     return output
 
@@ -276,8 +289,20 @@ def conv_bnf(inp,
                                 name='bias')
         output = tf.nn.bias_add(conv, biases, name=name)
 
+    # if activation is not None:
+    #     output = getattr(tf.nn, activation)(output, name=activation)
+
     if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
+        if activation == 'relu':
+            output = tf.nn.relu(output)
+        elif activation == 'elu':
+            output = tf.nn.elu(output)
+        elif activation == 'swish':
+            output = tf.nn.swish(output)
+        elif activation == 'sigmoid':
+            output = tf.nn.sigmoid(output)
+        else:
+            raise NotImplementedError("activation is %s" % activation)        
 
     return output
 
@@ -399,8 +424,20 @@ def depth_conv(inp,
                                 name='bias')
         output = tf.nn.bias_add(output, biases, name=name)   
 
+    # if activation is not None:
+    #     output = getattr(tf.nn, activation)(output, name=activation)
+
     if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
+        if activation == 'relu':
+            output = tf.nn.relu(output)
+        elif activation == 'elu':
+            output = tf.nn.elu(output)
+        elif activation == 'swish':
+            output = tf.nn.swish(output)
+        elif activation == 'sigmoid':
+            output = tf.nn.sigmoid(output)
+        else:
+            raise NotImplementedError("activation is %s" % activation)        
 
     return output
 
@@ -460,8 +497,20 @@ def fc(inp,
     else:
         output = tf.identity(fcm, name=name)
 
+    # if activation is not None:
+    #     output = getattr(tf.nn, activation)(output, name=activation)
     if activation is not None:
-        output = getattr(tf.nn, activation)(output, name=activation)
+        if activation == 'relu':
+            output = tf.nn.relu(output)
+        elif activation == 'elu':
+            output = tf.nn.elu(output)
+        elif activation == 'swish':
+            output = tf.nn.swish(output)
+        elif activation == 'sigmoid':
+            output = tf.nn.sigmoid(output)
+        else:
+            raise NotImplementedError("activation is %s" % activation)
+    
     if batch_norm:
         # if activation is none, should use zeros; else ones
         if init_zero is None:
