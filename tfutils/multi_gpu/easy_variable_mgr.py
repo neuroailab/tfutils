@@ -140,15 +140,33 @@ class VariableMgrLocalReplicated(VariableMgr):
         reuse=tf.AUTO_REUSE,
         use_resource=False)
 
-  def preprocess_device_grads(self, device_grads):
+  def preprocess_device_grads(self, device_grads, opt_multi_mode=False):
 
-    grads_to_reduce = [[g for g, _ in grad_vars] for grad_vars in device_grads]
     algorithm = batch_allreduce.algorithm_from_params(self.devices)
-    reduced_grads, self._warmup_ops \
-        = algorithm.batch_all_reduce(grads_to_reduce)
-    reduced_device_grads = [[
-        (g, v) for g, (_, v) in zip(grads, grad_vars)
-        ] for grads, grad_vars in zip(reduced_grads, device_grads)]
+    if opt_multi_mode:
+        all_grads_to_reduce = [[[g for g, _ in grad_vars] for grad_vars in opt_grad_vars] for opt_grad_vars in device_grads]
+        all_reduced_grads = []
+        all_warmup_ops = []
+        for grads_to_reduce in map(list, zip(*all_grads_to_reduce)): # each grads_to_reduce is the grads per optimizer across all devices
+            curr_reduced_grads, curr_warmup_ops = algorithm.batch_all_reduce(grads_to_reduce)
+            all_reduced_grads.append(curr_reduced_grads) # nested list of lists of reduced grads per device, for a given optimizer
+            all_warmup_ops.extend(curr_warmup_ops)
+            
+        self._warmup_ops = all_warmup_ops
+        reduced_grads = map(list, zip(*all_reduced_grads)) # map back to gradients for each optimizer across each device
+
+        # add back variables
+        reduced_device_grads = [[[
+            (g, v) for g, (_, v) in zip(grads, grad_vars)
+            ] for grads, grad_vars in zip(opt_grads, opt_grad_vars)] for opt_grads, opt_grad_vars in zip(reduced_grads, device_grads)]
+
+    else:
+        grads_to_reduce = [[g for g, _ in grad_vars] for grad_vars in device_grads]
+        reduced_grads, self._warmup_ops \
+            = algorithm.batch_all_reduce(grads_to_reduce)
+        reduced_device_grads = [[
+            (g, v) for g, (_, v) in zip(grads, grad_vars)
+            ] for grads, grad_vars in zip(reduced_grads, device_grads)]
     return self.devices, reduced_device_grads
 
   def get_gradients_to_apply(self, device_num, gradient_state):
