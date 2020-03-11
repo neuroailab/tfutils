@@ -301,9 +301,10 @@ class ImageNet(object):
         if self.is_train:
             # Read each file
             if BELOW_TF15:
+                use_sloppy = self.seed is None
                 dataset = dataset.apply(
                     tf.contrib.data.parallel_interleave(
-                        fetch_dataset, cycle_length=self.num_cores, sloppy=True
+                        fetch_dataset, cycle_length=self.num_cores, sloppy=use_sloppy
                     )
                 )
             else:
