@@ -20,6 +20,8 @@ import os
 import sys
 import numpy as np
 
+BELOW_TF15 = tf.__version__ < '1.15'
+
 def fetch_dataset(filename):
     """
     Useful util function for fetching records
@@ -28,13 +30,11 @@ def fetch_dataset(filename):
     dataset = tf.data.TFRecordDataset(filename, buffer_size=buffer_size)
     return dataset
 
-
 def _at_least_x_are_equal(a, b, x):
     """At least `x` of `a` and `b` `Tensors` are equal."""
     match = tf.equal(a, b)
     match = tf.cast(match, tf.int32)
     return tf.greater_equal(tf.reduce_sum(match), x)
-
 
 def color_normalize(image):
     image = tf.cast(image, tf.float32) / 255
@@ -42,7 +42,6 @@ def color_normalize(image):
     imagenet_std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
     image = (image - imagenet_mean) / imagenet_std
     return image
-
 
 class ImageNet(object):
     """
@@ -52,16 +51,15 @@ class ImageNet(object):
     TRAIN_LEN = 1281167
     VAL_LEN = 50000
 
-    def __init__(
-        self,
-        image_dir,
-        prep_type,
-        crop_size=224,
-        smallest_side=256,
-        resize=None,
-        is_train=True,
-        drop_remainder=False
-    ):
+    def __init__(self,
+                 image_dir,
+                 prep_type,
+                 crop_size=224,
+                 smallest_side=256,
+                 resize=None,
+                 is_train=True,
+                 drop_remainder=False,
+                 seed=None):
         self.image_dir = image_dir
 
         # Parameters about preprocessing
@@ -77,6 +75,9 @@ class ImageNet(object):
         # Placeholders to be filled later
         self.on_tpu = None
         self.file_pattern = None
+
+        # Control the RNG
+        self.seed = seed
 
     def get_tfr_filenames(self):
         """
@@ -149,6 +150,7 @@ class ImageNet(object):
             area_range=(0.08, 1.0),
             max_attempts=100,
             use_image_if_no_bounding_boxes=True,
+            seed=0 if self.seed is None else self.seed
         )
 
         # Get the cropped image
@@ -164,10 +166,12 @@ class ImageNet(object):
         # central crop if bad
         min_size = tf.minimum(shape[0], shape[1])
         offset_height = tf.random_uniform(
-            shape=[], minval=0, maxval=shape[0] - min_size + 1, dtype=tf.int32
+            shape=[], minval=0, maxval=shape[0] - min_size + 1,
+            dtype=tf.int32, seed=self.seed
         )
         offset_width = tf.random_uniform(
-            shape=[], minval=0, maxval=shape[1] - min_size + 1, dtype=tf.int32
+            shape=[], minval=0, maxval=shape[1] - min_size + 1,
+            dtype=tf.int32, seed=self.seed
         )
         bad_image = tf.image.decode_and_crop_jpeg(
             image_str,
@@ -209,10 +213,12 @@ class ImageNet(object):
             ]
 
         cp_begin_x = tf.random_uniform(
-            shape=[], minval=x_range[0], maxval=x_range[1], dtype=tf.int32
+            shape=[], minval=x_range[0], maxval=x_range[1],
+            dtype=tf.int32, seed=self.seed
         )
         cp_begin_y = tf.random_uniform(
-            shape=[], minval=y_range[0], maxval=y_range[1], dtype=tf.int32
+            shape=[], minval=y_range[0], maxval=y_range[1],
+            dtype=tf.int32, seed=self.seed
         )
 
         bbox = tf.stack([cp_begin_x, cp_begin_y, cp_height, cp_width])
@@ -245,19 +251,22 @@ class ImageNet(object):
             import tfutils.inception_preprocessing as inception_preprocessing
             image = tf.image.decode_jpeg(image_string, channels=3)
             image = inception_preprocessing.preprocess_image(image,
-                                                             is_training=self.is_train,
-                                                             image_size=inception_image_size)
+                                             is_training=self.is_train,
+                                             image_size=inception_image_size,
+                                             seed=self.seed)
         else:
             if self.is_train:
                 image = _rand_crop(image_string)
-                image = tf.image.random_flip_left_right(image)
+                image = tf.image.random_flip_left_right(image, seed=self.seed)
             else:
                 image = self.central_crop_from_jpg(image_string)
 
             image = color_normalize(image)
 
             if self.resize is not None:
-                image = tf.image.resize_images(image, [self.resize, self.resize], align_corners=True)
+                image = tf.image.resize_images(image,
+                                               [self.resize, self.resize],
+                                               align_corners=True)
         return image
 
     def data_parser(self, value):
@@ -283,7 +292,7 @@ class ImageNet(object):
     def process_dataset(self, dataset):
         # if training, shuffle. repeat indefinitely
         if self.is_train:
-            dataset = dataset.shuffle(self.q_cap)
+            dataset = dataset.shuffle(self.q_cap, seed=self.seed)
             dataset = dataset.repeat()
         else:
             dataset = dataset.repeat()
@@ -291,20 +300,34 @@ class ImageNet(object):
         # re-shuffle if training
         if self.is_train:
             # Read each file
-            dataset = dataset.apply(
-                tf.contrib.data.parallel_interleave(
-                    fetch_dataset, cycle_length=self.num_cores, sloppy=True
+            if BELOW_TF15:
+                use_sloppy = self.seed is None
+                dataset = dataset.apply(
+                    tf.contrib.data.parallel_interleave(
+                        fetch_dataset, cycle_length=self.num_cores, sloppy=use_sloppy
+                    )
                 )
-            )
+            else:
+                dataset = dataset.interleave(fetch_dataset,
+                                             cycle_length=self.num_cores)
 
-            dataset.shuffle(self.q_cap)
+            # Use a slightly different seed for the reshuffle, but still
+            # deterministically computed on the seed attribute
+            shuffle_seed = None if self.seed is None else self.seed+1
+            dataset.shuffle(self.q_cap, seed=shuffle_seed)
         else:
-            # Read each file, but make it deterministic for validation
-            dataset = dataset.apply(
-                tf.contrib.data.parallel_interleave(
-                    fetch_dataset, cycle_length=self.num_cores, sloppy=False
+            if BELOW_TF15:
+                # Read each file, but make it deterministic for validation
+                dataset = dataset.apply(
+                    tf.contrib.data.parallel_interleave(
+                        fetch_dataset, cycle_length=self.num_cores, sloppy=False
+                    )
                 )
-            )
+            else:
+                # Taking advantage of the new interface, let's keep this
+                # determinstic
+                dataset = dataset.interleave(fetch_dataset,
+                                             cycle_length=self.num_cores)
 
         # apply preprocessing to each image
         dataset = dataset.map(
@@ -312,11 +335,12 @@ class ImageNet(object):
             num_parallel_calls=64)
 
         dataset = dataset.prefetch(4)
-        if self.drop_remainder:
+        if BELOW_TF15 and self.drop_remainder:
             dataset = dataset.apply(
                 tf.contrib.data.batch_and_drop_remainder(self.batch_size))
         else:
-            dataset = dataset.batch(self.batch_size)
+            dataset = dataset.batch(self.batch_size,
+                                    drop_remainder=self.drop_remainder)
 
         return dataset
 
@@ -338,9 +362,12 @@ class ImageNet(object):
 
         tfr_list = self.get_tfr_filenames()
         if self.is_train:
-            dataset = tf.data.Dataset.list_files(tfr_list)
+            dataset = tf.data.Dataset.list_files(tfr_list,
+                                                 seed=self.seed)
         else:
-            dataset = tf.data.Dataset.list_files(tfr_list, shuffle=False)
+            dataset = tf.data.Dataset.list_files(tfr_list,
+                                                 shuffle=False,
+                                                 seed=self.seed)
 
         dataset = self.process_dataset(dataset)
 
@@ -368,13 +395,15 @@ class ImageNet(object):
             self.image_dir, self.file_pattern)
 
         if self.is_train:
-            dataset = tf.data.Dataset.list_files(file_pattern)
+            dataset = tf.data.Dataset.list_files(file_pattern,
+                                                 seed=self.seed)
         else:
-            dataset = tf.data.Dataset.list_files(file_pattern, shuffle=False)
+            dataset = tf.data.Dataset.list_files(file_pattern,
+                                                 shuffle=False,
+                                                 seed=self.seed)
 
         dataset = self.process_dataset(dataset)
 
         dataset = dataset.prefetch(2)
         images, labels = dataset.make_one_shot_iterator().get_next()
         return images, labels
-
