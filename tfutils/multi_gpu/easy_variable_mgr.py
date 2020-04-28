@@ -210,7 +210,9 @@ class VariableMgrLocalReplicated(VariableMgr):
         split_name[2] = REAL_NAME_SCOPE
         if len(split_name) >= 5 and split_name[4].startswith(COPY_NAME_SCOPE):
           split_name[4] = REAL_NAME_SCOPE
-
+      for _name_idx in range(len(split_name)):
+        if split_name[_name_idx].startswith('__GPU'):
+          split_name[_name_idx] = '__GPU0__'
       copy_from = var_by_name['/'.join(split_name)]
       post_init_ops.append(v.assign(copy_from.read_value()))
 
