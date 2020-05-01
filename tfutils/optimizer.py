@@ -97,7 +97,7 @@ class ClipOptimizer(object):
                     norm = tf.Print(norm, [norm], message="grad_global_norm")
                 true_fn = lambda: tf.constant(1.0)
                 false_fn = lambda: tf.identity(norm)
-                norm = tf.case([(tf.logical_or(tf.is_inf(norm), tf.is_nan(norm)), true_fn)], default=false_fn)                
+                norm = tf.case([(tf.logical_or(tf.math.is_inf(norm), tf.math.is_nan(norm)), true_fn)], default=false_fn)                
                 # norm = tf.case([(tf.is_nan(norm), true_fn)], default=false_fn)
                 gradients, global_norm = tf.clip_by_global_norm(gradients, self.clipping_value,
                         use_norm=norm)
