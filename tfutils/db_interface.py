@@ -20,6 +20,7 @@ from tensorflow.core.protobuf import saver_pb2
 import re
 import sys
 import threading
+import types
 import git
 import pdb
 import pkg_resources
@@ -241,7 +242,10 @@ def sonify(arg, memo=None, skip=False):
     elif callable(arg):
         mod = inspect.getmodule(arg)
         modname = mod.__name__
-        objname = arg.__name__
+        if isinstance(arg, types.FunctionType):
+            objname = arg.__name__
+        else:
+            objname = arg.__class__.__name__
         if not skip:
             rval = version_check_and_info(mod)
         else:
