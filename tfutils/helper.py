@@ -636,6 +636,10 @@ def get_params():
 
 
 def split_input(inputs, num_gpus=1):
+    assert isinstance(inputs, dict) \
+            or isinstance(inputs, list) \
+            or isinstance(inputs, tf.Tensor), \
+            "Inputs must be combinations of dictionary or list"
     if not isinstance(num_gpus, list):
         n_gpus = num_gpus
     else:
@@ -644,12 +648,21 @@ def split_input(inputs, num_gpus=1):
     if n_gpus == 1:
         return [inputs]
 
-    temp_args = {v: tf.split(inputs[v], axis=0, num_or_size_splits=num_gpus)
-                 for v in inputs}
-
-    list_of_args = [{now_arg: temp_args[now_arg][ind]
-                     for now_arg in temp_args} for ind in range(n_gpus)]
-
+    if isinstance(inputs, dict):
+        temp_args = {
+                v: split_input(inputs[v], num_gpus)
+                for v in inputs}
+        list_of_args = [{now_arg: temp_args[now_arg][ind]
+                         for now_arg in temp_args} for ind in range(n_gpus)]
+    elif isinstance(inputs, list):
+        temp_args = [
+                split_input(v, num_gpus)
+                for v in inputs]
+        list_of_args = [
+                [now_arg[ind] for now_arg in temp_args] 
+                for ind in range(n_gpus)]
+    elif isinstance(inputs, tf.Tensor):
+        list_of_args = tf.split(inputs, axis=0, num_or_size_splits=num_gpus)
     return list_of_args
 
 
