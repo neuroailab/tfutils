@@ -129,21 +129,25 @@ def run_each_validation(
 
     # Run validation for each step
     for _step in tqdm.trange(num_steps, desc=target_name):
-        if valid_loop:
-            res = valid_loop(sess, target)
-        else:
-            res = sess.run(target)
-        assert hasattr(res, 'keys'), 'result must be a dictionary'
+        try:
+            if valid_loop:
+                res = valid_loop(sess, target)
+            else:
+                res = sess.run(target)
+            assert hasattr(res, 'keys'), 'result must be a dictionary'
 
-        # Check whether should save
-        if save_intermediate_freq \
-                and _step % save_intermediate_freq == 0:
-            dbinterface.save(valid_res={target_name: res},
-                             step=_step,
-                             validation_only=validation_only)
+            # Check whether should save
+            if save_intermediate_freq \
+                    and _step % save_intermediate_freq == 0:
+                dbinterface.save(valid_res={target_name: res},
+                                 step=_step,
+                                 validation_only=validation_only)
 
-        # Process the results using online_agg_func
-        agg_res = online_agg_func(agg_res, res, _step)
+            # Process the results using online_agg_func
+            agg_res = online_agg_func(agg_res, res, _step)
+        except:
+            print("Reached end of dataset")
+            break
 
     # Get the final result using agg_func
     result = agg_func(agg_res)
