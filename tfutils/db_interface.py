@@ -24,6 +24,7 @@ import git
 import pdb
 import pkg_resources
 from six import string_types
+import functools
 
 from tfutils.utils import strip_prefix_from_name, \
         strip_prefix, get_var_list_wo_prefix
@@ -240,6 +241,9 @@ def sonify(arg, memo=None, skip=False):
     elif arg in (True, False):
         rval = int(arg)
     elif callable(arg):
+        # Skip partial function for now.
+        if isinstance(arg, functools.partial):
+            return {}
         mod = inspect.getmodule(arg)
         modname = mod.__name__
         try:
@@ -367,7 +371,7 @@ class DBInterface(object):
             load_query = {}
         else:
             # Special situation here
-            # Users try to load from the same place they try to save through 
+            # Users try to load from the same place they try to save through
             # setting the load_query
             # This is not allowed
             if self.sameloc and (not save_params == {}):
@@ -400,7 +404,7 @@ class DBInterface(object):
 
         # Set the cache_dir: where to put local cache files
         # use cache_dir from load params if save_params not given
-        if (save_params == {}) and ('cache_dir' in load_params): 
+        if (save_params == {}) and ('cache_dir' in load_params):
             cache_dir = load_params['cache_dir']
         elif 'cache_dir' in save_params:
             cache_dir = save_params['cache_dir']
@@ -836,7 +840,7 @@ class DBInterface(object):
                 if num_cached_filters > cache_max_num:
                     log.info('Cleaning up cached filters')
                     fsbucket = gridfs.GridFSBucket(
-                            recent_gridfs_files._Collection__database, 
+                            recent_gridfs_files._Collection__database,
                             bucket_name=recent_gridfs_files.name.split('.')[0])
 
                     for del_indx in range(0, num_cached_filters - cache_max_num):
@@ -864,7 +868,7 @@ class CoordinatedThread(threading.Thread):
     """A thread class coordinated by tf.train.Coordinator."""
 
     def __init__(
-            self, coord=None, group=None, 
+            self, coord=None, group=None,
             target=None, name=None, args=(), kwargs={}):
         super(CoordinatedThread, self).__init__(
             group=None, target=target, name=name, args=args, kwargs=kwargs)
