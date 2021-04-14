@@ -51,7 +51,7 @@ def tpu_train_from_params(params, train_args, use_tpu=False):
 
     if use_tpu:
         if len(param['validation_params'].keys())>0:
-            valid_k = param['validation_params'].keys()[0]
+            valid_k = list(param['validation_params'].keys())[0]
             validation_data_params = param['validation_params'][valid_k]['data_params']
             eval_batch_size = validation_data_params['batch_size']
         else:

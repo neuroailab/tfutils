@@ -39,7 +39,7 @@ def train_estimator(train_cls,
     need_val = len(param['validation_params'].keys())>0
     steps_per_eval = param['save_params'].get('save_valid_freq')
     if need_val:
-        valid_k = param['validation_params'].keys()[0]
+        valid_k = list(param['validation_params'].keys())[0]
         validation_data_params = param['validation_params'][valid_k]['data_params']
         valid_steps = param['validation_params'][valid_k]['num_steps']
         valid_fn = validation_data_params['func']
@@ -68,7 +68,8 @@ def train_estimator(train_cls,
     else:
         valid_hooks = None
 
-    current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
+    # must cast to int because this function can return np.int64 on some versions of TF, and the estimator API expects int (and not np.int64) to be passed to max_steps
+    current_step = int(estimator._load_global_step_from_checkpoint_dir(model_dir))
     # initialize db here (currently no support for loading and saving to different places. May need to modify init so load_params can load from different dir, estimator interface limited
     #    when loading and saving to different paths, may need to create a new config)
 
@@ -252,57 +253,64 @@ def create_train_estimator_fn(use_tpu,
 
         eval_metrics = None
         if mode == tf.estimator.ModeKeys.EVAL:
-            num_valid_targets = len(validation_params.keys())
+            # always pass labels and logits as keyword arguments to the metric fn
             metric_fn_kwargs = {'labels': labels, 'logits': logits}
-            if use_tpu:
-                assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
-                first_valid = validation_params.keys()[0]
-                valid_target = validation_params[first_valid]['targets']
-                metric_fn = valid_target['func']
-                if isinstance(outputs, dict):
-                    for kw in outputs.keys():
-                        if kw != logit_key:
-                            kw_val = outputs[kw]
-                            new_kw = kw
-                            if isinstance(new_kw, int):
-                                new_kw = 'i%i' % new_kw
-                            metric_fn_kwargs.update({new_kw:kw_val})
 
-                for kw in valid_target.keys():
-                    v = valid_target[kw]
-                    if isinstance(v, dict):
-                        for kw1 in v.keys():
-                            # add any additional kwargs
-                            kw_val = v[kw1]
-                            metric_fn_kwargs.update({kw1: kw_val})
-                            #metric_fn_kwargs[kw] = kw_val
+            if use_tpu:
+                assert(len(validation_params) == 1), "TPU estimators currently only support single targets"
+                first_validation = list(validation_params.keys())[0]
+                validation_target = validation_params[first_validation]['targets'].copy()
+                metric_fn = validation_target.pop('func')
+
+                # an important limitation of the TPUEstimator is that metric_fn_kwargs can only contain tensors.
+                # It cannot have any dictionaries, lists, other containers, ints, floats, etc
+                #
+                # This has two implications for the API:
+                #   1. Any validation targets either need to be flattened  by the user, or we need to support
+                #        some limited functionality to have tfutils do the flattening. We adopt the former
+                #        and assert that all of the validation values that aren't "func" are tensors
+                #
+                #   2. We can't pass the outputs dictionary from the model_fn to the metric_fn. Rather, the
+                #        key-value pairs from the outputs dictionary need to be passed in as arguments to
+                #        the metric_fn directly
+
+                # add key-tensor pairs if all validation_target keys are tensors
+                if all([tf.is_tensor(v) for v in validation_target.values()]):
+                    metric_fn_kwargs.update(validation_target)
+
+                # add any non-logit outputs as arguments to the metric fn
+                if isinstance(outputs, dict):
+                    for key, val in outputs.items():
+                        assert tf.is_tensor(val), "model_fn outputs includes a value which is not a tensor"
+                        if key != logit_key:
+                            # if the key is an integer, cast it to a string with the prefix 'i', e.g., 4 -> 'i4'
+                            new_key = 'i%i' % key if isinstance(key, int) else key
+                            metric_fn_kwargs.update({new_key: val})
+
                 eval_metrics = (metric_fn, metric_fn_kwargs)
             else:
                 # normal estimators expect dicts and can support multiple targets (but same dataset and eval_steps etc)
                 eval_dict = {}
-                for k in validation_params.keys():
-                    k_metric_fn_kwargs = metric_fn_kwargs
-                    k_target = k['targets']
-                    for kw in k_target.keys():
-                        if kw != 'func':
-                            # add any additional kwargs
-                            kw_val = k_target[kw]
-                            k_metric_fn_kwargs[kw] = kw_val
-                    eval_dict[k] = (k_target['func'], k_metric_fn_kwargs)
+                for validation in validation_params.keys():
+                    # shallow copy the targets dict here just in case it's ever used elsewhere
+                    validation_target = validation['targets'].copy()
+                    metric_fn = validation_target.pop("func")
+
+                    # merge the default metric fn kwargs (with labels and logits) with the target-specific kwargs
+                    validation_metric_fn_kwargs = {**metric_fn_kwargs, **validation_target}
+
+                    eval_dict[validation] = (metric_fn, validation_metric_fn_kwargs)
                 eval_metrics = eval_dict
 
-        if use_tpu:
-            return tpu_estimator_lib.TPUEstimatorSpec(
-                mode=mode,
-                loss=spec_loss,
-                train_op=train_op,
-                eval_metrics=eval_metrics)
-        else:
-            return tf.estimator.EstimatorSpec(
-                mode=mode,
-                loss=spec_loss,
-                train_op=train_op,
-                eval_metric_ops=eval_metrics)
+        # choose estimator based on use_tpu flag
+        estimator_spec = tpu_estimator_lib.TPUEstimatorSpec if use_tpu else tf.estimator.EstimatorSpec
+
+        return estimator_spec(
+            mode=mode,
+            loss=spec_loss,
+            train_op=train_op,
+            eval_metrics=eval_metrics
+        )
 
     return model_fn, params_to_pass
 
