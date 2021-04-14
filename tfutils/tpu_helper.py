@@ -39,7 +39,7 @@ def train_estimator(train_cls,
     need_val = len(param['validation_params'].keys())>0
     steps_per_eval = param['save_params'].get('save_valid_freq')
     if need_val:
-        valid_k = param['validation_params'].keys()[0]
+        valid_k = list(param['validation_params'].keys())[0]
         validation_data_params = param['validation_params'][valid_k]['data_params']
         valid_steps = param['validation_params'][valid_k]['num_steps']
         valid_fn = validation_data_params['func']
@@ -256,7 +256,7 @@ def create_train_estimator_fn(use_tpu,
             metric_fn_kwargs = {'labels': labels, 'logits': logits}
             if use_tpu:
                 assert(num_valid_targets==1) # tpu estimators currently only support single targets :(
-                first_valid = validation_params.keys()[0]
+                first_valid = list(validation_params.keys())[0]
                 valid_target = validation_params[first_valid]['targets']
                 metric_fn = valid_target['func']
                 if isinstance(outputs, dict):
