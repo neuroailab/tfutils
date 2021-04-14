@@ -68,7 +68,8 @@ def train_estimator(train_cls,
     else:
         valid_hooks = None
 
-    current_step = estimator._load_global_step_from_checkpoint_dir(model_dir)
+    # must cast to int because this function can return np.int64 on some versions of TF, and the estimator API expects int (and not np.int64) to be passed to max_steps
+    current_step = int(estimator._load_global_step_from_checkpoint_dir(model_dir))
     # initialize db here (currently no support for loading and saving to different places. May need to modify init so load_params can load from different dir, estimator interface limited
     #    when loading and saving to different paths, may need to create a new config)
 
