@@ -297,9 +297,9 @@ def create_train_estimator_fn(use_tpu,
                     metric_fn = validation_target.pop("func")
 
                     # merge the default metric fn kwargs (with labels and logits) with the target-specific kwargs
-                    metric_fn_kwargs.update(validation_target)
+                    validation_metric_fn_kwargs = {**metric_fn_kwargs, **validation_target}
 
-                    eval_dict[validation] = (metric_fn, metric_fn_kwargs)
+                    eval_dict[validation] = (metric_fn, validation_metric_fn_kwargs)
                 eval_metrics = eval_dict
 
         # choose estimator based on use_tpu flag
